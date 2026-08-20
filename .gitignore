@@ -30,3 +30,5 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+client/.expo/dev/logs/start.log
+client/.expo/dev/logs/start.log
