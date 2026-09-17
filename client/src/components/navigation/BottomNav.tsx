@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { BuildingIcon, PlusIcon, RefreshIcon, UserCogIcon } from '../../assets/svg';
+import { BuildingIcon, PlusIcon, RefreshIcon, UserCogIcon } from '../../../assets/svg';
 import { theme } from '../../constants/theme';
 
 export interface BottomNavProps {
