@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { ShieldCheckIcon } from '../../assets/svg';
+import { ShieldCheckIcon } from '../../../assets/svg';
 import { theme } from '../../constants/theme';
 
 interface EngineerProfileCardProps {
