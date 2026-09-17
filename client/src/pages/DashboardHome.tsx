@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar } from 'react-native';
-import type { ChartData, IndicatorItem, MetricItem, ActiveWork } from './types';
+import type { ChartData, IndicatorItem, MetricItem, ActiveWork } from '../types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { EngineerProfileCard } from './components/dashboard/EngineerProfileCard';
-import { WeeklySummaryCard } from './components/dashboard/WeeklySummaryCard';
-import { ActiveWorkCard } from './components/works/ActiveWorkCard';
-import { BottomNav } from './components/navigation/BottomNav';
-import { theme } from './constants/theme';
+import { EngineerProfileCard } from '../components/dashboard/EngineerProfileCard';
+import { WeeklySummaryCard } from '../components/dashboard/WeeklySummaryCard';
+import { ActiveWorkCard } from '../components/works/ActiveWorkCard';
+import { BottomNav } from '../components/navigation/BottomNav';
+import { theme } from '../constants/theme';
 
 // --- MOCK DATA ---
 const chartDataMock: ChartData[] = [
