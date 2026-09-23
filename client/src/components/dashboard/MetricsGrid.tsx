@@ -1,73 +1,87 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../../constants/theme';
-import type { MetricItem } from '../../types';
+import { TouchableOpacity } from 'react-native';
+import styled from 'styled-components/native';
+import type { MetricItem, StatusVariant } from '../../types';
 
 interface MetricsGridProps {
   metrics: MetricItem[];
 }
 
+// --- Styled Components ---
+
+const Container = styled.View`
+  flex-direction: row;
+  gap: ${({ theme }) => theme.spacing.md}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xl}px;
+`;
+
+const Card = styled(TouchableOpacity)`
+  flex: 1;
+  background-color: ${({ theme }) => theme.colors.surface};
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
+  shadow-color: ${({ theme }) => theme.shadows.card.shadowColor};
+  shadow-offset: 0px 1px;
+  shadow-opacity: 0.05;
+  shadow-radius: 3px;
+  elevation: 2;
+`;
+
+const IconBox = styled.View<{ $variant: StatusVariant }>`
+  width: 36px;
+  height: 36px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+  background-color: ${({ $variant, theme }) => theme.colors.status[$variant].bg};
+`;
+
+const IconText = styled.Text`
+  font-size: 16px;
+`;
+
+const Title = styled.Text`
+  font-size: 10px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-bottom: 4px;
+  text-transform: uppercase;
+`;
+
+const Value = styled.Text<{ $variant: StatusVariant }>`
+  font-size: 24px;
+  font-weight: 900;
+  color: ${({ $variant, theme }) =>
+    $variant === 'info'
+      ? theme.colors.status.info.base
+      : theme.colors.secondary};
+`;
+
+const Subtitle = styled.Text`
+  font-size: 11px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-top: 8px;
+  font-weight: 500;
+`;
+
+// --- Component ---
+
 export const MetricsGrid = ({ metrics }: MetricsGridProps) => {
   return (
-    <View style={styles.container}>
+    <Container>
       {metrics.map((metric) => (
-        <TouchableOpacity key={metric.id} style={styles.card} activeOpacity={0.7}>
-          <View style={[styles.iconBox, { backgroundColor: theme.colors.status[metric.variant].bg }]}>
-            <Text style={styles.iconText}>{metric.icon}</Text>
-          </View>
-          <Text style={styles.title}>{metric.title}</Text>
-          <Text style={[styles.value, metric.variant === 'info' && { color: theme.colors.status.info.base }]}>
-            {metric.value}
-          </Text>
-          <Text style={styles.subtitle}>{metric.subtitle}</Text>
-        </TouchableOpacity>
+        <Card key={metric.id} activeOpacity={0.7}>
+          <IconBox $variant={metric.variant}>
+            <IconText>{metric.icon}</IconText>
+          </IconBox>
+          <Title>{metric.title}</Title>
+          <Value $variant={metric.variant}>{metric.value}</Value>
+          <Subtitle>{metric.subtitle}</Subtitle>
+        </Card>
       ))}
-    </View>
+    </Container>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.card,
-  },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.borderRadius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  iconText: {
-    fontSize: 16,
-  },
-  title: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: theme.colors.text.secondary,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  value: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: theme.colors.secondary,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: theme.colors.text.secondary,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-});
