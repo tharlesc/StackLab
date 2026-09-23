@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
+import styled from 'styled-components/native';
 import { ShieldCheckIcon } from '../../../assets/svg';
-import { theme } from '../../constants/theme';
 
 interface EngineerProfileCardProps {
   name: string;
@@ -15,6 +15,134 @@ interface EngineerProfileCardProps {
   lastSync?: string;
 }
 
+// --- Styled Components ---
+
+const Card = styled.View`
+  background-color: ${({ theme }) => theme.colors.primary};
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const Header = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const InfoContainer = styled.View`
+  flex: 1;
+`;
+
+const Greeting = styled.Text`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+
+const NameRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+`;
+
+const Name = styled.Text`
+  color: ${({ theme }) => theme.colors.text.inverse};
+  font-size: 18px;
+  font-weight: 700;
+`;
+
+const MasterTag = styled.View`
+  background-color: ${({ theme }) => theme.colors.tag.masterBg};
+  padding: 2px 6px;
+  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.secondary};
+`;
+
+const MasterTagText = styled.Text`
+  color: ${({ theme }) => theme.colors.secondary};
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+`;
+
+const CreaRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+`;
+
+const CreaText = styled.Text`
+  color: ${({ theme }) => theme.colors.text.inverseSecondary};
+  font-size: 11px;
+  font-weight: 500;
+`;
+
+const NotificationButton = styled.TouchableOpacity`
+  width: 40px;
+  height: 40px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  background-color: ${({ theme }) => theme.colors.tag.notificationBg};
+  justify-content: center;
+  align-items: center;
+`;
+
+const NotificationIcon = styled.Text`
+  font-size: 16px;
+`;
+
+const NotificationDot = styled.View`
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background-color: ${({ theme }) => theme.colors.status.error.base};
+`;
+
+const Footer = styled.View`
+  border-top-width: 1px;
+  border-top-color: ${({ theme }) => theme.colors.tag.notificationBg};
+  padding-top: ${({ theme }) => theme.spacing.md}px;
+`;
+
+const SyncText = styled.Text`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: 11px;
+  font-weight: 500;
+`;
+
+const TimeFilterContainer = styled.View`
+  flex-direction: row;
+  margin-top: ${({ theme }) => theme.spacing.lg}px;
+  background-color: ${({ theme }) => theme.colors.tag.timeFilterBg};
+  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+  padding: 4px;
+`;
+
+const TimeFilterButton = styled(TouchableOpacity)<{ $isActive: boolean }>`
+  flex: 1;
+  padding: 6px 0;
+  align-items: center;
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  background-color: ${({ $isActive, theme }) =>
+    $isActive ? theme.colors.secondary : 'transparent'};
+`;
+
+const TimeFilterText = styled.Text<{ $isActive: boolean }>`
+  color: ${({ $isActive, theme }) =>
+    $isActive ? theme.colors.text.inverse : theme.colors.text.secondary};
+  font-size: 11px;
+  font-weight: ${({ $isActive }) => ($isActive ? '700' : '600')};
+`;
+
+// --- Component ---
+
 export const EngineerProfileCard = ({
   name,
   greeting = 'Olá, Engenheiro',
@@ -27,168 +155,49 @@ export const EngineerProfileCard = ({
   lastSync = '100% Sincronizado - 09:41',
 }: EngineerProfileCardProps) => {
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <View style={styles.infoContainer}>
-          <Text style={styles.greeting}>{greeting}</Text>
-          <View style={styles.nameRow}>
-            <Text style={styles.name}>{name}</Text>
-            <View style={styles.masterTag}>
-              <Text style={styles.masterTagText}>MASTER</Text>
-            </View>
-          </View>
+    <Card>
+      <Header>
+        <InfoContainer>
+          <Greeting>{greeting}</Greeting>
+          <NameRow>
+            <Name>{name}</Name>
+            <MasterTag>
+              <MasterTagText>MASTER</MasterTagText>
+            </MasterTag>
+          </NameRow>
 
-          <View style={styles.creaRow}>
-            <ShieldCheckIcon stroke={theme.colors.status.success.base} />
-            <Text style={styles.creaText}>{crea}</Text>
-          </View>
-        </View>
+          <CreaRow>
+            <ShieldCheckIcon stroke="#10B981" />
+            <CreaText>{crea}</CreaText>
+          </CreaRow>
+        </InfoContainer>
 
-        <TouchableOpacity 
-          style={styles.notificationBtn} 
-          onPress={onNotificationPress}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.notificationIcon}>🔔</Text>
-          {hasNotifications && <View style={styles.notificationDot} />}
-        </TouchableOpacity>
-      </View>
+        <NotificationButton onPress={onNotificationPress} activeOpacity={0.7}>
+          <NotificationIcon>🔔</NotificationIcon>
+          {hasNotifications && <NotificationDot />}
+        </NotificationButton>
+      </Header>
 
-      <View style={styles.footer}>
-        <Text style={styles.syncText}>Última Sincronização: {lastSync}</Text>
-        <View style={styles.timeFilterContainer}>
+      <Footer>
+        <SyncText>Última Sincronização: {lastSync}</SyncText>
+        <TimeFilterContainer>
           {timeFilters.map((filter) => {
             const isActive = activeTimeFilter === filter;
             return (
-              <TouchableOpacity
+              <TimeFilterButton
                 key={filter}
-                style={[styles.timeFilterBtn, isActive && styles.timeFilterBtnActive]}
+                $isActive={isActive}
                 onPress={() => onTimeFilterChange(filter)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.timeFilterText, isActive && styles.timeFilterTextActive]}>
+                <TimeFilterText $isActive={isActive}>
                   {filter}
-                </Text>
-              </TouchableOpacity>
+                </TimeFilterText>
+              </TimeFilterButton>
             );
           })}
-        </View>
-      </View>
-    </View>
+        </TimeFilterContainer>
+      </Footer>
+    </Card>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  infoContainer: {
-    flex: 1,
-  },
-  greeting: {
-    color: theme.colors.text.secondary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  name: {
-    color: theme.colors.text.inverse,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  masterTag: {
-    backgroundColor: theme.colors.tag.masterBg,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary,
-  },
-  masterTagText: {
-    color: theme.colors.secondary,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  creaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  creaText: {
-    color: theme.colors.text.inverseSecondary,
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  notificationBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.tag.notificationBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  notificationIcon: {
-    fontSize: 16,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 10,
-    right: 12,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.status.error.base,
-  },
-  footer: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.tag.notificationBg,
-    paddingTop: theme.spacing.md,
-  },
-  syncText: {
-    color: theme.colors.text.secondary,
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  timeFilterContainer: {
-    flexDirection: 'row',
-    marginTop: theme.spacing.lg,
-    backgroundColor: theme.colors.tag.timeFilterBg,
-    borderRadius: theme.borderRadius.lg,
-    padding: 4,
-  },
-  timeFilterBtn: {
-    flex: 1,
-    paddingVertical: 6,
-    alignItems: 'center',
-    borderRadius: theme.borderRadius.md,
-  },
-  timeFilterBtnActive: {
-    backgroundColor: theme.colors.secondary,
-  },
-  timeFilterText: {
-    color: theme.colors.text.secondary,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  timeFilterTextActive: {
-    color: theme.colors.text.inverse,
-    fontWeight: '700',
-  },
-});

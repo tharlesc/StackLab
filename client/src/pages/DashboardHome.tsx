@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import styled from 'styled-components/native';
 import type { ChartData, IndicatorItem, MetricItem, ActiveWork } from '../types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EngineerProfileCard } from '../components/dashboard/EngineerProfileCard';
 import { WeeklySummaryCard } from '../components/dashboard/WeeklySummaryCard';
 import { ActiveWorkCard } from '../components/works/ActiveWorkCard';
 import { BottomNav } from '../components/navigation/BottomNav';
-import { theme } from '../constants/theme';
+import { useRouter } from 'expo-router';
 
 // --- MOCK DATA ---
 const chartDataMock: ChartData[] = [
-  { value: 24, color: theme.colors.status.success.base },
-  { value: 4, color: theme.colors.status.warning.base },
-  { value: 2, color: theme.colors.status.error.base }
+  { value: 24, color: '#10B981' },
+  { value: 4, color: '#F59E0B' },
+  { value: 2, color: '#EF4444' },
 ];
 
 const indicatorsMock: IndicatorItem[] = [
-  { id: '1', label: 'Assinados', value: 24, color: theme.colors.status.success.base },
-  { id: '2', label: 'Em Análise', value: 4, color: theme.colors.status.warning.base },
-  { id: '3', label: 'Pendentes', value: 2, color: theme.colors.status.error.base },
+  { id: '1', label: 'Assinados', value: 24, color: '#10B981' },
+  { id: '2', label: 'Em Análise', value: 4, color: '#F59E0B' },
+  { id: '3', label: 'Pendentes', value: 2, color: '#EF4444' },
 ];
 
 const metricsMock: MetricItem[] = [
@@ -64,31 +65,134 @@ const activeWorksMock: ActiveWork[] = [
   },
 ];
 
+// --- Styled Components ---
+
+const Screen = styled(SafeAreaView)`
+  flex: 1;
+  background-color: ${({ theme }) => theme.colors.background};
+`;
+
+const ScrollContent = styled.ScrollView.attrs({
+  contentContainerStyle: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+})``;
+
+const Header = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.xl}px;
+`;
+
+const PageTitle = styled.Text`
+  font-size: 20px;
+  font-weight: 900;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+const PageSubtitle = styled.Text`
+  font-size: 11px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-top: 1px;
+`;
+
+const HeaderRight = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.md}px;
+`;
+
+const OnlineBadge = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${({ theme }) => theme.colors.status.success.bg};
+  padding: 4px 8px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.status.success.border};
+`;
+
+const OnlineDot = styled.View`
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background-color: ${({ theme }) => theme.colors.status.success.base};
+  margin-right: 4px;
+`;
+
+const OnlineText = styled.Text`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.status.success.text};
+`;
+
+const Avatar = styled(TouchableOpacity)`
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: ${({ theme }) => theme.colors.primary};
+  justify-content: center;
+  align-items: center;
+`;
+
+const AvatarText = styled.Text`
+  color: ${({ theme }) => theme.colors.text.inverse};
+  font-weight: 700;
+  font-size: 14px;
+`;
+
+const Section = styled.View`
+  margin-top: 8px;
+`;
+
+const SectionHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+`;
+
+const SectionTitle = styled.Text`
+  font-size: 16px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+const SeeAllText = styled.Text`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.secondary};
+`;
+
+// --- Component ---
+
 export const DashboardHome = () => {
   const [activeTimeFilter, setActiveTimeFilter] = useState('7 dias');
   const [activeTab, setActiveTab] = useState('Obras');
+  const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* HEADER GERAL */}
-        <View style={styles.header}>
+    <Screen>
+      <ScrollContent>
+        <Header>
           <View>
-            <Text style={styles.title}>Obras</Text>
-            <Text style={styles.subtitle}>Visão Geral</Text>
+            <PageTitle>Obras</PageTitle>
+            <PageSubtitle>Visão Geral</PageSubtitle>
           </View>
-          <View style={styles.headerRight}>
-            <View style={styles.onlineBadge}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>Online</Text>
-            </View>
-            <TouchableOpacity style={styles.avatar} activeOpacity={0.8}>
-              <Text style={styles.avatarText}>TH</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          <HeaderRight>
+            <OnlineBadge>
+              <OnlineDot />
+              <OnlineText>Online</OnlineText>
+            </OnlineBadge>
+            <Avatar activeOpacity={0.8} onPress={() => router.push('/profile')}>
+              <AvatarText>TH</AvatarText>
+            </Avatar>
+          </HeaderRight>
+        </Header>
 
-        {/* PROFILE CARD */}
         <EngineerProfileCard
           name="Davi Hudson"
           crea="CREA-MA 123456789-0"
@@ -97,127 +201,33 @@ export const DashboardHome = () => {
           onTimeFilterChange={setActiveTimeFilter}
         />
 
-        {/* WEEKLY SUMMARY */}
         <WeeklySummaryCard
           title="Resumo da Semana"
           subtitle="Últimos 7 dias"
-          successText="94% Concluído"
           chartData={chartDataMock}
           chartTotal={30}
           indicators={indicatorsMock}
         />
 
-        {/* METRICS GRID */}
         {/* <MetricsGrid metrics={metricsMock} /> */}
 
-        {/* ACTIVE WORKS LIST */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Obras Ativas</Text>
+        <Section>
+          <SectionHeader>
+            <SectionTitle>Obras Ativas</SectionTitle>
             <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.seeAll}>Ver todas ({activeWorksMock.length})</Text>
+              <SeeAllText>Ver todas ({activeWorksMock.length})</SeeAllText>
             </TouchableOpacity>
-          </View>
+          </SectionHeader>
 
           {activeWorksMock.map((work) => (
             <ActiveWorkCard key={work.id} {...work} />
           ))}
-        </View>
-      </ScrollView>
+        </Section>
+      </ScrollContent>
 
-      {/* BOTTOM NAV */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-    </SafeAreaView>
+    </Screen>
   );
 };
 
 export default DashboardHome;
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: 100, // Space for BottomNav
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 0,
-    marginBottom: theme.spacing.xl,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: theme.colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: theme.colors.text.secondary,
-    marginTop: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  onlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.status.success.bg,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: 1,
-    borderColor: theme.colors.status.success.border,
-  },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.status.success.base,
-    marginRight: 4,
-  },
-  onlineText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.status.success.text,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: theme.colors.text.inverse,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  section: {
-    marginTop: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-  },
-  seeAll: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.secondary,
-  },
-});

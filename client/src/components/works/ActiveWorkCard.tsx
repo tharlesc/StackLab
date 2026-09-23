@@ -1,7 +1,153 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../../constants/theme';
+import { TouchableOpacity } from 'react-native';
+import styled from 'styled-components/native';
 import type { ActiveWork } from '../../types';
+
+type WorkStatus = 'ok' | 'warn';
+
+const getWeatherIcon = (weather: string): string => {
+  const key = weather.toLowerCase().trim();
+  if (key.includes('ensolarado') || key.includes('sol') || key.includes('limpo')) return '☀️';
+  if (key.includes('parcialmente nublado') || key.includes('parcial')) return '⛅';
+  if (key.includes('nublado') || key.includes('nuvens') || key.includes('encoberto')) return '☁️';
+  if (key.includes('chuva') || key.includes('chuvoso')) return '🌧️';
+  if (key.includes('tempestade') || key.includes('trovoada') || key.includes('raio')) return '⛈️';
+  if (key.includes('garoa') || key.includes('chuvisco')) return '🌦️';
+  if (key.includes('neve') || key.includes('nevando')) return '❄️';
+  if (key.includes('vento') || key.includes('ventania')) return '💨';
+  if (key.includes('neblina') || key.includes('névoa') || key.includes('cerração')) return '🌫️';
+  return '🌤️';
+};
+
+// --- Styled Components ---
+
+const Card = styled(TouchableOpacity)`
+  background-color: ${({ theme }) => theme.colors.surface};
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+  shadow-color: ${({ theme }) => theme.shadows.card.shadowColor};
+  shadow-offset: 0px 1px;
+  shadow-opacity: 0.05;
+  shadow-radius: 3px;
+  elevation: 2;
+`;
+
+const Header = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const IconPlaceholder = styled.View`
+  width: 40px;
+  height: 40px;
+  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+  background-color: ${({ theme }) => theme.colors.border};
+  margin-right: ${({ theme }) => theme.spacing.md}px;
+`;
+
+const HeaderTextContainer = styled.View`
+  flex: 1;
+  margin-right: 8px;
+`;
+
+const Title = styled.Text`
+  font-size: 15px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+const Subtitle = styled.Text`
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-top: 2px;
+`;
+
+const QuickData = styled.View`
+  flex-direction: row;
+  background-color: ${({ theme }) => theme.colors.background};
+  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+  padding: ${({ theme }) => theme.spacing.md}px;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const DataColumn = styled.View`
+  flex: 1;
+`;
+
+const DataLabel = styled.Text`
+  font-size: 10px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-bottom: 4px;
+`;
+
+const DataValue = styled.Text<{ $isLate?: boolean }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${({ $isLate, theme }) =>
+    $isLate ? theme.colors.status.error.base : theme.colors.text.primary};
+`;
+
+const WeatherIcon = styled.Text`
+  font-size: 22px;
+`;
+
+const Footer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const RdoStatusBox = styled.View<{ $status: WorkStatus }>`
+  padding: 6px 12px;
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  background-color: ${({ $status, theme }) =>
+    $status === 'ok'
+      ? theme.colors.status.success.bg
+      : theme.colors.status.warning.bg};
+`;
+
+const RdoStatusText = styled.Text<{ $status: WorkStatus }>`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${({ $status, theme }) =>
+    $status === 'ok'
+      ? theme.colors.status.success.text
+      : theme.colors.status.warning.text};
+`;
+
+const ActionButton = styled(TouchableOpacity)`
+  background-color: ${({ theme }) => theme.colors.secondary};
+  padding: 8px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+`;
+
+const ActionButtonText = styled.Text`
+  color: ${({ theme }) => theme.colors.text.inverse};
+  font-size: 13px;
+  font-weight: 700;
+`;
+
+const ArrowPlaceholder = styled.View`
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background-color: ${({ theme }) => theme.colors.border};
+  justify-content: center;
+  align-items: center;
+`;
+
+const ArrowText = styled.Text`
+  font-size: 16px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-weight: 700;
+`;
+
+// --- Component ---
 
 export const ActiveWorkCard = ({
   name,
@@ -13,180 +159,48 @@ export const ActiveWorkCard = ({
   rdoStatus,
   actionText,
 }: Omit<ActiveWork, 'id'>) => {
-  const isOk = statusType === '100% Em Dia';
+  const status: WorkStatus = statusType === '100% Em Dia' ? 'ok' : 'warn';
+  const isLate = lastRdo === 'Ontem';
 
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View style={styles.iconPlaceholder} />
-        <View style={styles.headerText}>
-          <Text style={styles.title} numberOfLines={1}>{name}</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
-        </View>
-        <View style={[styles.badge, isOk ? styles.badgeOk : styles.badgeWarn]}>
-          <View style={[styles.badgeDot, isOk ? styles.dotOk : styles.dotWarn]} />
-          <Text style={[styles.badgeText, isOk ? styles.textOk : styles.textWarn]}>
-            {statusType}
-          </Text>
-        </View>
-      </View>
+    <Card activeOpacity={0.7}>
+      <Header>
+        <IconPlaceholder />
+        <HeaderTextContainer>
+          <Title numberOfLines={1}>{name}</Title>
+          <Subtitle numberOfLines={1}>{subtitle}</Subtitle>
+        </HeaderTextContainer>
+      </Header>
 
-      {/* QUICK DATA */}
-      <View style={styles.quickData}>
-        <View style={styles.dataCol}>
-          <Text style={styles.dataLabel}>ÚLTIMO RDO</Text>
-          <Text style={[styles.dataValue, lastRdo === 'Ontem' && { color: theme.colors.status.error.base }]}>
-            {lastRdo}
-          </Text>
-        </View>
-        <View style={styles.dataCol}>
-          <Text style={styles.dataLabel}>CLIMA CANTEIRO</Text>
-          <Text style={styles.dataValue}>{weather}</Text>
-        </View>
-        <View style={styles.dataCol}>
-          <Text style={styles.dataLabel}>EFETIVO</Text>
-          <Text style={styles.dataValue}>{team}</Text>
-        </View>
-      </View>
+      <QuickData>
+        <DataColumn>
+          <DataLabel>ÚLTIMO RDO</DataLabel>
+          <DataValue $isLate={isLate}>{lastRdo}</DataValue>
+        </DataColumn>
+        <DataColumn>
+          <DataLabel>CLIMA CANTEIRO</DataLabel>
+          <WeatherIcon>{getWeatherIcon(weather)}</WeatherIcon>
+        </DataColumn>
+        <DataColumn>
+          <DataLabel>EFETIVO</DataLabel>
+          <DataValue>{team}</DataValue>
+        </DataColumn>
+      </QuickData>
 
-      {/* FOOTER */}
-      <View style={styles.footer}>
-        <View style={[styles.statusBox, isOk ? styles.statusBoxOk : styles.statusBoxWarn]}>
-          <Text style={[styles.statusText, isOk ? styles.statusTextOk : styles.statusTextWarn]}>
-            {rdoStatus}
-          </Text>
-        </View>
+      <Footer>
+        <RdoStatusBox $status={status}>
+          <RdoStatusText $status={status}>{rdoStatus}</RdoStatusText>
+        </RdoStatusBox>
         {actionText ? (
-          <TouchableOpacity style={styles.actionBtn}>
-            <Text style={styles.actionBtnText}>{actionText}</Text>
-          </TouchableOpacity>
+          <ActionButton activeOpacity={0.8}>
+            <ActionButtonText>{actionText}</ActionButtonText>
+          </ActionButton>
         ) : (
-          <View style={styles.arrowPlaceholder}>
-            <Text style={styles.arrowText}>→</Text>
-          </View>
+          <ArrowPlaceholder>
+            <ArrowText>→</ArrowText>
+          </ArrowPlaceholder>
         )}
-      </View>
-    </TouchableOpacity>
+      </Footer>
+    </Card>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.card,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  iconPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.border,
-    marginRight: theme.spacing.md,
-  },
-  headerText: {
-    flex: 1,
-    marginRight: 8,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-    marginTop: 2,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: 1,
-  },
-  badgeOk: { 
-    backgroundColor: theme.colors.status.success.bg, 
-    borderColor: theme.colors.status.success.border 
-  },
-  badgeWarn: { 
-    backgroundColor: theme.colors.status.warning.bg, 
-    borderColor: theme.colors.status.warning.border 
-  },
-  badgeDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
-  dotOk: { backgroundColor: theme.colors.status.success.base },
-  dotWarn: { backgroundColor: theme.colors.status.warning.base },
-  badgeText: { fontSize: 10, fontWeight: '700' },
-  textOk: { color: theme.colors.status.success.text },
-  textWarn: { color: theme.colors.status.warning.text },
-  quickData: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
-  dataCol: {
-    flex: 1,
-  },
-  dataLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: theme.colors.text.secondary,
-    marginBottom: 4,
-  },
-  dataValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusBox: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.borderRadius.md,
-  },
-  statusBoxOk: { backgroundColor: theme.colors.status.success.bg },
-  statusBoxWarn: { backgroundColor: theme.colors.status.warning.bg },
-  statusText: { fontSize: 12, fontWeight: '600' },
-  statusTextOk: { color: theme.colors.status.success.text },
-  statusTextWarn: { color: theme.colors.status.warning.text },
-  actionBtn: {
-    backgroundColor: theme.colors.secondary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: theme.borderRadius.lg,
-  },
-  actionBtnText: {
-    color: theme.colors.text.inverse,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  arrowPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arrowText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    fontWeight: '700',
-  }
-});

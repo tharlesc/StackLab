@@ -1,131 +1,130 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View } from 'react-native';
+import styled from 'styled-components/native';
 import { DonutChart } from '../ui/DonutChart';
-import { theme } from '../../constants/theme';
 import type { ChartData, IndicatorItem } from '../../types';
 
 interface WeeklySummaryCardProps {
   title: string;
   subtitle: string;
-  successText: string;
   chartData: ChartData[];
   chartTotal: number;
   indicators: IndicatorItem[];
 }
 
+// --- Styled Components ---
+
+const Card = styled.View`
+  background-color: ${({ theme }) => theme.colors.surface};
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
+  margin-bottom: ${({ theme }) => theme.spacing.xl}px;
+  shadow-color: ${({ theme }) => theme.shadows.card.shadowColor};
+  shadow-offset: 0px 1px;
+  shadow-opacity: 0.05;
+  shadow-radius: 3px;
+  elevation: 2;
+`;
+
+const Header = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const Title = styled.Text`
+  font-size: 15px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+const Subtitle = styled.Text`
+  font-size: 11px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-top: 2px;
+`;
+
+const Body = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const IndicatorsList = styled.View`
+  flex: 1;
+  margin-left: 20px;
+  justify-content: center;
+  gap: 8px;
+`;
+
+const IndicatorRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+`;
+
+const IndicatorLabelBox = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
+const IndicatorDot = styled.View<{ $color: string }>`
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  margin-right: 8px;
+  background-color: ${({ $color }) => $color};
+`;
+
+const IndicatorLabel = styled.Text`
+  font-size: 13px;
+  font-weight: 500;
+  color: ${({ theme }) => theme.colors.text.secondary};
+`;
+
+const IndicatorValue = styled.Text`
+  font-size: 14px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+// --- Component ---
+
 export const WeeklySummaryCard = ({
   title,
   subtitle,
-  successText,
   chartData,
   chartTotal,
   indicators,
 }: WeeklySummaryCardProps) => {
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
+    <Card>
+      <Header>
         <View>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <Title>{title}</Title>
+          <Subtitle>{subtitle}</Subtitle>
         </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{successText}</Text>
-        </View>
-      </View>
+      </Header>
 
-      <View style={styles.body}>
+      <Body>
         <DonutChart data={chartData} total={chartTotal} />
 
-        <View style={styles.indicatorsList}>
+        <IndicatorsList>
           {indicators.map((indicator) => (
-            <View key={indicator.id} style={styles.indicatorRow}>
-              <View style={styles.indicatorLabelBox}>
-                <View style={[styles.indicatorDot, { backgroundColor: indicator.color }]} />
-                <Text style={styles.indicatorLabel}>{indicator.label}</Text>
-              </View>
-              <Text style={styles.indicatorValue}>{indicator.value}</Text>
-            </View>
+            <IndicatorRow key={indicator.id}>
+              <IndicatorLabelBox>
+                <IndicatorDot $color={indicator.color} />
+                <IndicatorLabel>{indicator.label}</IndicatorLabel>
+              </IndicatorLabelBox>
+              <IndicatorValue>{indicator.value}</IndicatorValue>
+            </IndicatorRow>
           ))}
-        </View>
-      </View>
-    </View>
+        </IndicatorsList>
+      </Body>
+    </Card>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.xl,
-    ...theme.shadows.card,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: theme.spacing.lg,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: theme.colors.text.secondary,
-    marginTop: 2,
-  },
-  badge: {
-    backgroundColor: theme.colors.status.success.bg,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: 1,
-    borderColor: theme.colors.status.success.border,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: theme.colors.status.success.text,
-  },
-  body: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  indicatorsList: {
-    flex: 1,
-    marginLeft: 20,
-    justifyContent: 'center',
-    gap: 8,
-  },
-  indicatorRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 2,
-  },
-  indicatorLabelBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  indicatorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  indicatorLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: theme.colors.text.secondary,
-  },
-  indicatorValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-  },
-});
