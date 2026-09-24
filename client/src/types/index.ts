@@ -32,3 +32,12 @@ export interface IndicatorItem {
   value: number;
   color: string;
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  crea?: string;
+  isMaster: boolean;
+}

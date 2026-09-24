@@ -1,7 +1,8 @@
 import React from 'react';
 import styled from 'styled-components/native';
 import Svg, { Circle, G, Text as SvgText } from 'react-native-svg';
-import type { ChartData } from '../../types';
+import type { ChartData } from '../../../types';
+import { ChartContainer } from './styles';
 
 interface DonutChartProps {
   data: ChartData[];
@@ -11,12 +12,7 @@ interface DonutChartProps {
   label?: string;
 }
 
-const ChartContainer = styled.View<{ $size: number }>`
-  width: ${({ $size }) => $size}px;
-  height: ${({ $size }) => $size}px;
-  justify-content: center;
-  align-items: center;
-`;
+
 
 export const DonutChart = ({
   data,
