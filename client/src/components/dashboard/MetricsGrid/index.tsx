@@ -7,25 +7,6 @@ import { Container, Card, IconBox, IconText, Title, Value, Subtitle } from './st
 interface MetricsGridProps {
   metrics: MetricItem[];
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export const MetricsGrid = ({ metrics }: MetricsGridProps) => {
   return (
     <Container>

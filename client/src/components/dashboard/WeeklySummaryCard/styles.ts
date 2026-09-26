@@ -7,7 +7,7 @@ export const Card = styled.View`
   padding: ${({ theme }) => theme.spacing.lg}px;
   border-width: 1px;
   border-color: ${({ theme }) => theme.colors.border};
-  margin-bottom: ${({ theme }) => theme.spacing.xl}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
   shadow-color: ${({ theme }) => theme.shadows.card.shadowColor};
   shadow-offset: 0px 1px;
   shadow-opacity: 0.05;

@@ -11,7 +11,9 @@ import {
   CloudFog
 } from 'lucide-react-native';
 
-export const getWeatherIcon = (weather: string, size = 22, color = '#64748B'): React.ReactNode => {
+export const getWeatherIcon = (weather: string, size = 22, color?: string): React.ReactNode => {
+  const defaultColor = color || '#64748B';
+  color = defaultColor;
   const key = weather.toLowerCase().trim();
   if (key.includes('ensolarado') || key.includes('sol') || key.includes('limpo')) return <Sun size={size} color={color} />;
   if (key.includes('parcialmente nublado') || key.includes('parcial')) return <CloudSun size={size} color={color} />;

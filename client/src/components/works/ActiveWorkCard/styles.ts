@@ -1,19 +1,14 @@
-type WorkStatus = 'ok' | 'warn';
 import styled from 'styled-components/native';
 import { TouchableOpacity } from 'react-native';
+import { TouchableCard } from '../../common/Card';
 
-export const Card = styled(TouchableOpacity)`
-  background-color: ${({ theme }) => theme.colors.surface};
-  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
-  padding: ${({ theme }) => theme.spacing.lg}px;
+type WorkStatus = 'ok' | 'warn';
+
+export const Card = styled(TouchableCard)`
   border-width: 1px;
   border-color: ${({ theme }) => theme.colors.border};
-  margin-bottom: ${({ theme }) => theme.spacing.md}px;
-  shadow-color: ${({ theme }) => theme.shadows.card.shadowColor};
-  shadow-offset: 0px 1px;
-  shadow-opacity: 0.05;
-  shadow-radius: 3px;
-  elevation: 2;
+  flex-direction: column;
+  align-items: stretch;
 `;
 
 export const Header = styled.View`
@@ -77,7 +72,7 @@ export const DataValue = styled.Text<{ $isLate?: boolean }>`
     $isLate ? theme.colors.status.error.base : theme.colors.text.primary};
 `;
 
-export const WeatherIcon = styled.View`\r?\n  justify-content: center;\r?\n  align-items: center;\r?\n  height: 22px;\r?\n`;
+export const WeatherIcon = styled.View`\r?\n  justify-content: center;\r?\n  align-items: center;\r?\n  height: 50px;\r?\n`;
 
 export const Footer = styled.View`
   flex-direction: row;
@@ -86,8 +81,12 @@ export const Footer = styled.View`
 `;
 
 export const RdoStatusBox = styled.View<{ $status: WorkStatus }>`
+   align-self: flex-start;
   padding: 6px 12px;
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   background-color: ${({ $status, theme }) =>
     $status === 'ok'
       ? theme.colors.status.success.bg

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
-    "@expo-google-fonts/open-sans": "^0.4.2",
+    "@expo-google-fonts/inter": "^0.4.2",
     "expo": "~57.0.14",
     "expo-constants": "~57.0.18",
     "expo-font": "^57.0.4",

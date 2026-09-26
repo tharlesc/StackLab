@@ -1,25 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import type { User } from '../types';
 
-export const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Davi Hudson',
-    email: 'davi@stacklab.com',
-    role: 'Engenheiro Master',
-    crea: 'CREA-SP 123456/D',
-    isMaster: true,
-  },
-  {
-    id: '2',
-    name: 'Tharles',
-    email: 'tharles@stacklab.com',
-    role: 'Engenheiro Residente',
-    crea: 'CREA-SP 987654/D',
-    isMaster: false,
-  },
-];
-
+import { MOCK_USERS } from '../mocks';
 interface AuthContextData {
   user: User | null;
   signIn: (user: User) => void;

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Profile } from '../src/pages/Profile/index';
+import { ProfileView } from '@/screens/Profile';
 
 export default function ProfileRoute() {
-  return <Profile />;
+  return <ProfileView />;
 }

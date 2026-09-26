@@ -13,32 +13,6 @@ interface WeeklySummaryCardProps {
   indicators: IndicatorItem[];
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export const WeeklySummaryCard = ({
   title,
   subtitle,

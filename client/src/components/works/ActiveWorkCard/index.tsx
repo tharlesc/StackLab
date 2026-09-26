@@ -6,47 +6,10 @@ import { getWeatherIcon } from '../../../utils/weather';
 import type { ActiveWork } from '../../../types';
 import { Card, Header, IconPlaceholder, HeaderTextContainer, Title, Subtitle, QuickData, DataColumn, DataLabel, DataValue, WeatherIcon, Footer, RdoStatusBox, RdoStatusText, ActionButton, ActionButtonText, ArrowPlaceholder, ArrowText } from './styles';
 
+import { useTheme } from 'styled-components/native';
+import { Chip } from '@/components/common';
+
 type WorkStatus = 'ok' | 'warn';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 export const ActiveWorkCard = ({
   name,
@@ -58,11 +21,16 @@ export const ActiveWorkCard = ({
   rdoStatus,
   actionText,
 }: Omit<ActiveWork, 'id'>) => {
+  const theme = useTheme();
   const status: WorkStatus = statusType === '100% Em Dia' ? 'ok' : 'warn';
   const isLate = lastRdo === 'Ontem';
 
   return (
-    <Card activeOpacity={0.7}>
+    <Card
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Obra: ${name}, ${subtitle}. Status: ${statusType}`}
+    >
       <Header>
         <IconPlaceholder />
         <HeaderTextContainer>
@@ -77,8 +45,8 @@ export const ActiveWorkCard = ({
           <DataValue $isLate={isLate}>{lastRdo}</DataValue>
         </DataColumn>
         <DataColumn>
-          <DataLabel>CLIMA CANTEIRO</DataLabel>
-          <WeatherIcon>{getWeatherIcon(weather)}</WeatherIcon>
+          <DataLabel>CLIMA</DataLabel>
+          <WeatherIcon>{getWeatherIcon(weather, 22, theme.colors.text.secondary)}</WeatherIcon>
         </DataColumn>
         <DataColumn>
           <DataLabel>EFETIVO</DataLabel>
@@ -87,16 +55,17 @@ export const ActiveWorkCard = ({
       </QuickData>
 
       <Footer>
+
         <RdoStatusBox $status={status}>
           <RdoStatusText $status={status}>{rdoStatus}</RdoStatusText>
-        </RdoStatusBox>
+        </RdoStatusBox> 
         {actionText ? (
           <ActionButton activeOpacity={0.8}>
             <ActionButtonText>{actionText}</ActionButtonText>
           </ActionButton>
         ) : (
           <ArrowPlaceholder>
-            <ArrowRight color="#64748B" size={20} />
+            <ArrowRight color={theme.colors.text.secondary} size={20} />
           </ArrowPlaceholder>
         )}
       </Footer>

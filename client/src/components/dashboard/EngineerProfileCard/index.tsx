@@ -2,8 +2,7 @@ import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import { ShieldCheck } from 'lucide-react-native';
-import { ShieldCheckIcon } from '../../../../assets/svg';
-import { Card, Header, InfoContainer, Greeting, NameRow, Name, MasterTag, MasterTagText, CreaRow, CreaText, NotificationButton, NotificationIcon, NotificationDot, Footer, SyncText, TimeFilterContainer, TimeFilterButton, TimeFilterText } from './styles';
+import { Card, Header, InfoContainer, Greeting, NameRow, Name, MasterTag, MasterTagText, CreaRow, CreaText, Footer, SyncText, TimeFilterContainer, TimeFilterButton, TimeFilterText } from './styles';
 
 interface EngineerProfileCardProps {
   name: string;
@@ -16,46 +15,6 @@ interface EngineerProfileCardProps {
   timeFilters?: string[];
   lastSync?: string;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 export const EngineerProfileCard = ({
   name,
@@ -81,15 +40,12 @@ export const EngineerProfileCard = ({
           </NameRow>
 
           <CreaRow>
-            <ShieldCheckIcon stroke="#10B981" />
+            <ShieldCheck color="#10B981" size={16} />
             <CreaText>{crea}</CreaText>
           </CreaRow>
         </InfoContainer>
 
-        <NotificationButton onPress={onNotificationPress} activeOpacity={0.7}>
-          <NotificationIcon>🔔</NotificationIcon>
-          {hasNotifications && <NotificationDot />}
-        </NotificationButton>
+        
       </Header>
 
       <Footer>
@@ -103,6 +59,8 @@ export const EngineerProfileCard = ({
                 $isActive={isActive}
                 onPress={() => onTimeFilterChange(filter)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Filtrar por ${filter}`}
               >
                 <TimeFilterText $isActive={isActive}>
                   {filter}
