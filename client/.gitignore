@@ -44,4 +44,4 @@ yarn-error.*
 *.tmp
 *.temp
 .expo/dev/logs/start.log
-.claude
+.claude/
