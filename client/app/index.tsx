@@ -1,6 +1,6 @@
 import React from 'react';
-import DashboardHome from '../src/pages/DashboardHome';
+import { DashboardHomeView } from '@/screens/DashboardHome';
 
-export default function Index() {
-  return <DashboardHome />;
+export default function IndexRoute() {
+  return <DashboardHomeView />;
 }

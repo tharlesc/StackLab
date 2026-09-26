@@ -32,5 +32,4 @@ Thumbs.db
 *.tmp
 *.temp
 client/.expo/dev/logs/start.log
-DESIGN.md
-requisitos_omapp.md
+.antigravity/
