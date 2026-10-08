@@ -40,7 +40,9 @@ export const MOCK_ACTIVE_WORKS: ActiveWork[] = [
     lastRdo: 'Hoje',
     weather: 'Ensolarado',
     team: '24 Operários',
-    rdoStatus: 'RDO #184 Validado',
+    rdoStatus: 'Validado',
+    rdoDate: '27/09/2026',
+    rdoNumber: 184,
     actionText: 'Novo RDO',
   },
   {
@@ -51,7 +53,9 @@ export const MOCK_ACTIVE_WORKS: ActiveWork[] = [
     lastRdo: 'Ontem',
     weather: 'Chuva',
     team: 'Eng. Roberto',
-    rdoStatus: 'RDO Pendente de Envio',
+    rdoStatus: 'Pendente de Envio',
+    rdoDate: '26/09/2026',
+    rdoNumber: 185,
   },
 ];
 

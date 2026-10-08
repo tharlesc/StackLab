@@ -19,11 +19,18 @@ export const ActiveWorkCard = ({
   weather,
   team,
   rdoStatus,
+  rdoDate,
+  rdoNumber,
   actionText,
 }: Omit<ActiveWork, 'id'>) => {
   const theme = useTheme();
   const status: WorkStatus = statusType === '100% Em Dia' ? 'ok' : 'warn';
   const isLate = lastRdo === 'Ontem';
+
+  // Format RDO label: "DD/MM/AAAA Nº[NUMERO] - [STATUS]"
+  const rdoLabel = rdoDate && rdoNumber != null
+    ? `${rdoDate} Nº${rdoNumber} - ${rdoStatus}`
+    : rdoStatus;
 
   return (
     <Card
@@ -57,7 +64,7 @@ export const ActiveWorkCard = ({
       <Footer>
 
         <RdoStatusBox $status={status}>
-          <RdoStatusText $status={status}>{rdoStatus}</RdoStatusText>
+          <RdoStatusText $status={status}>{rdoLabel}</RdoStatusText>
         </RdoStatusBox> 
         {actionText ? (
           <ActionButton activeOpacity={0.8}>
