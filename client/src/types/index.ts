@@ -9,6 +9,8 @@ export interface ActiveWork {
   weather: string;
   team: string;
   rdoStatus: string;
+  rdoDate?: string;
+  rdoNumber?: number;
   actionText?: string;
 }
 
