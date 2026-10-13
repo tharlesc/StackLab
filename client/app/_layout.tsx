@@ -6,6 +6,8 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AppThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { RDOProvider } from '@/contexts/RDOContext';
+import { AdminProvider } from '@/contexts/AdminContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,6 +38,10 @@ function RootLayoutNav() {
       <Stack.Screen name="new-rdo" options={{ presentation: 'card' }} />
       <Stack.Screen name="settings" options={{ presentation: 'card' }} />
       <Stack.Screen name="sync-queue" options={{ presentation: 'card' }} />
+      <Stack.Screen name="inbox" options={{ presentation: 'card' }} />
+      <Stack.Screen name="rdo-review" options={{ presentation: 'card' }} />
+      <Stack.Screen name="admin" options={{ presentation: 'card' }} />
+      <Stack.Screen name="audit-trail" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }
@@ -61,7 +67,11 @@ export default function Layout() {
     <SafeAreaProvider>
       <AppThemeProvider>
         <AuthProvider>
-          <RootLayoutNav />
+          <RDOProvider>
+            <AdminProvider>
+              <RootLayoutNav />
+            </AdminProvider>
+          </RDOProvider>
         </AuthProvider>
       </AppThemeProvider>
     </SafeAreaProvider>

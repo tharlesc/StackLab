@@ -96,6 +96,16 @@ export const lightTheme = {
       timeFilterBg: 'rgba(255, 255, 255, 0.05)',
       notificationBg: 'rgba(255, 255, 255, 0.1)',
     },
+
+    // Hero Card (cartão escuro de destaque do Dashboard)
+    hero: {
+      background: '#0A1C38',
+      text: '#FFFFFF',
+      textSecondary: '#94A3B8',
+      divider: 'rgba(255, 255, 255, 0.1)',
+      accent: '#F97316',
+      success: '#10B981',
+    },
   },
 
   // Spacing Scale

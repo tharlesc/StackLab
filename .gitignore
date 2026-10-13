@@ -28,8 +28,6 @@ build/
 Thumbs.db
 
 # Temporary files
-*.md
 *.tmp
 *.temp
 client/.expo/dev/logs/start.log
-.antigravity/

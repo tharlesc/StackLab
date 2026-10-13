@@ -31,7 +31,7 @@ export const NewRDOView = () => {
 
   return (
     <>
-      <Header title={strings.newRDO.title} subtitle={strings.newRDO.subtitle} />
+      <Header title={strings.newRDO.title} />
 
       <ScrollContent showsVerticalScrollIndicator={false}>
         <InteractiveCard

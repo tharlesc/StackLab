@@ -72,7 +72,11 @@ export const DataValue = styled.Text<{ $isLate?: boolean }>`
     $isLate ? theme.colors.status.error.base : theme.colors.text.primary};
 `;
 
-export const WeatherIcon = styled.View`\r?\n  justify-content: center;\r?\n  align-items: center;\r?\n  height: 50px;\r?\n`;
+export const WeatherIcon = styled.View`
+  justify-content: center;
+  align-items: center;
+  height: 50px;
+`;
 
 export const Footer = styled.View`
   flex-direction: row;

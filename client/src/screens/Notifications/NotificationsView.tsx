@@ -32,7 +32,7 @@ import type { AppNotification, NotificationVariant } from '@/mocks';
 
 export const NotificationsView = () => {
   const theme = useTheme();
-  const { notifications, unreadCount, markAllAsRead, goBack } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, handlePressNotification, goBack } = useNotifications();
 
   const getIcon = (variant: NotificationVariant) => {
     switch (variant) {
@@ -52,7 +52,7 @@ export const NotificationsView = () => {
     <NotificationCard
       $isUnread={item.isUnread}
       activeOpacity={0.7}
-      onPress={() => {}}
+      onPress={() => handlePressNotification(item)}
       accessibilityRole="button"
       accessibilityLabel={`Notificação: ${item.title}. ${item.message}. Recebida ${item.time}.${item.isUnread ? ' Não lida.' : ''}`}
     >
@@ -72,11 +72,6 @@ export const NotificationsView = () => {
     <Screen>
       <Header
         title={strings.notifications.title}
-        subtitle={
-          unreadCount > 0
-            ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}`
-            : 'Todas lidas'
-        }
         leftContent={
           <HeaderAction
             icon={<ChevronLeft color={theme.colors.text.secondary} size={24} />}

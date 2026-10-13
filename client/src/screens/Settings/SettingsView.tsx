@@ -28,7 +28,7 @@ export const SettingsView = () => {
 
   return (
     <>
-      <Header title={strings.settings.title} subtitle={strings.settings.subtitle} />
+      <Header title={strings.settings.title} />
 
       <ScrollContent showsVerticalScrollIndicator={false}>
         <SectionTitle>{strings.settings.preferences}</SectionTitle>

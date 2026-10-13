@@ -1,17 +1,20 @@
 export type StatusVariant = 'success' | 'warning' | 'error' | 'info';
 
-export interface ActiveWork {
+export * from './auth';
+export * from './work';
+export * from './rdo';
+
+export type NotificationVariant = StatusVariant;
+
+export interface AppNotification {
   id: string;
-  name: string;
-  subtitle: string;
-  statusType: '100% Em Dia' | 'Atenção';
-  lastRdo: string;
-  weather: string;
-  team: string;
-  rdoStatus: string;
-  rdoDate?: string;
-  rdoNumber?: number;
-  actionText?: string;
+  title: string;
+  message: string;
+  time: string;
+  variant: NotificationVariant;
+  isUnread: boolean;
+  /** RDO relacionado (ex.: devolução) — permite navegação direta. */
+  rdoId?: string;
 }
 
 export interface MetricItem {
@@ -33,13 +36,4 @@ export interface IndicatorItem {
   label: string;
   value: number;
   color: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  crea?: string;
-  isMaster: boolean;
 }

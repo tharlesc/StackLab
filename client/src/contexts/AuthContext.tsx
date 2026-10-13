@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
 import type { User } from '../types';
+import { hasPermission, isMaster as checkIsMaster, type Permission } from '../constants/permissions';
 
-import { MOCK_USERS } from '../mocks';
 interface AuthContextData {
   user: User | null;
+  isMaster: boolean;
+  can: (permission: Permission) => boolean;
   signIn: (user: User) => void;
   signOut: () => void;
 }
@@ -13,19 +15,22 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const signIn = (selectedUser: User) => {
+  const signIn = useCallback((selectedUser: User) => {
     setUser(selectedUser);
-  };
+  }, []);
 
-  const signOut = () => {
+  const signOut = useCallback(() => {
     setUser(null);
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, signIn, signOut }}>
-      {children}
-    </AuthContext.Provider>
+  const can = useCallback((permission: Permission) => hasPermission(user, permission), [user]);
+
+  const value = useMemo(
+    () => ({ user, isMaster: checkIsMaster(user), can, signIn, signOut }),
+    [user, can, signIn, signOut],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

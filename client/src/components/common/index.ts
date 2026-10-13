@@ -1,4 +1,5 @@
 export * from './ActionItem';
+export * from './Avatar';
 export * from './Button';
 export * from './Card';
 export * from './Chip';
@@ -7,5 +8,8 @@ export * from './EmptyState';
 export * from './Input';
 export * from './InteractiveCard';
 export * from './Layout';
+export * from './SearchBar';
+export * from './SegmentedControl';
+export * from './StatusBadge';
 export * from './Toggle';
 export * from './Typography';
