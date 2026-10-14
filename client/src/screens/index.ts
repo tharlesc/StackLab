@@ -5,3 +5,7 @@ export * from './Notifications';
 export * from './Profile';
 export * from './Settings';
 export * from './SyncQueue';
+export { InboxView, useInbox } from './master/Inbox';
+export { RDOReviewView, useRDOReview } from './master/RDOReview';
+export { AdminView, useAdminScreen } from './master/Admin';
+export { AuditTrailView } from './master/AuditTrail';

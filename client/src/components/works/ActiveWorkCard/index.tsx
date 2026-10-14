@@ -1,15 +1,17 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
-import styled from 'styled-components/native';
 import { ArrowRight } from 'lucide-react-native';
-import { getWeatherIcon } from '../../../utils/weather';
-import type { ActiveWork } from '../../../types';
-import { Card, Header, IconPlaceholder, HeaderTextContainer, Title, Subtitle, QuickData, DataColumn, DataLabel, DataValue, WeatherIcon, Footer, RdoStatusBox, RdoStatusText, ActionButton, ActionButtonText, ArrowPlaceholder, ArrowText } from './styles';
-
 import { useTheme } from 'styled-components/native';
-import { Chip } from '@/components/common';
+import { getWeatherIcon } from '@/utils/weather';
+import { formatRdoLabel } from '@/utils/rdo';
+import type { ActiveWork } from '@/types';
+import { Card, Header, IconPlaceholder, HeaderTextContainer, Title, Subtitle, QuickData, DataColumn, DataLabel, DataValue, WeatherIcon, Footer, RdoStatusBox, RdoStatusText, ActionButton, ActionButtonText, ArrowPlaceholder } from './styles';
 
 type WorkStatus = 'ok' | 'warn';
+
+export interface ActiveWorkCardProps extends Omit<ActiveWork, 'id'> {
+  onPress?: () => void;
+  onActionPress?: () => void;
+}
 
 export const ActiveWorkCard = ({
   name,
@@ -22,19 +24,20 @@ export const ActiveWorkCard = ({
   rdoDate,
   rdoNumber,
   actionText,
-}: Omit<ActiveWork, 'id'>) => {
+  onPress,
+  onActionPress,
+}: ActiveWorkCardProps) => {
   const theme = useTheme();
   const status: WorkStatus = statusType === '100% Em Dia' ? 'ok' : 'warn';
   const isLate = lastRdo === 'Ontem';
 
   // Format RDO label: "DD/MM/AAAA Nº[NUMERO] - [STATUS]"
-  const rdoLabel = rdoDate && rdoNumber != null
-    ? `${rdoDate} Nº${rdoNumber} - ${rdoStatus}`
-    : rdoStatus;
+  const rdoLabel = formatRdoLabel(rdoStatus, rdoDate, rdoNumber);
 
   return (
     <Card
       activeOpacity={0.7}
+      onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Obra: ${name}, ${subtitle}. Status: ${statusType}`}
     >
@@ -67,7 +70,7 @@ export const ActiveWorkCard = ({
           <RdoStatusText $status={status}>{rdoLabel}</RdoStatusText>
         </RdoStatusBox> 
         {actionText ? (
-          <ActionButton activeOpacity={0.8}>
+          <ActionButton activeOpacity={0.8} onPress={onActionPress} accessibilityRole="button" accessibilityLabel={actionText}>
             <ActionButtonText>{actionText}</ActionButtonText>
           </ActionButton>
         ) : (

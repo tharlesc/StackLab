@@ -49,7 +49,6 @@ export const SyncQueueView = () => {
     <>
       <Header
         title={strings.syncQueue.title}
-        subtitle={`${queue.length} itens pendentes`}
         rightContent={
           <HeaderAction
             icon={

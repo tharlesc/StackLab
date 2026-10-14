@@ -1,15 +1,30 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
-import styled from 'styled-components/native';
 import { ShieldCheck } from 'lucide-react-native';
-import { Card, Header, InfoContainer, Greeting, NameRow, Name, MasterTag, MasterTagText, CreaRow, CreaText, Footer, SyncText, TimeFilterContainer, TimeFilterButton, TimeFilterText } from './styles';
+import { useTheme } from 'styled-components/native';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import {
+  Card,
+  Header,
+  InfoContainer,
+  Greeting,
+  NameRow,
+  Name,
+  ProfileTag,
+  ProfileTagText,
+  CreaRow,
+  CreaText,
+  Footer,
+  SyncRow,
+  StatusDot,
+  SyncText,
+} from './styles';
 
-interface EngineerProfileCardProps {
+export interface EngineerProfileCardProps {
   name: string;
   greeting?: string;
-  crea: string;
-  hasNotifications?: boolean;
-  onNotificationPress?: () => void;
+  crea?: string;
+  isMaster?: boolean;
+  isOnline?: boolean;
   activeTimeFilter: string;
   onTimeFilterChange: (filter: string) => void;
   timeFilters?: string[];
@@ -20,13 +35,15 @@ export const EngineerProfileCard = ({
   name,
   greeting = 'Olá, Engenheiro',
   crea,
-  hasNotifications = false,
-  onNotificationPress,
+  isMaster = false,
+  isOnline = true,
   activeTimeFilter,
   onTimeFilterChange,
   timeFilters = ['Hoje', '7 dias', '15 dias', '1 mês'],
   lastSync = '100% Sincronizado - 09:41',
 }: EngineerProfileCardProps) => {
+  const theme = useTheme();
+
   return (
     <Card>
       <Header>
@@ -34,42 +51,40 @@ export const EngineerProfileCard = ({
           <Greeting>{greeting}</Greeting>
           <NameRow>
             <Name>{name}</Name>
-            <MasterTag>
-              <MasterTagText>MASTER</MasterTagText>
-            </MasterTag>
+            <ProfileTag $isMaster={isMaster}>
+              <ProfileTagText $isMaster={isMaster}>
+                {isMaster ? 'MASTER' : 'OPERACIONAL'}
+              </ProfileTagText>
+            </ProfileTag>
           </NameRow>
 
-          <CreaRow>
-            <ShieldCheck color="#10B981" size={16} />
-            <CreaText>{crea}</CreaText>
-          </CreaRow>
+          {crea ? (
+            <CreaRow>
+              <ShieldCheck color={theme.colors.hero.success} size={16} />
+              <CreaText>{crea}</CreaText>
+            </CreaRow>
+          ) : null}
         </InfoContainer>
-
-        
       </Header>
 
       <Footer>
-        <SyncText>Última Sincronização: {lastSync}</SyncText>
-        <TimeFilterContainer>
-          {timeFilters.map((filter) => {
-            const isActive = activeTimeFilter === filter;
-            return (
-              <TimeFilterButton
-                key={filter}
-                $isActive={isActive}
-                onPress={() => onTimeFilterChange(filter)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Filtrar por ${filter}`}
-              >
-                <TimeFilterText $isActive={isActive}>
-                  {filter}
-                </TimeFilterText>
-              </TimeFilterButton>
-            );
-          })}
-        </TimeFilterContainer>
+        <SyncRow>
+          <StatusDot $isOnline={isOnline} />
+          <SyncText>
+            {isOnline ? 'Online • ' : 'Modo Offline • '}
+            {lastSync}
+          </SyncText>
+        </SyncRow>
+
+        <SegmentedControl
+          options={timeFilters}
+          value={activeTimeFilter}
+          onChange={onTimeFilterChange}
+          tone="dark"
+        />
       </Footer>
     </Card>
   );
 };
+
+export default EngineerProfileCard;

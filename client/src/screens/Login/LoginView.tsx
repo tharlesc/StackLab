@@ -1,11 +1,10 @@
 import React from 'react';
+import { View } from 'react-native';
 import { useTheme } from 'styled-components/native';
-import { UserRound } from 'lucide-react-native';
 
 import { useLogin } from './useLogin';
 import {
   UserList,
-  UserAvatar,
   UserInfo,
   UserName,
   UserRole,
@@ -17,6 +16,8 @@ import { Input } from '@/components/common/Input';
 import { Screen, ScrollContent } from '@/components/common/Layout';
 import { Title, Subtitle, SectionTitle } from '@/components/common/Typography';
 import { TouchableCard as UserCard } from '@/components/common/Card';
+import { Avatar } from '@/components/common/Avatar';
+import { Chip } from '@/components/common/Chip';
 import { strings } from '@/constants/strings';
 
 export const LoginView = () => {
@@ -65,24 +66,31 @@ export const LoginView = () => {
 
         <SectionTitle>{strings.login.quickAccess}</SectionTitle>
         <UserList>
-          {mockUsers.map((u) => (
-            <UserCard
-              key={u.id}
-              activeOpacity={0.7}
-              onPress={() => handleQuickLogin(u)}
-              style={{ width: 220, marginRight: 12, padding: 14 }}
-              accessibilityRole="button"
-              accessibilityLabel={`Selecionar usuário de teste: ${u.name}, ${u.role}`}
-            >
-              <UserAvatar>
-                <UserRound color={theme.colors.text.inverse} size={22} />
-              </UserAvatar>
-              <UserInfo>
-                <UserName numberOfLines={1}>{u.name}</UserName>
-                <UserRole numberOfLines={1}>{u.role}</UserRole>
-              </UserInfo>
-            </UserCard>
-          ))}
+          {mockUsers.map((u) => {
+            const isMasterUser = u.profile === 'master';
+            return (
+              <UserCard
+                key={u.id}
+                activeOpacity={0.7}
+                onPress={() => handleQuickLogin(u)}
+                style={{ width: 230, marginRight: 12, padding: 14 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Selecionar usuário de teste: ${u.name}, ${u.role}`}
+              >
+                <Avatar name={u.name} size={42} highlighted={isMasterUser} />
+                <UserInfo style={{ marginLeft: 12 }}>
+                  <UserName numberOfLines={1}>{u.name}</UserName>
+                  <UserRole numberOfLines={1}>{u.role}</UserRole>
+                  <View style={{ marginTop: 4 }}>
+                    <Chip
+                      label={isMasterUser ? 'MASTER' : 'OPERACIONAL'}
+                      variant={isMasterUser ? 'accent' : 'dark'}
+                    />
+                  </View>
+                </UserInfo>
+              </UserCard>
+            );
+          })}
         </UserList>
       </ScrollContent>
     </Screen>
