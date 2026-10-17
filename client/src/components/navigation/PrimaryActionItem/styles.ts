@@ -3,23 +3,25 @@ import { TouchableOpacity } from 'react-native';
 
 export const ActionContainer = styled.View`
   flex: 1;
+  height: 48px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-bottom: 2px;
 `;
 
 export const ActionButton = styled(TouchableOpacity)`
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: 16px;
   background-color: ${({ theme }) => theme.colors.secondary};
   align-items: center;
   justify-content: center;
-  margin-top: -${({ theme }) => theme.spacing.xl}px;
-  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
+  position: absolute;
+  top: -18px;
   elevation: 4;
   shadow-color: ${({ theme }) => theme.colors.secondary};
   shadow-offset: 0px 4px;
-  shadow-opacity: 0.3;
+  shadow-opacity: 0.35;
   shadow-radius: 6px;
 `;
 
@@ -28,4 +30,6 @@ export const ActionLabel = styled.Text`
   font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
   line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.tintText};
+  margin-top: 10px;
+  text-align: center;
 `;

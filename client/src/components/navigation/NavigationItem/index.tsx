@@ -39,7 +39,7 @@ export const NavigationItem = ({
       accessibilityState={{ selected: active }}
       accessibilityLabel={fullAccessibilityLabel}
     >
-      <IconWrapper $isActive={active}>
+      <IconWrapper>
         {active && activeIcon ? activeIcon : icon}
         {badgeCount > 0 && (
           <Badge accessibilityLabel={badgeLabel}>

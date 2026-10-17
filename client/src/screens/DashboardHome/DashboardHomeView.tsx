@@ -8,8 +8,6 @@ import {
   Settings as SettingsIcon,
   Inbox as InboxIcon,
   Building2,
-  AlertTriangle,
-  CheckCircle2,
 } from 'lucide-react-native';
 
 import { useDashboardHome } from './useDashboardHome';
@@ -19,7 +17,6 @@ import {
   SeeAllText,
   AvatarButton,
   SearchWrapper,
-  SlaCardWrapper,
   SearchSectionHeader,
   SearchResultItem,
   SearchResultTitle,
@@ -37,7 +34,6 @@ import { ActiveWorkCard } from '@/components/works/ActiveWorkCard';
 import { Screen, ScrollContent } from '@/components/common/Layout';
 import { SectionTitle } from '@/components/common/Typography';
 import { SearchBar } from '@/components/common/SearchBar';
-import { InteractiveCard } from '@/components/common/InteractiveCard';
 import { Avatar } from '@/components/common/Avatar';
 import { RDO_STATUS_META, getDisplayStatus } from '@/utils/rdo';
 import { strings } from '@/constants/strings';
@@ -64,12 +60,10 @@ export const DashboardHomeView = () => {
     indicators,
     activeWorks,
     pendingCount,
-    overdueCount,
     returnedCount,
     navigateToNotifications,
     navigateToProfile,
     navigateToInbox,
-    navigateToAdmin,
     navigateToReview,
   } = useDashboardHome();
 
@@ -174,39 +168,6 @@ export const DashboardHomeView = () => {
                     )}
                   </SearchBar>
                 </SearchWrapper>
-              )}
-
-              {/* 1º KPI Central do Master no Topo: Alerta de SLA e Caixa de Validação (F4.8, F4.10) */}
-              {isMaster && (
-                <SlaCardWrapper>
-                  <InteractiveCard
-                    icon={
-                      overdueCount > 0 ? (
-                        <AlertTriangle
-                          color={theme.colors.status.error.text}
-                          size={theme.icon.size.md}
-                          strokeWidth={theme.icon.strokeWidth}
-                        />
-                      ) : (
-                        <CheckCircle2
-                          color={theme.colors.status.success.text}
-                          size={theme.icon.size.md}
-                          strokeWidth={theme.icon.strokeWidth}
-                        />
-                      )
-                    }
-                    title={`${strings.dashboard.validationInboxTitle} (${pendingCount})`}
-                    supportingText={
-                      overdueCount > 0
-                        ? `${overdueCount} relatório(s) com mais de 24 horas sem análise (${strings.status.atrasado}). Priorize a aprovação.`
-                        : strings.dashboard.validationInboxReady
-                    }
-                    actions={[
-                      { label: 'Administração', onPress: navigateToAdmin, secondary: true },
-                      { label: 'Abrir Inbox', onPress: navigateToInbox, primary: true },
-                    ]}
-                  />
-                </SlaCardWrapper>
               )}
 
               {/* 2º Dashboard Gerencial / Resumo Semanal */}

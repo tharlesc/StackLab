@@ -3,10 +3,10 @@ import { TouchableOpacity } from 'react-native';
 
 export const Tab = styled(TouchableOpacity)`
   flex: 1;
-  min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
-  min-width: ${({ theme }) => theme.touchTarget.minWidth}px;
+  height: 48px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-bottom: 2px;
 `;
 
 export const TabLabel = styled.Text<{ $isActive: boolean }>`
@@ -14,15 +14,15 @@ export const TabLabel = styled.Text<{ $isActive: boolean }>`
   font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
   line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ $isActive, theme }) => ($isActive ? theme.colors.tintText : theme.colors.text.secondary)};
-  margin-top: ${({ theme }) => theme.spacing.xs}px;
+  margin-top: 3px;
+  text-align: center;
 `;
 
-export const IconWrapper = styled.View<{ $isActive?: boolean }>`
+export const IconWrapper = styled.View`
   position: relative;
-  padding: ${({ theme }) => theme.spacing.xxs}px ${({ theme }) => theme.spacing.sm}px;
-  border-radius: ${({ theme }) => theme.borderRadius.full}px;
-  background-color: ${({ theme, $isActive }) =>
-    $isActive ? theme.colors.tag.masterBg : 'transparent'};
+  height: 24px;
+  align-items: center;
+  justify-content: center;
 `;
 
 export const Badge = styled.View`

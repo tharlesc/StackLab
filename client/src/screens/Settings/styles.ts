@@ -31,6 +31,7 @@ export const BrandSymbol = styled.Image`
   width: 36px;
   height: 36px;
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  background-color: ${({ theme }) => theme.colors.secondary};
   margin-right: ${({ theme }) => theme.spacing.md}px;
 `;
 

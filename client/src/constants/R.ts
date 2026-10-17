@@ -8,8 +8,8 @@ import { strings } from '@/constants/strings';
 export const R = {
   strings,
   images: {
-    logo: require('@/assets/images/logo.png'),
-    logoSymbol: require('@/assets/images/logo-symbol.png'),
+    logo: require('../assets/images/logo.png'),
+    logoSymbol: require('../assets/images/logo-symbol.png'),
   },
 } as const;
 
