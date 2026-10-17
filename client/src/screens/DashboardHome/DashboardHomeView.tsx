@@ -124,31 +124,35 @@ export const DashboardHomeView = () => {
                     value={globalSearch}
                     onChangeText={setGlobalSearch}
                     placeholder="Buscar por obra, número ou autor..."
-                  />
-
-                  {globalSearch.trim().length > 0 && (
-                    <SearchResultsBox>
-                      <SectionTitle style={{ marginTop: 0 }}>
-                        Resultados ({searchResults.length})
-                      </SectionTitle>
-                      {searchResults.length === 0 ? (
-                        <SearchResultSubtitle>Nenhum relatório encontrado.</SearchResultSubtitle>
-                      ) : (
-                        searchResults.slice(0, 5).map((r) => (
-                          <SearchResultItem
-                            key={r.id}
-                            onPress={() => navigateToReview(r.id)}
-                            activeOpacity={0.7}
-                          >
-                            <SearchResultTitle>RDO #{r.number} — {r.workName}</SearchResultTitle>
-                            <SearchResultSubtitle>
-                              Por {r.authorName} em {r.date} • Status: {r.status}
-                            </SearchResultSubtitle>
-                          </SearchResultItem>
-                        ))
-                      )}
-                    </SearchResultsBox>
-                  )}
+                  >
+                    {globalSearch.trim().length > 0 && (
+                      <>
+                        <SectionTitle style={{ marginTop: 2, marginBottom: 8, fontSize: 13, letterSpacing: 0.5 }}>
+                          RESULTADOS ({searchResults.length})
+                        </SectionTitle>
+                        {searchResults.length === 0 ? (
+                          <SearchResultSubtitle>Nenhum relatório encontrado.</SearchResultSubtitle>
+                        ) : (
+                          searchResults.slice(0, 5).map((r, index) => {
+                            const isLast = index === Math.min(searchResults.length, 5) - 1;
+                            return (
+                              <SearchResultItem
+                                key={r.id}
+                                onPress={() => navigateToReview(r.id)}
+                                activeOpacity={0.7}
+                                $isLast={isLast}
+                              >
+                                <SearchResultTitle>RDO #{r.number} — {r.workName}</SearchResultTitle>
+                                <SearchResultSubtitle>
+                                  Por {r.authorName} em {r.date} • Status: {r.status}
+                                </SearchResultSubtitle>
+                              </SearchResultItem>
+                            );
+                          })
+                        )}
+                      </>
+                    )}
+                  </SearchBar>
                 </View>
               )}
 

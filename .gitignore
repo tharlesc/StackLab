@@ -20,8 +20,9 @@ pnpm-debug.log*
 # Build / generated files
 build/
 
-# IDE
+# IDE & AI Assistants
 .vscode/
+.claude/
 
 # OS
 .DS_Store
@@ -29,5 +30,4 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp
-client/.expo/dev/logs/start.log
+*.temp

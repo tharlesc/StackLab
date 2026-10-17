@@ -49,16 +49,20 @@ export const QuickActionsRow = styled.View`
 
 export const SearchResultsBox = styled.View`
   background-color: ${({ theme }) => theme.colors.surface};
-  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  border-bottom-left-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  border-bottom-right-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
   border-width: 1px;
+  border-top-width: 0px;
   border-color: ${({ theme }) => theme.colors.border};
-  padding: 12px;
+  padding: 10px 14px 14px 14px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;
 
-export const SearchResultItem = styled(TouchableOpacity)`
-  padding: 8px 0;
-  border-bottom-width: 1px;
+export const SearchResultItem = styled(TouchableOpacity)<{ $isLast?: boolean }>`
+  padding: 9px 0;
+  border-bottom-width: ${({ $isLast }) => ($isLast ? '0px' : '1px')};
   border-bottom-color: ${({ theme }) => theme.colors.border};
 `;
 
