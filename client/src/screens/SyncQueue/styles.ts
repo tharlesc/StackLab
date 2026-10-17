@@ -17,23 +17,30 @@ export const TitleRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
 `;
 
-export const SizeText = styled.Text`
+export const ItemTitle = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.body.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.body.lineHeight}px;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+export const ItemSubtitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 12px;
+  font-size: ${({ theme }) => theme.typography.footnote.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.footnote.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
+  margin-bottom: ${({ theme }) => theme.spacing.smd}px;
 `;
 
 export const StatusRow = styled.View`
   flex-direction: row;
   align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm}px;
 `;
 
-export const StatusText = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.semiBold};
-  font-size: 12px;
-  color: ${({ theme }) => theme.colors.status.warning.text};
-  margin-left: 6px;
+export const HeaderCardWrapper = styled.View`
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;

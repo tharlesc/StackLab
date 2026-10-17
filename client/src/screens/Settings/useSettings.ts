@@ -1,25 +1,41 @@
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { useAppTheme } from '@/contexts/ThemeContext';
+import { useAppTheme, ThemeMode } from '@/contexts/ThemeContext';
+import { R } from '@/constants/R';
 
 export const useSettings = () => {
-  const { isDark, toggleTheme } = useAppTheme();
+  const { isDark, themeMode, setThemeMode, toggleTheme } = useAppTheme();
   const [syncOnlyWifi, setSyncOnlyWifi] = useState(true);
 
   const toggleSyncWifi = useCallback(() => {
     setSyncOnlyWifi((prev) => !prev);
   }, []);
 
+  const handleThemeModeChange = useCallback(
+    (mode: ThemeMode) => {
+      setThemeMode(mode);
+    },
+    [setThemeMode],
+  );
+
   const openTerms = useCallback(() => {
-    Alert.alert('Termos de Uso', 'StackLab RDO Mobile — Versão 1.2.0.\nTodos os direitos reservados.');
+    Alert.alert(
+      R.strings.settings.terms,
+      `${R.strings.common.appName} — ${R.strings.settings.appVersion}.\nTodos os direitos reservados.`,
+    );
   }, []);
 
   const openHelp = useCallback(() => {
-    Alert.alert('Central de Ajuda', 'Entre em contato com o suporte através de suporte@stacklab.com');
+    Alert.alert(
+      R.strings.settings.helpCenter,
+      'Entre em contato com o suporte através de suporte@stacklab.com',
+    );
   }, []);
 
   return {
     isDark,
+    themeMode,
+    handleThemeModeChange,
     toggleTheme,
     syncOnlyWifi,
     toggleSyncWifi,

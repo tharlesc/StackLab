@@ -1,5 +1,5 @@
 /**
- * Perfis de acesso do RDO Mobile (ver docs/ESPECIFICACAO_RDO_MOBILE.md §2).
+ * Perfis de acesso do RDO Mobile (ver constants/permissions.ts e roadmap_desenvolvimento_client.md):
  * - common: Técnico / Estagiário / Encarregado (Operacional de campo)
  * - master: Engenheiro / Gestor / Proprietário
  */

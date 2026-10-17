@@ -1,10 +1,10 @@
 import styled from 'styled-components/native';
-import { TouchableOpacity } from 'react-native';
 import { TouchableCard } from '@/components/common/Card';
 
 export const ControlsHeader = styled.View`
-  padding: 16px 16px 12px 16px;
-  gap: 12px;
+  padding: ${({ theme }) => theme.spacing.lg}px ${({ theme }) => theme.spacing.lg}px
+    ${({ theme }) => theme.spacing.md}px ${({ theme }) => theme.spacing.lg}px;
+  gap: ${({ theme }) => theme.spacing.md}px;
 `;
 
 export const InboxCard = styled(TouchableCard)<{ $isOverdue?: boolean }>`
@@ -12,7 +12,7 @@ export const InboxCard = styled(TouchableCard)<{ $isOverdue?: boolean }>`
   border-left-color: ${({ theme, $isOverdue }) =>
     $isOverdue ? theme.colors.status.error.base : theme.colors.status.warning.base};
   padding: ${({ theme }) => theme.spacing.md}px;
-  margin-bottom: 12px;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
   flex-direction: column;
   align-items: stretch;
 `;
@@ -21,46 +21,49 @@ export const CardHeader = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 6px;
+  margin-bottom: ${({ theme }) => theme.spacing.xsm}px;
 `;
 
 export const CardTitleContainer = styled.View`
   flex: 1;
-  margin-right: 8px;
+  margin-right: ${({ theme }) => theme.spacing.sm}px;
 `;
 
 export const RdoNumber = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 16px;
+  font-size: ${({ theme }) => theme.typography.body.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.body.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const WorkName = styled.Text`
   font-family: ${({ theme }) => theme.fonts.semiBold};
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.secondary};
-  margin-top: 2px;
+  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
+  color: ${({ theme }) => theme.colors.tintText};
+  margin-top: ${({ theme }) => theme.spacing.xxs}px;
 `;
 
 export const MetaRow = styled.View`
   flex-direction: row;
   align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-  margin-bottom: 12px;
+  gap: ${({ theme }) => theme.spacing.md}px;
+  margin-top: ${({ theme }) => theme.spacing.sm}px;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;
 
 export const MetaItem = styled.View`
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: ${({ theme }) => theme.spacing.xs}px;
 `;
 
 export const MetaText = styled.Text<{ $highlight?: boolean }>`
   font-family: ${({ theme, $highlight }) => ($highlight ? theme.fonts.bold : theme.fonts.regular)};
-  font-size: 12px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme, $highlight }) =>
-    $highlight ? theme.colors.status.error.base : theme.colors.text.secondary};
+    $highlight ? theme.colors.status.error.text : theme.colors.text.secondary};
 `;
 
 export const CardFooter = styled.View`
@@ -69,42 +72,45 @@ export const CardFooter = styled.View`
   align-items: center;
   border-top-width: 1px;
   border-top-color: ${({ theme }) => theme.colors.border};
-  padding-top: 10px;
+  padding-top: ${({ theme }) => theme.spacing.smd}px;
 `;
 
 export const AuthorText = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 12px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
 `;
 
-export const ReviewButton = styled(TouchableOpacity)`
+export const ReviewIndicator = styled.View`
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: ${({ theme }) => theme.spacing.xs}px;
   background-color: ${({ theme }) => theme.colors.secondary};
-  padding: 6px 12px;
+  padding: ${({ theme }) => theme.spacing.xsm}px ${({ theme }) => theme.spacing.md}px;
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
 `;
 
 export const ReviewButtonText = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 12px;
-  color: ${({ theme }) => theme.colors.text.inverse};
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
+  color: ${({ theme }) => theme.colors.onSecondary};
 `;
 
 export const SlaWarningBanner = styled.View`
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: ${({ theme }) => theme.spacing.xsm}px;
   background-color: ${({ theme }) => theme.colors.status.error.bg};
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
-  padding: 4px 8px;
-  margin-bottom: 8px;
+  padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
 `;
 
 export const SlaWarningText = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 11px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.status.error.text};
 `;

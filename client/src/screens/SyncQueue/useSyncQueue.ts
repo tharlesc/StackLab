@@ -1,15 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { MOCK_SYNC_QUEUE } from '@/mocks';
-
-export interface SyncQueueItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  date: string;
-  status: string;
-  size: string;
-}
+import type { SyncQueueItem } from '@/types';
 
 export const useSyncQueue = () => {
   const [queue, setQueue] = useState<SyncQueueItem[]>(MOCK_SYNC_QUEUE);

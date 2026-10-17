@@ -1,74 +1,74 @@
 # Tracking de Desenvolvimento - RDO Mobile (StackLab)
 
-Este documento centraliza o status de todos os requisitos definidos no Documento de Requisitos de Desenvolvimento de Aplicação (DRDA) e na especificação unificada do RDO Mobile.
+Este documento centraliza o status real de todos os requisitos definidos para o aplicativo **RDO Mobile (StackLab)**, classificando cada entrega em três estados:
+
+- ✅ **Real**: Implementado e funcional no cliente conforme especificação.
+- 🧪 **Mock / Parcial**: Fluxo funcional em memória ou simulado na interface, aguardando persistência nativa, criptografia de backend ou integração com hardware/API.
+- ⏳ **Pendente**: Item de backlog ainda não implementado.
 
 ---
 
-## ✅ O QUE JÁ TEMOS (Implementado)
+## 1. Design System, Acessibilidade e Infraestrutura de UI
 
-### Base, UI e Componentes Curados
-- [x] Estrutura inicial do projeto com Expo e React Native (Expo Router v57).
-- [x] Design System baseado no Apple Human Interface Guidelines (HIG) e Styled Components.
-- [x] Curadoria e unificação de componentes reutilizáveis:
-  - `Avatar`: Inicial com iniciais automáticas, borda de destaque e dimensões nativas.
-  - `SearchBar`: Campo de busca acessível com limpeza rápida.
-  - `SegmentedControl`: Controle segmentado com suporte a temas claro/escuro.
-  - `StatusBadge`: Pílula de status semântica vinculada à paleta de status (sucesso, aviso, erro, info).
-  - `Button`, `Input`, `Card`, `InteractiveCard`, `Dialog`, `Toggle`, `EmptyState`, `Header`, `BottomNavigation`.
-- [x] Token de tema `hero` e paleta contrastante com modo claro e escuro.
-- [x] Contextos globais: `ThemeContext`, `AuthContext` (com RBAC `can()`), `RDOContext` e `AdminContext`.
-
-### Perfis de Usuário & Diferenciação (RBAC)
-- [x] **Matriz RBAC Unificada (`constants/permissions.ts`)**: Definição formal das permissões de Operacional vs Master.
-- [x] **Dashboard Adaptativo**:
-  - **Operacional**: Visão restrita exclusivamente às obras designadas (`assignedWorkIds`), banner contínuo de status de conectividade ("Modo Offline / Sincronizado"), alerta de RDOs devolvidos para correção e FAB central de "Novo RDO".
-  - **Master**: Visão global de todas as obras, barra de busca global por termos em todos os diários da organização, totalizadores e Donut Chart em tempo real, atalho direto para Inbox de Validação com alertas de SLA.
-
-### Telas e Fluxos do Usuário Master (Gestor / Engenheiro)
-- [x] **Caixa de Entrada (Inbox) de Validação (`/inbox`)**:
-  - Triagem ordenada por prioridade temporal.
-  - Gatilho de SLA: Relatórios submetidos há mais de 24 horas recebem destaque visual automático e status de "Atrasado".
-  - Filtros segmentados (Todos, Atrasados, Em Análise, Devolvidos) e busca por texto.
-- [x] **Tela de Análise, Chancela e Assinatura (`/rdo-review`)**:
-  - Linha do tempo vertical contínua com módulos (Identificação/Clima, Mão de Obra e Homem-Hora, Equipamentos com justificativa de inatividade, Atividades e Materiais, Ocorrências e Fotos com marcas d'água).
-  - **Comentários Técnicos por Módulo**: O Master pode registrar apontamentos em cada seção.
-  - **Edição Auditável**: Alteração técnica pelo Master exigindo justificativa obrigatória e gravando registro inalterável (valor anterior vs novo valor).
-  - **Devolução Motivada**: Recusa fundamentada com desbloqueio pontual da edição para a equipe de campo.
-  - **Homologação e Assinatura 2FA**: Validação com segundo fator (PIN de segurança), captura de IP, Device ID e timestamp, gerando Hash SHA de verificação e travando o documento como imutável (`locked`).
-- [x] **Painel de Retificação e Exportações (`/rdo-review`)**:
-  - Emissão de Termo de Retificação Oficial: congela a versão v1 original e gera uma nova versão de trabalho v2 para nova chancela, preservando a cadeia de custódia jurídica.
-  - Exportação simulada: PDF Oficial formatado, Planilha Analítica CSV e Download em lote de Fotos.
-- [x] **Módulo de Administração & Cadastros (`/admin`)**:
-  - Gestão de Obras (cadastrar e ativar/desativar).
-  - Cadastro de Usuários (cadastrar, definir cargo e perfil Master/Operacional).
-  - **Matriz de Acessos**: Atribuição e desatribuição em tempo real de operadores a obras específicas.
-- [x] **Trilha de Auditoria Inalterável (`/audit-trail`)**:
-  - Modal com linha do tempo append-only de todas as ações executadas no RDO (submissões, devoluções, edições auditadas, comentários, assinaturas e retificações).
+- ✅ **Arquitetura Expo Router (SDK 57) com `typedRoutes`**: Rotas enxutas em `client/app/` e código-fonte modularizado em `client/src/` via alias `@/*`.
+- ✅ **Design System & Contraste WCAG AA (`constants/theme.ts`)**:
+  - Escala tipográfica semântica (`largeTitle`, `title`, `headline`, `body`, `callout`, `footnote`, `caption` >= 12px com `lineHeight` explícito).
+  - Tokens semânticos de espaçamento (`theme.spacing`), alvos de toque >= 44pt (`theme.touchTarget`), ícones padronizados (`theme.icon`) e cores de gráfico (`colors.chart`).
+  - Auditoria automatizada (`scripts/check-contrast.ts` e `src/__tests__/contrast.test.ts`) garantindo contraste >= 4,5:1 para texto e >= 3,0:1 para componentes nos temas claro e escuro.
+- ✅ **Modo Escuro Adaptativo (`contexts/ThemeContext.tsx`)**:
+  - Suporte aos modos `'system' | 'light' | 'dark'` via `useColorScheme`, persistido em `@react-native-async-storage/async-storage`, `userInterfaceStyle: "automatic"` no `app.json` e seletor de 3 opções em Ajustes (`/settings`).
+- ✅ **Glossário Único de Status e Textos Centralizados (`constants/strings.ts`, `utils/rdo.ts`)**:
+  - Status padronizados em todo o app via `RDO_STATUS_META`: `Rascunho`, `Submetido`, `Devolvido`, `Aprovado` e o status derivado `Atrasado` (> 24h sem análise).
+- ✅ **Qualidade e Testes Automatizados**:
+  - ESLint (`eslint-config-expo`), Prettier, TypeScript estrito (`npm run typecheck`) e testes unitários com `jest-expo` (`npm test`) cobrindo `utils/rdo`, `utils/date`, `utils/text`, `rdoWorkflow` e contraste WCAG.
 
 ---
 
-## ⏳ O QUE FALTA FAZER (Backlog)
+## 2. Autenticação, Perfis (RBAC) e Administração
 
-### 1. Dependências Core e Infraestrutura (Prioridade Alta)
-- [ ] Instalar e configurar banco de dados local (ex: WatermelonDB ou SQLite/MMKV) para funcionamento Offline-First com SQLite nativo (RF05, RNF03).
-- [ ] Instalar pacotes de Hardware e Media: `expo-camera`, `expo-image-picker`.
-- [ ] Instalar pacotes de UI Essenciais: `react-native-signature-canvas` (Canvas de Assinatura por desenho), `expo-local-authentication` (Biometria nativa FaceID/TouchID).
+- ✅ **Matriz RBAC Unificada (`constants/permissions.ts`)**: Controle formal de permissões entre `common` (Operacional) e `master` (Gestor/Engenheiro) via helper `can()` e `getAvailableActions()`.
+- 🧪 **Autenticação e Sessão (`contexts/AuthContext.tsx`, `/login`)**:
+  - Login funcional por e-mail sobre lista de usuários mockados em memória e atalhos de troca rápida de perfil; ainda sem autenticação JWT em backend real.
+- 🧪 **Módulo de Administração e Matriz de Acessos (`/admin`, `contexts/AdminContext.tsx`)**:
+  - Cadastro de obras, cadastro de usuários e atribuição/desatribuição em tempo real de operadores a obras (`assignedWorkIds`) funcionando em memória (sem persistência em API).
 
-### 2. Fluxo do Usuário Operacional (O Core do App)
-- [ ] **Wizard Completo de "Novo RDO" (Formulário Sequencial Passo a Passo)**:
-  - [ ] Passo 1: Clima e Turno (com campos obrigatórios de horas paradas e impacto em caso de Chuva).
-  - [ ] Passo 2: Mão de Obra e Equipamentos (cálculo automatizado de Hh e justificativa de inatividade).
-  - [ ] Passo 3: Atividades Executadas (com frente e quantidade) e Materiais recebidos (NF-e).
-  - [ ] Passo 4: Ocorrências, DDS e Fotos (câmera nativa com carimbo de marca d'água de data/hora/autor e legenda obrigatória).
-  - [ ] Passo 5: Revisão consolidada, aceite de responsabilidade e submissão com trava somente leitura.
-- [ ] Tela de Histórico de RDOs da Obra / Calendário interativo com tags de status.
+---
 
-### 3. Integração com Backend e Nuvem
-- [ ] Integração com API RESTful e autenticação real via JWT.
-- [ ] Sincronização offline transacional (upload em lote de fotos para AWS S3/GCS e envio de fila).
-- [ ] Geração do documento PDF final pelo backend com QR Code criptográfico (RF12).
-- [ ] Disparo de Push Notifications e e-mails de notificação (RF13).
+## 3. Dashboard, Busca e Conectividade
 
-### 4. Área do Usuário Cliente
-- [ ] Dashboard exclusivo do Cliente (visualizando apenas suas obras contratadas).
-- [ ] Leitura de RDOs homologados, inserção de ressalva e Assinatura de Ciência (RF10, RF11).
+- ✅ **Dashboard Adaptativo por Perfil (`/`)**:
+  - **Master**: Alerta prioritário de SLA no topo do dashboard com ícone, busca global em todos os RDOs (incluindo busca pelo rótulo de status do glossário), totalizadores e `DonutChart` acessível.
+  - **Operacional**: Visão restrita às obras alocadas (`assignedWorkIds`), alerta de RDOs devolvidos e ação rápida para emissão de RDO.
+- 🧪 **Banner de Conectividade e Fila de Sincronização (`/sync-queue`)**:
+  - Interface de fila offline, retentativa manual e indicador de sincronização baseados em estado mockado (`useSyncQueue`); pendente integração com `@react-native-community/netinfo` e banco local SQLite/WatermelonDB.
+
+---
+
+## 4. Fluxo de Revisão, Chancela, Auditoria e Ciclo de Vida do RDO
+
+- ✅ **Caixa de Entrada de Validação (`/inbox`)**:
+  - Ordenação automática por prioridade (`sortByReviewPriority`: atrasados primeiro, depois submetidos mais antigos), gatilho de SLA de 24h (`isOverdue`), filtros por status e alvo de toque único por cartão.
+- ✅ **Máquina de Estados Pura do RDO (`services/modules/rdoWorkflow.ts`)**:
+  - Transições testadas isoladamente: `submitRdo`, `approveRdo` (restrito a `submetido`), `returnRdo` (exige justificativa), `auditedEdit`, `addComment` e `rectifyRdo` (congela a versão anterior e substitui na lista ativa sem duplicar).
+- 🧪 **Revisão de RDO e Seções Modulares (`/rdo-review`)**:
+  - Exibe todos os módulos do RDO (Identificação/Clima, Mão de Obra/Hh, Equipamentos, Atividades, Materiais, Ocorrências/DDS e Fotos) com adição de comentários por seção; layout em cartões modulares (não implementa timeline gráfica contínua com linha conectora vertical).
+- 🧪 **Edição Auditável (`auditedEdit` em `/rdo-review`)**:
+  - Altera em memória o campo principal do primeiro registro da seção selecionada, exige justificativa (mín. 5 caracteres) e grava valor anterior/novo no log; pendente seletor granular para editar qualquer item individual de listas multi-registro e persistência em backend.
+- 🧪 **Trilha de Auditoria (`/audit-trail`)**:
+  - Modal cronológico `append-only` durante a sessão em memória (`RDOContext`); a imutabilidade jurídica e armazenamento à prova de adulteração dependem de persistência em backend.
+- 🧪 **Homologação 2FA e Hash de Integridade (`approveRdo` / `computeIntegrityHash`)**:
+  - Validação de segundo fator simulada via PIN fixo (`1234`), metadados de IP/Device ID simulados e hash determinístico local (`FNV-1a` 32-bit com prefixo `SL-`). Em produção, requer `expo-local-authentication` (biometria/TOTP) e geração de hash criptográfico `SHA-256` sobre o PDF final no servidor.
+- 🧪 **Exportações (PDF Oficial, CSV Analítico e Fotos em Lote)**:
+  - Ações de exportação em `/rdo-review` exibem feedback simulado na interface; geração real de arquivos PDF/CSV/ZIP ainda pendente.
+
+---
+
+## 5. Backlog Pendente (⏳ O Que Falta Fazer)
+
+- ⏳ **Persistência Offline-First Real**: Instalar e configurar SQLite / WatermelonDB para armazenamento local persistente de RDOs, fila de sincronização e fotos.
+- ⏳ **Wizard Completo de "Novo RDO" (`/new-rdo`)**:
+  - Atualmente `/new-rdo` cria/submete um diário simplificado; falta o formulário sequencial completo passo a passo (Clima/Turno com horas paradas, Mão de Obra, Equipamentos com justificativa de ociosidade, Atividades, Materiais/NF-e, Ocorrências/DDS e captura de Fotos).
+- ⏳ **Câmera Nativa e Marca d'Água (`expo-camera` / `expo-image-picker`)**: Captura de fotos em campo com carimbo automático de data/hora/coordenadas e upload em lote.
+- ⏳ **Biometria Nativa e Assinatura em Tela (`expo-local-authentication` / `react-native-signature-canvas`)**.
+- ⏳ **Integração com Backend RESTful**: Autenticação JWT, sincronização transacional, geração de PDF com hash SHA-256 + QR Code e envio de Push Notifications.
+- ⏳ **Área do Usuário Cliente**: Dashboard de leitura de RDOs homologados e assinatura de ciência com ressalvas.

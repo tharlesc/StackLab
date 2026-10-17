@@ -2,7 +2,7 @@ import styled from 'styled-components/native';
 import { TouchableOpacity } from 'react-native';
 
 export const Section = styled.View`
-  margin-top: 1px;
+  margin-top: ${({ theme }) => theme.spacing.sm}px;
 `;
 
 export const SectionHeader = styled.View`
@@ -14,67 +14,56 @@ export const SectionHeader = styled.View`
 
 export const SeeAllText = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 13px;
-  color: ${({ theme }) => theme.colors.secondary};
-  min-height: 44px;
-  line-height: 44px;
+  font-size: ${({ theme }) => theme.typography.footnote.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.footnote.lineHeight}px;
+  color: ${({ theme }) => theme.colors.tintText};
 `;
 
-export const ConnectivityBanner = styled.View<{ $isOnline: boolean }>`
-  flex-direction: row;
+export const AvatarButton = styled(TouchableOpacity)`
+  min-width: ${({ theme }) => theme.touchTarget.minWidth}px;
+  min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: ${({ theme }) => theme.borderRadius.md}px;
-  background-color: ${({ theme, $isOnline }) =>
-    $isOnline ? theme.colors.status.success.bg : theme.colors.status.warning.bg};
-  border-width: 1px;
-  border-color: ${({ theme, $isOnline }) =>
-    $isOnline ? theme.colors.status.success.border : theme.colors.status.warning.border};
+  justify-content: center;
+`;
+
+export const SearchWrapper = styled.View`
+  margin-bottom: ${({ theme }) => theme.spacing.mdl}px;
+`;
+
+export const SlaCardWrapper = styled.View`
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;
 
-export const ConnectivityText = styled.Text<{ $isOnline: boolean }>`
-  font-family: ${({ theme }) => theme.fonts.semiBold};
-  font-size: 12px;
-  color: ${({ theme, $isOnline }) =>
-    $isOnline ? theme.colors.status.success.text : theme.colors.status.warning.text};
-`;
-
-export const QuickActionsRow = styled.View`
-  flex-direction: row;
-  gap: 10px;
-  margin-bottom: ${({ theme }) => theme.spacing.md}px;
-`;
-
-export const SearchResultsBox = styled.View`
-  background-color: ${({ theme }) => theme.colors.surface};
-  border-bottom-left-radius: ${({ theme }) => theme.borderRadius.xl}px;
-  border-bottom-right-radius: ${({ theme }) => theme.borderRadius.xl}px;
-  border-top-left-radius: 0px;
-  border-top-right-radius: 0px;
-  border-width: 1px;
-  border-top-width: 0px;
-  border-color: ${({ theme }) => theme.colors.border};
-  padding: 10px 14px 14px 14px;
-  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+export const SearchSectionHeader = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.footnote.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.footnote.lineHeight}px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-top: ${({ theme }) => theme.spacing.xxs}px;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
 export const SearchResultItem = styled(TouchableOpacity)<{ $isLast?: boolean }>`
-  padding: 9px 0;
+  min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
+  justify-content: center;
+  padding: ${({ theme }) => theme.spacing.sm}px 0;
   border-bottom-width: ${({ $isLast }) => ($isLast ? '0px' : '1px')};
   border-bottom-color: ${({ theme }) => theme.colors.border};
 `;
 
 export const SearchResultTitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 14px;
+  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const SearchResultSubtitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 12px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
-  margin-top: 2px;
+  margin-top: ${({ theme }) => theme.spacing.xxs}px;
 `;

@@ -1,37 +1,53 @@
 import styled from 'styled-components/native';
+import { TouchableCard } from '@/components/common/Card';
+
+export const BrandHeader = styled.View`
+  align-items: flex-start;
+  margin-top: ${({ theme }) => theme.spacing.xl}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xl}px;
+`;
+
+export const BrandLogo = styled.Image`
+  width: 140px;
+  height: 44px;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+`;
 
 export const UserList = styled.ScrollView.attrs({
   horizontal: true,
   showsHorizontalScrollIndicator: false,
 })`
   flex-grow: 0;
-  margin-bottom: 32px;
+  margin-bottom: ${({ theme }) => theme.spacing.xxl}px;
 `;
 
-export const UserAvatar = styled.View`
-  width: 44px;
-  height: 44px;
-  border-radius: 22px;
-  background-color: ${({ theme }) => theme.colors.primary};
-  justify-content: center;
-  align-items: center;
+export const UserCardItem = styled(TouchableCard)`
+  width: 230px;
   margin-right: ${({ theme }) => theme.spacing.md}px;
+  padding: ${({ theme }) => theme.spacing.mdl}px;
 `;
 
 export const UserInfo = styled.View`
   flex: 1;
+  margin-left: ${({ theme }) => theme.spacing.md}px;
 `;
 
 export const UserName = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 14px;
+  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const UserRole = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 11px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
+`;
+
+export const ChipWrapper = styled.View`
+  margin-top: ${({ theme }) => theme.spacing.xs}px;
 `;
 
 export const FormContainer = styled.View`

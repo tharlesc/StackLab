@@ -15,11 +15,16 @@ export const Avatar = ({ name, size = 40, highlighted = false }: AvatarProps) =>
   const theme = useTheme();
   const initials = name ? getInitials(name) : '';
   return (
-    <Circle $size={size} $highlighted={highlighted} accessibilityRole="image" accessibilityLabel={name ? `Avatar de ${name}` : 'Avatar'}>
+    <Circle
+      $size={size}
+      $highlighted={highlighted}
+      accessibilityRole="image"
+      accessibilityLabel={name ? `Avatar de ${name}` : 'Avatar'}
+    >
       {initials ? (
         <Initials $size={size}>{initials}</Initials>
       ) : (
-        <UserRound color={theme.colors.text.inverse} size={size * 0.5} />
+        <UserRound color={theme.colors.text.inverse} size={size * 0.5} strokeWidth={theme.icon.strokeWidth} />
       )}
     </Circle>
   );
@@ -29,7 +34,7 @@ const Circle = styled.View<{ $size: number; $highlighted: boolean }>`
   width: ${({ $size }) => $size}px;
   height: ${({ $size }) => $size}px;
   border-radius: ${({ $size }) => $size / 2}px;
-  background-color: ${({ theme }) => theme.colors.primary};
+  background-color: ${({ theme }) => theme.colors.avatarBg};
   align-items: center;
   justify-content: center;
   border-width: ${({ $highlighted }) => ($highlighted ? 3 : 0)}px;
@@ -38,7 +43,8 @@ const Circle = styled.View<{ $size: number; $highlighted: boolean }>`
 
 const Initials = styled.Text<{ $size: number }>`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: ${({ $size }) => Math.round($size * 0.38)}px;
+  font-size: ${({ theme, $size }) => Math.max(theme.typography.caption.fontSize, Math.round($size * 0.38))}px;
+  line-height: ${({ theme, $size }) => Math.max(theme.typography.caption.lineHeight, Math.round($size * 0.46))}px;
   color: ${({ theme }) => theme.colors.text.inverse};
 `;
 

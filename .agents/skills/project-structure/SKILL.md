@@ -194,44 +194,21 @@ export default function NovoRDORoute() {
 
 ## 4. Gestão de Recursos Estáticos: O Padrão `Namespace R`
 
-Inspirado no artigo do **freeCodeCamp** e no modelo de recursos estáticos do Android / Airbnb Style Guide, todo recurso estático, texto ou token de cor deve ser exposto de maneira centralizada via `R`:
+Inspirado no artigo do **freeCodeCamp** e no modelo de recursos estáticos do Android / Airbnb Style Guide, recursos estáticos (imagens e dicionários de texto) são expostos via `R`, enquanto tokens de tema (`colors`, `spacing`, `typography`) devem ser consumidos via `useTheme()` / `styled-components` para respeitar o Modo Escuro:
 
 ```typescript
 // src/constants/R.ts
-import { colors } from './colors';
-import { typography } from './typography';
-import { strings } from './strings';
+import { strings } from '@/constants/strings';
 
 export const R = {
-  colors,
-  typography,
   strings,
   images: {
     logo: require('@/assets/images/logo.png'),
-    placeholder: require('@/assets/images/placeholder.png'),
-    emptyObra: require('@/assets/images/empty-obras.png'),
+    logoSymbol: require('@/assets/images/logo-symbol.png'),
   },
-  icons: {
-    // Referências ou nomes tipados para iconografia
-  }
 } as const;
 
 export default R;
-```
-
-### Como consumir nos componentes:
-```typescript
-import { View, Text, Image } from 'react-native';
-import { R } from '@/constants/R';
-
-export const Header = () => (
-  <View style={{ backgroundColor: R.colors.primaryBackground }}>
-    <Image source={R.images.logo} />
-    <Text style={{ color: R.colors.textPrimary, fontSize: R.typography.size.title }}>
-      {R.strings.dashboard.title}
-    </Text>
-  </View>
-);
 ```
 
 ---
@@ -257,19 +234,13 @@ Para atender aos requisitos de alta criticidade e operação no canteiro de obra
 
 ## 6. Diretrizes de Importação Limpa (Path Aliases)
 
-Nunca use caminhos relativos longos (como `../../../../components/Button`). O arquivo `tsconfig.json` do StackLab deve manter os seguintes mapeamentos:
+Nunca use caminhos relativos entre módulos (como `../../components/Button`). O arquivo `tsconfig.json` do StackLab mantém exclusivamente o alias `@/*` (evitando `@types/*` que colide com o namespace do TypeScript):
 
 ```json
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "@constants/*": ["src/constants/*"],
-      "@services/*": ["src/services/*"],
-      "@types/*": ["src/types/*"],
-      "@screens/*": ["src/screens/*"]
+      "@/*": ["./src/*"]
     }
   }
 }

@@ -1,16 +1,18 @@
 import type { RDO, RDODisplayStatus, RDOSectionKey, StatusVariant, LaborEntry } from '@/types';
+import { strings } from '@/constants/strings';
 import { hoursSince } from './date';
 import { matchesQuery } from './text';
 
 /** SLA de análise do Master (horas) — após isso o RDO é exibido como "Atrasado". */
 export const REVIEW_SLA_HOURS = 24;
 
+/** Glossário único de status de RDO em todo o aplicativo (F4.9). */
 export const RDO_STATUS_META: Record<RDODisplayStatus, { label: string; variant: StatusVariant }> = {
-  rascunho: { label: 'Rascunho', variant: 'info' },
-  submetido: { label: 'Submetido', variant: 'warning' },
-  devolvido: { label: 'Devolvido', variant: 'error' },
-  aprovado: { label: 'Aprovado', variant: 'success' },
-  atrasado: { label: 'Atrasado', variant: 'error' },
+  rascunho: { label: strings.status.rascunho, variant: 'info' },
+  submetido: { label: strings.status.submetido, variant: 'warning' },
+  devolvido: { label: strings.status.devolvido, variant: 'error' },
+  aprovado: { label: strings.status.aprovado, variant: 'success' },
+  atrasado: { label: strings.status.atrasado, variant: 'error' },
 };
 
 export const RDO_SECTION_LABELS: Record<RDOSectionKey, string> = {
@@ -39,7 +41,7 @@ export const sortByReviewPriority = <T extends Pick<RDO, 'status' | 'submittedAt
     return (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '');
   });
 
-/** "27/09/2026 Nº184 - Validado" */
+/** "27/09/2026 Nº184 - Aprovado" */
 export const formatRdoLabel = (status: string, date?: string, number?: number | null): string =>
   date && number != null ? `${date} Nº${number} - ${status}` : status;
 
@@ -49,18 +51,23 @@ export const calcManHours = (labor: LaborEntry[]): number =>
 
 export const calcHeadcount = (labor: LaborEntry[]): number => labor.reduce((acc, l) => acc + l.quantity, 0);
 
-/** Busca global em todos os campos relevantes do RDO. */
-export const rdoMatchesQuery = (rdo: RDO, query: string): boolean =>
-  matchesQuery(
+/** Busca global em todos os campos relevantes do RDO (incluindo o rótulo do glossário de status). */
+export const rdoMatchesQuery = (rdo: RDO, query: string): boolean => {
+  const displayStatus = getDisplayStatus(rdo);
+  const statusLabel = RDO_STATUS_META[displayStatus].label;
+  return matchesQuery(
     query,
     rdo.number,
     rdo.workName,
     rdo.authorName,
     rdo.date,
+    rdo.status,
+    statusLabel,
     ...rdo.activities.map((a) => `${a.description} ${a.location}`),
     ...rdo.occurrences.map((o) => o.description),
     ...rdo.materials.map((m) => `${m.name} ${m.supplier}`),
   );
+};
 
 /** O Operacional só edita rascunhos próprios ou RDOs devolvidos. */
 export const canCommonEdit = (rdo: Pick<RDO, 'status' | 'locked'>): boolean =>

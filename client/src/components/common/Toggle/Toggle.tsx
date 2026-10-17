@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { ToggleContainer, Track, Thumb } from './styles';
 
@@ -6,7 +6,7 @@ export interface ToggleProps {
   value: boolean;
   onValueChange: (newValue: boolean) => void;
   disabled?: boolean;
-  accessibilityLabel?: string;
+  accessibilityLabel: string;
 }
 
 export const Toggle = ({
@@ -15,7 +15,7 @@ export const Toggle = ({
   disabled = false,
   accessibilityLabel,
 }: ToggleProps) => {
-  const animatedValue = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const [animatedValue] = useState(() => new Animated.Value(value ? 1 : 0));
 
   useEffect(() => {
     Animated.timing(animatedValue, {
@@ -37,7 +37,7 @@ export const Toggle = ({
       disabled={disabled}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
-      accessibilityLabel={accessibilityLabel || 'Interruptor'}
+      accessibilityLabel={accessibilityLabel}
     >
       <Track $checked={value}>
         <Thumb style={{ transform: [{ translateX }] }} />

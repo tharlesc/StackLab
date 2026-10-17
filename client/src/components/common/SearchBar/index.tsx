@@ -2,6 +2,7 @@ import React from 'react';
 import styled, { useTheme } from 'styled-components/native';
 import { TextInput, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
 import { Search, X } from 'lucide-react-native';
+import { strings } from '@/constants/strings';
 
 export interface SearchBarProps {
   value: string;
@@ -18,14 +19,11 @@ export interface SearchBarProps {
 
 /**
  * 🔍 SearchBar — Componente de busca acessível, responsivo e extensível (Apple HIG).
- * Reutilizável no Dashboard do Master, na Caixa de Validação e nos Cadastros.
- * Quando possui resultados ou conteúdo dinâmico (children), remove a borda inferior e se
- * estende perfeitamente como um único elemento contínuo integrado.
  */
 export const SearchBar = ({
   value,
   onChangeText,
-  placeholder = 'Buscar por obra, número ou autor...',
+  placeholder = strings.common.searchPlaceholder,
   onClear,
   style,
   containerStyle,
@@ -45,8 +43,12 @@ export const SearchBar = ({
   return (
     <Wrapper style={containerStyle}>
       <InputBox $isExpanded={expanded} style={style}>
-        <Search color={theme.colors.text.secondary} size={18} />
-        <Field
+        <Search
+          color={theme.colors.text.secondary}
+          size={theme.icon.size.md}
+          strokeWidth={theme.icon.strokeWidth}
+        />
+        <FieldInput
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -60,20 +62,21 @@ export const SearchBar = ({
         {value.length > 0 && (
           <ClearButton
             onPress={handleClear}
+            hitSlop={theme.touchTarget.hitSlop}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel="Limpar busca"
+            accessibilityLabel={strings.common.clearSearch}
           >
-            <X color={theme.colors.text.secondary} size={16} />
+            <X
+              color={theme.colors.text.secondary}
+              size={theme.icon.size.sm}
+              strokeWidth={theme.icon.strokeWidth}
+            />
           </ClearButton>
         )}
       </InputBox>
 
-      {hasChildren && (
-        <ExtensionContainer>
-          {children}
-        </ExtensionContainer>
-      )}
+      {hasChildren && <ExtensionContainer>{children}</ExtensionContainer>}
     </Wrapper>
   );
 };
@@ -85,8 +88,8 @@ export const Wrapper = styled.View`
 export const InputBox = styled.View<{ $isExpanded?: boolean }>`
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  min-height: 46px;
+  gap: ${({ theme }) => theme.spacing.smd}px;
+  min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
   padding: 0 ${({ theme }) => theme.spacing.md}px;
   border-radius: ${({ theme }) => theme.borderRadius.xl}px;
   border-width: 1px;
@@ -109,22 +112,24 @@ export const ExtensionContainer = styled.View`
   border-width: 1px;
   border-top-width: 0px;
   border-color: ${({ theme }) => theme.colors.border};
-  padding: 8px 16px 14px 16px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.lg}px
+    ${({ theme }) => theme.spacing.mdl}px ${({ theme }) => theme.spacing.lg}px;
 `;
 
-const Field = styled(TextInput)`
+const FieldInput = styled(TextInput)`
   flex: 1;
-  min-height: 44px;
+  min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 14px;
+  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
   padding: 0;
 `;
 
 const ClearButton = styled(TouchableOpacity)`
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
+  width: ${({ theme }) => theme.spacing.xxl}px;
+  height: ${({ theme }) => theme.spacing.xxl}px;
+  border-radius: ${({ theme }) => theme.borderRadius.full}px;
   align-items: center;
   justify-content: center;
   background-color: ${({ theme }) => theme.colors.surfaceVariant};

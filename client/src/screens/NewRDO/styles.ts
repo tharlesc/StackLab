@@ -12,9 +12,8 @@ export const WorkSelectCard = styled(TouchableCard)`
 export const WorkIconContainer = styled.View`
   width: 48px;
   height: 48px;
-  border-radius: 24px;
-  background-color: ${({ theme }) =>
-    theme.name === 'dark' ? 'rgba(249, 115, 22, 0.15)' : theme.colors.primary + '15'};
+  border-radius: ${({ theme }) => theme.borderRadius.full}px;
+  background-color: ${({ theme }) => theme.colors.workIconBg};
   align-items: center;
   justify-content: center;
   margin-right: ${({ theme }) => theme.spacing.md}px;
@@ -26,13 +25,16 @@ export const WorkInfo = styled.View`
 
 export const WorkName = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 16px;
+  font-size: ${({ theme }) => theme.typography.body.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.body.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: 4px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
 `;
 
-export const WorkSubtitle = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 13px;
-  color: ${({ theme }) => theme.colors.text.secondary};
+export const WorkChipsRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.xsm}px;
+  margin-top: ${({ theme }) => theme.spacing.xs}px;
+  flex-wrap: wrap;
 `;

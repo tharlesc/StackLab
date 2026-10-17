@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleProp, ViewStyle } from 'react-native';
+import { useTheme } from 'styled-components/native';
 import { ChipContainer, ChipText, ChipVariant } from './styles';
 export type { ChipVariant } from './styles';
 
@@ -20,12 +21,14 @@ export const Chip = ({
   style,
   accessibilityLabel,
 }: ChipProps) => {
+  const theme = useTheme();
   return (
     <ChipContainer
       $variant={variant}
       $hasAction={!!onPress}
       onPress={onPress}
       disabled={!onPress}
+      hitSlop={onPress ? theme.touchTarget.hitSlop : undefined}
       activeOpacity={0.7}
       style={style}
       accessibilityRole={onPress ? 'button' : 'text'}

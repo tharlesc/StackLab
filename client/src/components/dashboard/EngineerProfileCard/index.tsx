@@ -60,7 +60,11 @@ export const EngineerProfileCard = ({
 
           {crea ? (
             <CreaRow>
-              <ShieldCheck color={theme.colors.hero.success} size={16} />
+              <ShieldCheck
+                color={theme.colors.hero.success}
+                size={theme.icon.size.sm}
+                strokeWidth={theme.icon.strokeWidth}
+              />
               <CreaText>{crea}</CreaText>
             </CreaRow>
           ) : null}
