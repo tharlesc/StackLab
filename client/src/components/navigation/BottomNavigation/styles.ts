@@ -11,6 +11,8 @@ export const Container = styled.View<{ $bottomInset: number }>`
   padding-top: ${({ theme }) => theme.spacing.sm}px;
   padding-bottom: ${({ theme, $bottomInset }) =>
     $bottomInset > 0 ? $bottomInset : theme.spacing.sm}px;
+  overflow: visible;
+  z-index: 10;
   elevation: ${({ theme }) => theme.shadows.card.elevation};
   shadow-color: ${({ theme }) => theme.shadows.card.shadowColor};
   shadow-offset: ${({ theme }) =>
@@ -21,6 +23,8 @@ export const Container = styled.View<{ $bottomInset: number }>`
 
 export const Row = styled.View`
   flex-direction: row;
+  justify-content: space-around;
   align-items: flex-end;
   height: 48px;
+  overflow: visible;
 `;

@@ -232,7 +232,7 @@ export const DashboardHomeView = () => {
           }
           activeIcon={
             <HardHat
-              color={theme.colors.tintText}
+              color={theme.colors.text.inverse}
               size={theme.icon.size.lg}
               strokeWidth={2.5}
             />
@@ -247,12 +247,20 @@ export const DashboardHomeView = () => {
           <PrimaryActionItem
             icon={
               <InboxIcon
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.lg}
+                strokeWidth={2.25}
+              />
+            }
+            activeIcon={
+              <InboxIcon
                 color={theme.colors.text.inverse}
                 size={theme.icon.size.lg}
                 strokeWidth={2.25}
               />
             }
             label="Inbox"
+            active={activeTab === 'Inbox'}
             onPress={() => setActiveTab('Inbox')}
             accessibilityLabel={`Inbox de Validação com ${pendingCount} pendentes`}
           />
@@ -260,12 +268,20 @@ export const DashboardHomeView = () => {
           <PrimaryActionItem
             icon={
               <Plus
-                color={theme.colors.surfaceVariant}
-                size={theme.icon.size.lg}
+                color={theme.colors.text.secondary}
+                size={26}
+                strokeWidth={2.5}
+              />
+            }
+            activeIcon={
+              <Plus
+                color={theme.colors.text.inverse}
+                size={26}
                 strokeWidth={2.5}
               />
             }
             label={strings.navigation.newRDO}
+            active={activeTab === 'Novo RDO'}
             onPress={() => setActiveTab('Novo RDO')}
             accessibilityLabel={strings.accessibility.newRdoAction}
           />
@@ -282,7 +298,7 @@ export const DashboardHomeView = () => {
             }
             activeIcon={
               <Building2
-                color={theme.colors.tintText}
+                color={theme.colors.text.inverse}
                 size={theme.icon.size.lg}
                 strokeWidth={2.5}
               />
@@ -303,7 +319,7 @@ export const DashboardHomeView = () => {
             }
             activeIcon={
               <RefreshCcw
-                color={theme.colors.tintText}
+                color={theme.colors.text.inverse}
                 size={theme.icon.size.lg}
                 strokeWidth={2.5}
               />
@@ -326,7 +342,7 @@ export const DashboardHomeView = () => {
           }
           activeIcon={
             <SettingsIcon
-              color={theme.colors.tintText}
+              color={theme.colors.text.inverse}
               size={theme.icon.size.lg}
               strokeWidth={2.5}
             />
