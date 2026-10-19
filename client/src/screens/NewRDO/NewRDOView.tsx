@@ -1,5 +1,4 @@
 import React from 'react';
-import { View } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { Building2, ChevronRight } from 'lucide-react-native';
 
@@ -9,6 +8,7 @@ import {
   WorkIconContainer,
   WorkInfo,
   WorkName,
+  WorkChipsRow,
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
@@ -38,8 +38,8 @@ export const NewRDOView = () => {
           title="Rascunho Local Disponível"
           supportingText="Você possui 1 diário em rascunho salvo offline aguardando preenchimento para a Torre Esmeralda."
           actions={[
-            { label: 'Descartar', onPress: () => console.log('Descartar rascunho'), destructive: true },
-            { label: 'Continuar', onPress: () => console.log('Continuar rascunho'), primary: true },
+            { label: 'Descartar', onPress: () => {}, destructive: true },
+            { label: 'Continuar', onPress: () => {}, primary: true },
           ]}
         />
 
@@ -53,18 +53,23 @@ export const NewRDOView = () => {
           >
             <WorkIconContainer>
               <Building2
-                color={theme.name === 'dark' ? theme.colors.secondary : theme.colors.primary}
-                size={24}
+                color={theme.name === 'dark' ? theme.colors.tintText : theme.colors.primary}
+                size={theme.icon.size.lg}
+                strokeWidth={theme.icon.strokeWidth}
               />
             </WorkIconContainer>
             <WorkInfo>
               <WorkName>{work.name}</WorkName>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+              <WorkChipsRow>
                 <Chip label={work.subtitle} variant="dark" />
                 <Chip label="Em Andamento" variant="surface" />
-              </View>
+              </WorkChipsRow>
             </WorkInfo>
-            <ChevronRight color={theme.colors.text.secondary} size={20} />
+            <ChevronRight
+              color={theme.colors.text.secondary}
+              size={theme.icon.size.md}
+              strokeWidth={theme.icon.strokeWidth}
+            />
           </WorkSelectCard>
         ))}
       </ScrollContent>
@@ -78,11 +83,11 @@ export const NewRDOView = () => {
             : ''
         }
         primaryAction={{
-          label: 'Iniciar',
+          label: strings.newRDO.startAction,
           onPress: handleConfirmStart,
         }}
         secondaryAction={{
-          label: 'Cancelar',
+          label: strings.common.cancel,
           onPress: handleCloseDialog,
         }}
         onClose={handleCloseDialog}

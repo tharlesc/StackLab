@@ -1,23 +1,27 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { CloudOff, RefreshCcw, WifiOff } from 'lucide-react-native';
 
-import { useSyncQueue, SyncQueueItem } from './useSyncQueue';
+import { useSyncQueue } from './useSyncQueue';
 import {
   QueueCard,
   InfoContainer,
   TitleRow,
+  ItemTitle,
+  ItemSubtitle,
+  StatusRow,
+  HeaderCardWrapper,
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { ListContent } from '@/components/common/Layout';
-import { Title, Subtitle } from '@/components/common/Typography';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Chip } from '@/components/common/Chip';
 import { InteractiveCard } from '@/components/common/InteractiveCard';
 import { strings } from '@/constants/strings';
+import type { SyncQueueItem } from '@/types';
 
 export const SyncQueueView = () => {
   const theme = useTheme();
@@ -30,17 +34,23 @@ export const SyncQueueView = () => {
     >
       <InfoContainer>
         <TitleRow>
-          <Title style={{ fontSize: 16 }}>{item.title}</Title>
+          <ItemTitle>{item.title}</ItemTitle>
           <Chip label={item.size} variant="surface" />
         </TitleRow>
-        <Subtitle style={{ marginBottom: 10, fontSize: 13 }}>{item.subtitle}</Subtitle>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <ItemSubtitle>{item.subtitle}</ItemSubtitle>
+        <StatusRow>
           <Chip
-            icon={<WifiOff color={theme.colors.status.warning.base} size={14} />}
+            icon={
+              <WifiOff
+                color={theme.colors.status.warning.base}
+                size={theme.icon.size.sm}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
             label={strings.syncQueue.waitingConnection}
             variant="dark"
           />
-        </View>
+        </StatusRow>
       </InfoContainer>
     </QueueCard>
   );
@@ -53,9 +63,13 @@ export const SyncQueueView = () => {
           <HeaderAction
             icon={
               isSyncing ? (
-                <ActivityIndicator color={theme.colors.secondary} size="small" />
+                <ActivityIndicator color={theme.colors.tintText} size="small" />
               ) : (
-                <RefreshCcw color={theme.colors.text.primary} size={22} />
+                <RefreshCcw
+                  color={theme.colors.text.primary}
+                  size={theme.icon.size.lg}
+                  strokeWidth={theme.icon.strokeWidth}
+                />
               )
             }
             onPress={handleSyncAll}
@@ -66,33 +80,40 @@ export const SyncQueueView = () => {
       />
 
       {queue.length === 0 ? (
-        <ListContent
+        <ListContent<SyncQueueItem>
           data={[]}
           renderItem={null}
           ListEmptyComponent={
             <EmptyState
-              icon={<CloudOff color={theme.colors.text.secondary} size={64} />}
-              message={`${strings.syncQueue.emptyTitle}\n${strings.syncQueue.emptyMessage}`}
+              icon={
+                <CloudOff
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.empty}
+                  strokeWidth={theme.icon.strokeWidth}
+                />
+              }
+              title={strings.syncQueue.emptyTitle}
+              message={strings.syncQueue.emptyMessage}
             />
           }
         />
       ) : (
-        <ListContent
+        <ListContent<SyncQueueItem>
           data={queue}
-          keyExtractor={(item: any) => item.id}
-          renderItem={renderItem as any}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <View style={{ marginBottom: 12 }}>
+            <HeaderCardWrapper>
               <InteractiveCard
                 title="Sincronização em Segundo Plano"
                 supportingText="Os diários e fotos gravados offline serão transmitidos ao servidor central assim que a rede estiver estável."
                 actions={[
-                  { label: 'Verificar Fila', onPress: () => console.log('Verificar fila'), secondary: true },
+                  { label: 'Verificar Fila', onPress: () => {}, secondary: true },
                   { label: 'Transmitir Tudo', onPress: handleSyncAll, primary: true },
                 ]}
               />
-            </View>
+            </HeaderCardWrapper>
           }
         />
       )}

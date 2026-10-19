@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react';
-import type { AuditLogEntry, RDO, RDOSectionKey, User } from '../types';
-import { MOCK_RDOS } from '../mocks';
-import * as workflow from '../services/modules/rdoWorkflow';
+import type { AuditLogEntry, RDO, RDOSectionKey, User } from '@/types';
+import { MOCK_RDOS } from '@/mocks';
+import * as workflow from '@/services/modules/rdoWorkflow';
 
 /**
  * 📄 RDOContext — estado em memória dos RDOs + trilha de auditoria.
@@ -13,6 +13,7 @@ interface RDOContextData {
   auditLogs: AuditLogEntry[];
   getRdo: (id: string) => RDO | undefined;
   getAuditTrail: (rdoId: string) => AuditLogEntry[];
+  submitRdo: (id: string, actor: User) => RDO;
   returnRdo: (id: string, actor: User, reason: string) => void;
   approveRdo: (id: string, actor: User) => RDO;
   addComment: (id: string, actor: User, section: RDOSectionKey, text: string) => void;
@@ -60,6 +61,7 @@ export const RDOProvider = ({ children }: { children: ReactNode }) => {
       auditLogs,
       getRdo,
       getAuditTrail,
+      submitRdo: (id, actor) => commit(id, (r) => workflow.submitRdo(r, actor)),
       returnRdo: (id, actor, reason) => {
         commit(id, (r) => workflow.returnRdo(r, actor, reason));
       },
@@ -73,8 +75,8 @@ export const RDOProvider = ({ children }: { children: ReactNode }) => {
       rectifyRdo: (id, actor, reason) => {
         const current = rdos.find((r) => r.id === id);
         if (!current) throw new workflow.WorkflowError('RDO não encontrado.');
-        const { newVersion, log } = workflow.rectifyRdo(current, actor, reason);
-        setRdos((prev) => [newVersion, ...prev]);
+        const { newVersion, rdos: nextRdos, log } = workflow.rectifyRdo(current, actor, reason, rdos);
+        setRdos(nextRdos);
         setAuditLogs((prev) => [...prev, log]);
         return newVersion;
       },

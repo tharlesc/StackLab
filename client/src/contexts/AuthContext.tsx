@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
-import type { User } from '../types';
-import { hasPermission, isMaster as checkIsMaster, type Permission } from '../constants/permissions';
+import type { User } from '@/types';
+import { hasPermission, isMaster as checkIsMaster, type Permission } from '@/constants/permissions';
 
 interface AuthContextData {
   user: User | null;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Container, Row } from './styles';
 
 export interface BottomNavigationProps {
@@ -6,11 +7,10 @@ export interface BottomNavigationProps {
 }
 
 export const BottomNavigation = ({ children }: BottomNavigationProps) => {
+  const insets = useSafeAreaInsets();
   return (
-    <Container>
-      <Row>
-        {children}
-      </Row>
+    <Container $bottomInset={insets.bottom}>
+      <Row accessibilityRole="tablist">{children}</Row>
     </Container>
   );
 };

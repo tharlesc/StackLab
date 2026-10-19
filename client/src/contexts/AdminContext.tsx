@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react';
-import type { User, UserProfile, Work } from '../types';
-import { MOCK_USERS, MOCK_WORKS } from '../mocks';
+import type { User, UserProfile, Work } from '@/types';
+import { MOCK_USERS, MOCK_WORKS } from '@/mocks';
 
 /**
  * 🛠️ AdminContext — Cadastros (obras, usuários) e matriz de acessos (usuário ↔ obra).

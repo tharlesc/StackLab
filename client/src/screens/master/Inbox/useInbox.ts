@@ -1,9 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useRDOs } from '@/contexts/RDOContext';
-import { isOverdue, getDisplayStatus, sortByReviewPriority } from '@/utils/rdo';
-import { matchesQuery, formatRelative } from '@/utils';
-import type { RDO, RDODisplayStatus } from '@/types';
+import { isOverdue, sortByReviewPriority } from '@/utils/rdo';
+import { matchesQuery } from '@/utils';
 
 export type InboxFilter = 'todos' | 'atrasados' | 'submetidos' | 'devolvidos';
 
@@ -35,7 +34,7 @@ export const useInbox = () => {
 
     if (searchQuery.trim()) {
       result = result.filter((r) =>
-        matchesQuery(searchQuery, r.number, r.workName, r.authorName, r.date)
+        matchesQuery(searchQuery, r.number, r.workName, r.authorName, r.date),
       );
     }
 
@@ -49,7 +48,7 @@ export const useInbox = () => {
         params: { id: rdoId },
       });
     },
-    [router]
+    [router],
   );
 
   const goBack = useCallback(() => {

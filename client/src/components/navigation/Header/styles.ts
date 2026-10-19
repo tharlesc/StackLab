@@ -1,8 +1,8 @@
 import styled from 'styled-components/native';
-import { TouchableOpacity } from 'react-native';
 
 export const Container = styled.View`
-  padding: ${({ theme }) => theme.spacing.md}px ${({ theme }) => theme.spacing.lg}px  ${({ theme }) => theme.spacing.md}px;
+  padding: ${({ theme }) => theme.spacing.md}px ${({ theme }) => theme.spacing.lg}px;
+  margin-top: ${({ theme }) => theme.spacing.smd}px;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
@@ -16,37 +16,27 @@ export const TitleContainer = styled.View`
 
 export const Title = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 20px;
+  font-size: ${({ theme }) => theme.typography.title.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.title.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const Subtitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 13px;
+  font-size: ${({ theme }) => theme.typography.footnote.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.footnote.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
-  margin-top: 2px;
+  margin-top: ${({ theme }) => theme.spacing.xxs}px;
+`;
+
+export const LeftContentContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-right: ${({ theme }) => theme.spacing.lg}px;
 `;
 
 export const ContentContainer = styled.View`
   flex-direction: row;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md}px;
-`;
-
-export const ActionButton = styled(TouchableOpacity)`
-  position: relative;
-  padding: 2px;
-  align-items: center;
-  justify-content: center;
-`;
-
-export const NotificationDot = styled.View`
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background-color: ${({ theme }) => theme.colors.status.error.base};
-  border: 1px solid ${({ theme }) => theme.colors.surface};
 `;

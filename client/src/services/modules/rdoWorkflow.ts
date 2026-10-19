@@ -1,4 +1,14 @@
-import type { AuditLogEntry, AuditAction, RDO, RDOComment, RDOSectionKey, SignatureMeta, User } from '@/types';
+import type {
+  AuditLogEntry,
+  AuditAction,
+  RDO,
+  RDOComment,
+  RDOSectionKey,
+  RDOStatus,
+  SignatureMeta,
+  User,
+  UserProfile,
+} from '@/types';
 
 /**
  * ⚙️ Máquina de estados do RDO — funções PURAS (sem React, sem I/O).
@@ -12,6 +22,15 @@ export interface TransitionResult {
   rdo: RDO;
   log: AuditLogEntry;
 }
+
+export type RDOWorkflowAction =
+  | 'edit'
+  | 'submit'
+  | 'approve'
+  | 'return'
+  | 'auditedEdit'
+  | 'comment'
+  | 'rectify';
 
 let seq = 0;
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(seq++).toString(36)}`;
@@ -38,19 +57,126 @@ const assert = (condition: boolean, message: string) => {
 const requireText = (value: string | undefined, field: string) =>
   assert(!!value && value.trim().length >= 5, `${field} é obrigatória (mínimo 5 caracteres).`);
 
+/**
+ * Retorna as ações permitidas para um RDO conforme o seu status atual e o perfil do usuário.
+ */
+export const getAvailableActions = (
+  rdoOrStatus: Pick<RDO, 'status' | 'locked'> | RDOStatus,
+  userOrProfile: Pick<User, 'profile'> | UserProfile,
+): RDOWorkflowAction[] => {
+  const status: RDOStatus = typeof rdoOrStatus === 'string' ? rdoOrStatus : rdoOrStatus.status;
+  const locked: boolean = typeof rdoOrStatus === 'string' ? status === 'aprovado' : rdoOrStatus.locked;
+  const profile: UserProfile =
+    typeof userOrProfile === 'string' ? userOrProfile : userOrProfile.profile;
+
+  if (profile === 'common') {
+    if (!locked && (status === 'rascunho' || status === 'devolvido')) {
+      return ['edit', 'submit'];
+    }
+    return [];
+  }
+
+  // Perfil Master / Gestor
+  if (status === 'rascunho' || status === 'devolvido') {
+    return locked ? [] : ['edit', 'submit'];
+  }
+  if (status === 'submetido' && !locked) {
+    return ['approve', 'return', 'auditedEdit', 'comment'];
+  }
+  if (status === 'aprovado' && locked) {
+    return ['rectify'];
+  }
+  return [];
+};
+
 /** Operacional → submete rascunho ou RDO devolvido. Após isso fica somente leitura para ele. */
 export const submitRdo = (rdo: RDO, actor: User): TransitionResult => {
-  assert(rdo.status === 'rascunho' || rdo.status === 'devolvido', 'Apenas rascunhos ou devolvidos podem ser submetidos.');
-  const next: RDO = { ...rdo, status: 'submetido', submittedAt: new Date().toISOString(), returnReason: undefined };
+  assert(
+    !rdo.locked && (rdo.status === 'rascunho' || rdo.status === 'devolvido'),
+    'Apenas rascunhos ou devolvidos podem ser submetidos.',
+  );
+  const next: RDO = {
+    ...rdo,
+    status: 'submetido',
+    submittedAt: new Date().toISOString(),
+    returnReason: undefined,
+  };
   return { rdo: next, log: createLog(rdo, actor, 'submetido') };
 };
 
 /** Master → devolve com justificativa, liberando edição para o campo. */
 export const returnRdo = (rdo: RDO, actor: User, reason: string): TransitionResult => {
-  assert(rdo.status === 'submetido', 'Só é possível devolver RDOs submetidos.');
+  assert(rdo.status === 'submetido' && !rdo.locked, 'Só é possível devolver RDOs submetidos.');
   requireText(reason, 'Justificativa de devolução');
   const next: RDO = { ...rdo, status: 'devolvido', returnReason: reason.trim() };
   return { rdo: next, log: createLog(rdo, actor, 'devolvido', { justification: reason.trim() }) };
+};
+
+/** Atualiza o campo correspondente na seção do RDO durante uma edição auditável. */
+export const applySectionFieldEdit = (
+  rdo: RDO,
+  section: RDOSectionKey,
+  newValue: string,
+): RDO => {
+  const trimmed = newValue.trim();
+  switch (section) {
+    case 'atividades':
+      return {
+        ...rdo,
+        activities:
+          rdo.activities.length > 0
+            ? rdo.activities.map((a, idx) => (idx === 0 ? { ...a, description: trimmed } : a))
+            : [{ description: trimmed, quantity: 1, unit: 'un', location: 'Canteiro' }],
+      };
+    case 'identificacao':
+      return {
+        ...rdo,
+        weather:
+          rdo.weather.length > 0
+            ? rdo.weather.map((w, idx) => (idx === 0 ? { ...w, condition: trimmed } : w))
+            : [{ shift: 'manha', condition: trimmed }],
+      };
+    case 'maoDeObra':
+      return {
+        ...rdo,
+        labor:
+          rdo.labor.length > 0
+            ? rdo.labor.map((l, idx) => (idx === 0 ? { ...l, role: trimmed } : l))
+            : [{ role: trimmed, quantity: 1, hours: 8 }],
+      };
+    case 'equipamentos':
+      return {
+        ...rdo,
+        equipment:
+          rdo.equipment.length > 0
+            ? rdo.equipment.map((e, idx) => (idx === 0 ? { ...e, name: trimmed } : e))
+            : [{ name: trimmed, activeHours: 8, idleHours: 0 }],
+      };
+    case 'materiais':
+      return {
+        ...rdo,
+        materials:
+          rdo.materials.length > 0
+            ? rdo.materials.map((m, idx) => (idx === 0 ? { ...m, name: trimmed } : m))
+            : [{ name: trimmed, supplier: '-', invoice: '-' }],
+      };
+    case 'ocorrencias':
+      return {
+        ...rdo,
+        occurrences:
+          rdo.occurrences.length > 0
+            ? rdo.occurrences.map((o, idx) => (idx === 0 ? { ...o, description: trimmed } : o))
+            : [{ type: 'outro', description: trimmed }],
+      };
+    case 'fotos':
+      return {
+        ...rdo,
+        photos:
+          rdo.photos.length > 0
+            ? rdo.photos.map((p, idx) => (idx === 0 ? { ...p, caption: trimmed } : p))
+            : rdo.photos,
+      };
+  }
 };
 
 /** Master → edição técnica auditável (exige justificativa e registra valor anterior/novo). */
@@ -63,20 +189,22 @@ export const auditedEdit = (
     previousValue: string;
     newValue: string;
     justification: string;
-    apply: (rdo: RDO) => RDO;
+    apply?: (rdo: RDO) => RDO;
   },
 ): TransitionResult => {
   assert(!rdo.locked && rdo.status === 'submetido', 'Edição auditável disponível apenas para RDOs em análise.');
   requireText(params.justification, 'Justificativa da alteração');
   assert(params.newValue.trim() !== params.previousValue.trim(), 'O novo valor é igual ao anterior.');
-  const next = params.apply(rdo);
+  const next = params.apply
+    ? params.apply(rdo)
+    : applySectionFieldEdit(rdo, params.section, params.newValue);
   return {
     rdo: next,
     log: createLog(rdo, actor, 'editado', {
       section: params.section,
       field: params.field,
       previousValue: params.previousValue,
-      newValue: params.newValue,
+      newValue: params.newValue.trim(),
       justification: params.justification.trim(),
     }),
   };
@@ -134,18 +262,25 @@ export const approveRdo = (
 
 /**
  * Master → Retificação oficial. Congela a versão original e gera nova cópia de trabalho
- * (versão N+1) que volta para análise, preservando o histórico jurídico.
+ * (versão N+1) que volta para análise sem duplicar o RDO na listagem ativa.
  */
 export const rectifyRdo = (
   rdo: RDO,
   actor: User,
   reason: string,
-): { original: RDO; newVersion: RDO; log: AuditLogEntry } => {
+  existingRdos: RDO[] = [],
+): { original: RDO; newVersion: RDO; rdos: RDO[]; log: AuditLogEntry } => {
   assert(rdo.status === 'aprovado' && rdo.locked, 'Apenas RDOs aprovados podem ser retificados.');
   requireText(reason, 'Justificativa da retificação');
+  const baseId = rdo.id.split('-v')[0];
+  const nextId = `${baseId}-v${rdo.version + 1}`;
+  assert(
+    !existingRdos.some((item) => item.id === nextId || item.previousVersionId === rdo.id),
+    'Este RDO já possui uma retificação emitida.',
+  );
   const newVersion: RDO = {
     ...rdo,
-    id: `${rdo.id.split('-v')[0]}-v${rdo.version + 1}`,
+    id: nextId,
     version: rdo.version + 1,
     previousVersionId: rdo.id,
     status: 'submetido',
@@ -154,9 +289,18 @@ export const rectifyRdo = (
     signature: undefined,
     comments: [],
   };
+  const updatedRdos =
+    existingRdos.length > 0
+      ? existingRdos.map((item) => (item.id === rdo.id ? newVersion : item))
+      : [newVersion];
+
   return {
     original: rdo,
     newVersion,
-    log: createLog(rdo, actor, 'retificado', { justification: reason.trim(), newValue: `Versão ${newVersion.version}` }),
+    rdos: updatedRdos,
+    log: createLog(rdo, actor, 'retificado', {
+      justification: reason.trim(),
+      newValue: `Versão ${newVersion.version}`,
+    }),
   };
 };

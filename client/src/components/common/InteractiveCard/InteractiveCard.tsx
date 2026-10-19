@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Container,
+  HeaderRow,
   Title,
   SupportingText,
   ActionsRow,
@@ -19,6 +20,7 @@ export interface CardAction {
 export interface InteractiveCardProps {
   title: string;
   supportingText: string;
+  icon?: React.ReactNode;
   actions?: CardAction[];
   children?: React.ReactNode;
 }
@@ -26,12 +28,16 @@ export interface InteractiveCardProps {
 export const InteractiveCard = ({
   title,
   supportingText,
+  icon,
   actions,
   children,
 }: InteractiveCardProps) => {
   return (
     <Container accessibilityRole="summary" accessibilityLabel={`${title}. ${supportingText}`}>
-      <Title>{title}</Title>
+      <HeaderRow>
+        {icon}
+        <Title>{title}</Title>
+      </HeaderRow>
       <SupportingText>{supportingText}</SupportingText>
 
       {children}

@@ -1,8 +1,19 @@
-import type { User, ChartData, IndicatorItem, ActiveWork, Work, RDO, AppNotification } from '../types';
-import { isoHoursAgo, formatDate } from '../utils/date';
+import type {
+  User,
+  ChartData,
+  IndicatorItem,
+  ActiveWork,
+  Work,
+  RDO,
+  AppNotification,
+  SyncQueueItem,
+} from '@/types';
+import { lightTheme } from '@/constants/theme';
+import { strings } from '@/constants/strings';
+import { isoHoursAgo, formatDate } from '@/utils/date';
 
 // Re-export para compatibilidade com imports antigos (`@/mocks`).
-export type { AppNotification, NotificationVariant } from '../types';
+export type { AppNotification, NotificationVariant } from '@/types';
 
 /** PIN de segundo fator do Master (MOCK — substituir por biometria/servidor). */
 export const MOCK_MASTER_PIN = '1234';
@@ -49,22 +60,58 @@ export const MOCK_USERS: User[] = [
 ];
 
 export const MOCK_WORKS: Work[] = [
-  { id: 'w1', name: 'Residencial Alphaville', subtitle: 'Torre B — Alvenaria e Estrutura', client: 'Alphaville Urbanismo', address: 'Av. dos Holandeses, São Luís - MA', active: true },
-  { id: 'w2', name: 'Hospital Geral Municipal', subtitle: 'Bloco Cirúrgico — Instalações Elétricas', client: 'Prefeitura Municipal', address: 'Rua do Sol, 120 - Centro', active: true },
-  { id: 'w3', name: 'Torre Esmeralda', subtitle: 'Fundações e Contenções', client: 'Esmeralda Incorporadora', address: 'Av. Litorânea, 900', active: true },
-  { id: 'w4', name: 'Galpão Logístico Tirirical', subtitle: 'Estrutura Metálica', client: 'LogMA S.A.', address: 'BR-135, Km 8', active: false },
+  {
+    id: 'w1',
+    name: 'Residencial Alphaville',
+    subtitle: 'Torre B — Alvenaria e Estrutura',
+    client: 'Alphaville Urbanismo',
+    address: 'Av. dos Holandeses, São Luís - MA',
+    active: true,
+  },
+  {
+    id: 'w2',
+    name: 'Hospital Geral Municipal',
+    subtitle: 'Bloco Cirúrgico — Instalações Elétricas',
+    client: 'Prefeitura Municipal',
+    address: 'Rua do Sol, 120 - Centro',
+    active: true,
+  },
+  {
+    id: 'w3',
+    name: 'Torre Esmeralda',
+    subtitle: 'Fundações e Contenções',
+    client: 'Esmeralda Incorporadora',
+    address: 'Av. Litorânea, 900',
+    active: true,
+  },
+  {
+    id: 'w4',
+    name: 'Galpão Logístico Tirirical',
+    subtitle: 'Estrutura Metálica',
+    client: 'LogMA S.A.',
+    address: 'BR-135, Km 8',
+    active: false,
+  },
+  {
+    id: 'w5',
+    name: 'Residencial Palmeiras',
+    subtitle: 'Torre A — Alvenaria e Estrutura',
+    client: 'Palmeiras Construtora',
+    address: 'Cohama',
+    active: false,
+  },
 ];
 
 export const MOCK_CHART_DATA: ChartData[] = [
-  { value: 24, color: '#10B981' },
-  { value: 4, color: '#F59E0B' },
-  { value: 2, color: '#EF4444' },
+  { value: 24, color: lightTheme.colors.chart.signed },
+  { value: 4, color: lightTheme.colors.chart.inReview },
+  { value: 2, color: lightTheme.colors.chart.pending },
 ];
 
 export const MOCK_INDICATORS: IndicatorItem[] = [
-  { id: '1', label: 'Assinados', value: 24, color: '#10B981' },
-  { id: '2', label: 'Em Análise', value: 4, color: '#F59E0B' },
-  { id: '3', label: 'Pendentes', value: 2, color: '#EF4444' },
+  { id: '1', label: strings.status.plural.aprovado, value: 24, color: lightTheme.colors.chart.signed },
+  { id: '2', label: strings.status.plural.submetido, value: 4, color: lightTheme.colors.chart.inReview },
+  { id: '3', label: strings.status.plural.devolvido, value: 2, color: lightTheme.colors.chart.pending },
 ];
 
 export const MOCK_ACTIVE_WORKS: ActiveWork[] = [
@@ -76,7 +123,7 @@ export const MOCK_ACTIVE_WORKS: ActiveWork[] = [
     lastRdo: 'Hoje',
     weather: 'Ensolarado',
     team: '24 Operários',
-    rdoStatus: 'Validado',
+    rdoStatus: strings.status.aprovado,
     rdoDate: '27/09/2026',
     rdoNumber: 184,
     actionText: 'Novo RDO',
@@ -89,7 +136,7 @@ export const MOCK_ACTIVE_WORKS: ActiveWork[] = [
     lastRdo: 'Ontem',
     weather: 'Chuva',
     team: 'Eng. Roberto',
-    rdoStatus: 'Pendente de Envio',
+    rdoStatus: strings.status.devolvido,
     rdoDate: '26/09/2026',
     rdoNumber: 185,
   },
@@ -101,7 +148,7 @@ export const MOCK_ACTIVE_WORKS: ActiveWork[] = [
     lastRdo: 'Ontem',
     weather: 'Nublado',
     team: '12 Operários',
-    rdoStatus: 'Em Análise',
+    rdoStatus: strings.status.submetido,
     rdoDate: '26/09/2026',
     rdoNumber: 187,
   },
@@ -151,21 +198,53 @@ const buildRdo = (seed: RDOSeed): RDO => {
 };
 
 export const MOCK_RDOS: RDO[] = [
-  buildRdo({ id: 'rdo-185', number: 185, workId: 'w2', authorId: '2', status: 'submetido', submittedAt: isoHoursAgo(30),
-    weather: [{ shift: 'manha', condition: 'Chuva', stoppageHours: 2, impact: 'Paralisação da concretagem externa' }, { shift: 'tarde', condition: 'Nublado' }] }),
+  buildRdo({
+    id: 'rdo-185',
+    number: 185,
+    workId: 'w2',
+    authorId: '2',
+    status: 'submetido',
+    submittedAt: isoHoursAgo(30),
+    weather: [
+      { shift: 'manha', condition: 'Chuva', stoppageHours: 2, impact: 'Paralisação da concretagem externa' },
+      { shift: 'tarde', condition: 'Nublado' },
+    ],
+  }),
   buildRdo({ id: 'rdo-187', number: 187, workId: 'w3', authorId: '3', status: 'submetido', submittedAt: isoHoursAgo(26) }),
   buildRdo({ id: 'rdo-186', number: 186, workId: 'w1', authorId: '4', status: 'submetido', submittedAt: isoHoursAgo(3) }),
-  buildRdo({ id: 'rdo-183', number: 183, workId: 'w2', authorId: '2', status: 'devolvido', submittedAt: isoHoursAgo(50),
-    returnReason: 'Refazer a foto 2 — imagem desfocada e sem legenda adequada.' }),
-  buildRdo({ id: 'rdo-184', number: 184, workId: 'w1', authorId: '2', status: 'aprovado', submittedAt: isoHoursAgo(72), locked: true,
-    signature: { signedById: '1', signedByName: 'Davi Hudson', signedAt: isoHoursAgo(60), ip: '177.12.40.8', deviceId: 'iPhone-15-A1B2', hash: 'SL-9F3A21C7' } }),
+  buildRdo({
+    id: 'rdo-183',
+    number: 183,
+    workId: 'w2',
+    authorId: '2',
+    status: 'devolvido',
+    submittedAt: isoHoursAgo(50),
+    returnReason: 'Refazer a foto 2 — imagem desfocada e sem legenda adequada.',
+  }),
+  buildRdo({
+    id: 'rdo-184',
+    number: 184,
+    workId: 'w1',
+    authorId: '2',
+    status: 'aprovado',
+    submittedAt: isoHoursAgo(72),
+    locked: true,
+    signature: {
+      signedById: '1',
+      signedByName: 'Davi Hudson',
+      signedAt: isoHoursAgo(60),
+      ip: '177.12.40.8',
+      deviceId: 'iPhone-15-A1B2',
+      hash: 'SL-9F3A21C7',
+    },
+  }),
   buildRdo({ id: 'rdo-188', number: 188, workId: 'w1', authorId: '2', status: 'rascunho' }),
 ];
 
 export const MOCK_NOTIFICATIONS: AppNotification[] = [
   {
     id: '1',
-    title: 'RDO #184 Validado',
+    title: 'RDO #184 Aprovado',
     message: 'O relatório diário da obra Residencial Alphaville foi assinado pelo fiscal.',
     time: '10 min atrás',
     variant: 'success',
@@ -206,7 +285,21 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
   },
 ];
 
-export const MOCK_SYNC_QUEUE = [
-  { id: 'q1', title: 'RDO #185', subtitle: 'Residencial Alphaville', date: 'Hoje, 16:30', status: 'pending', size: '2.4 MB' },
-  { id: 'q2', title: 'RDO #042', subtitle: 'Hospital Geral Municipal', date: 'Hoje, 14:15', status: 'pending', size: '5.1 MB' }
+export const MOCK_SYNC_QUEUE: SyncQueueItem[] = [
+  {
+    id: 'q1',
+    title: 'RDO #185',
+    subtitle: 'Residencial Alphaville',
+    date: 'Hoje, 16:30',
+    status: 'pending',
+    size: '2.4 MB',
+  },
+  {
+    id: 'q2',
+    title: 'RDO #042',
+    subtitle: 'Hospital Geral Municipal',
+    date: 'Hoje, 14:15',
+    status: 'pending',
+    size: '5.1 MB',
+  },
 ];

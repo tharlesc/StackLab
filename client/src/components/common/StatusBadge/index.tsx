@@ -20,8 +20,8 @@ const Container = styled.View<{ $variant: StatusVariant }>`
   flex-direction: row;
   align-items: center;
   align-self: flex-start;
-  gap: 4px;
-  padding: 4px 10px;
+  gap: ${({ theme }) => theme.spacing.xs}px;
+  padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.smd}px;
   border-radius: ${({ theme }) => theme.borderRadius.full}px;
   border-width: 1px;
   border-color: ${({ theme, $variant }) => theme.colors.status[$variant].border};
@@ -30,7 +30,8 @@ const Container = styled.View<{ $variant: StatusVariant }>`
 
 const Label = styled.Text<{ $variant: StatusVariant }>`
   font-family: ${({ theme }) => theme.fonts.semiBold};
-  font-size: 12px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme, $variant }) => theme.colors.status[$variant].text};
 `;
 

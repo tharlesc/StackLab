@@ -1,9 +1,20 @@
 import React from 'react';
 import { View } from 'react-native';
-import styled from 'styled-components/native';
-import { DonutChart } from '../../ui/DonutChart';
-import type { ChartData, IndicatorItem } from '../../../types';
-import { Card, Header, Title, Subtitle, Body, IndicatorsList, IndicatorRow, IndicatorLabelBox, IndicatorDot, IndicatorLabel, IndicatorValue } from './styles';
+import { DonutChart } from '@/components/ui/DonutChart';
+import type { ChartData, IndicatorItem } from '@/types';
+import {
+  Card,
+  Header,
+  Title,
+  Subtitle,
+  Body,
+  IndicatorsList,
+  IndicatorRow,
+  IndicatorLabelBox,
+  IndicatorDot,
+  IndicatorLabel,
+  IndicatorValue,
+} from './styles';
 
 interface WeeklySummaryCardProps {
   title: string;
@@ -20,6 +31,10 @@ export const WeeklySummaryCard = ({
   chartTotal,
   indicators,
 }: WeeklySummaryCardProps) => {
+  const chartSummary = `${title}: Total ${chartTotal}. ${indicators
+    .map((i) => `${i.label}: ${i.value}`)
+    .join(', ')}`;
+
   return (
     <Card>
       <Header>
@@ -30,7 +45,7 @@ export const WeeklySummaryCard = ({
       </Header>
 
       <Body>
-        <DonutChart data={chartData} total={chartTotal} />
+        <DonutChart data={chartData} total={chartTotal} accessibilityLabel={chartSummary} />
 
         <IndicatorsList>
           {indicators.map((indicator) => (

@@ -1,5 +1,4 @@
 import styled from 'styled-components/native';
-import { TouchableOpacity } from 'react-native';
 
 export const Card = styled.View`
   background-color: ${({ theme }) => theme.colors.surface};
@@ -23,17 +22,18 @@ export const Header = styled.View`
 `;
 
 export const Title = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 15px;
-  font-weight: 700;
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.body.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.body.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const Subtitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 11px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
-  margin-top: 2px;
+  margin-top: ${({ theme }) => theme.spacing.xxs}px;
 `;
 
 export const Body = styled.View`
@@ -44,16 +44,16 @@ export const Body = styled.View`
 
 export const IndicatorsList = styled.View`
   flex: 1;
-  margin-left: 20px;
+  margin-left: ${({ theme }) => theme.spacing.lxl}px;
   justify-content: center;
-  gap: 8px;
+  gap: ${({ theme }) => theme.spacing.sm}px;
 `;
 
 export const IndicatorRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 2px 0;
+  padding: ${({ theme }) => theme.spacing.xxs}px 0;
 `;
 
 export const IndicatorLabelBox = styled.View`
@@ -62,23 +62,23 @@ export const IndicatorLabelBox = styled.View`
 `;
 
 export const IndicatorDot = styled.View<{ $color: string }>`
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  margin-right: 8px;
+  width: ${({ theme }) => theme.spacing.sm}px;
+  height: ${({ theme }) => theme.spacing.sm}px;
+  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
+  margin-right: ${({ theme }) => theme.spacing.sm}px;
   background-color: ${({ $color }) => $color};
 `;
 
 export const IndicatorLabel = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 13px;
-  font-weight: 500;
+  font-family: ${({ theme }) => theme.fonts.medium};
+  font-size: ${({ theme }) => theme.typography.footnote.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.footnote.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
 `;
 
 export const IndicatorValue = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 14px;
-  font-weight: 700;
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;

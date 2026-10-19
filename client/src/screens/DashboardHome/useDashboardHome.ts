@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
+import { useTheme } from 'styled-components/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
-import { useAdmin } from '@/contexts/AdminContext';
 import { MOCK_ACTIVE_WORKS } from '@/mocks';
+import { strings } from '@/constants/strings';
 import { isOverdue, rdoMatchesQuery } from '@/utils/rdo';
 import type { ChartData, IndicatorItem, ActiveWork, RDO } from '@/types';
 
@@ -11,9 +12,9 @@ export type DashboardTab = 'Obras' | 'Novo RDO' | 'Inbox' | 'Cadastros' | 'Fila'
 
 export const useDashboardHome = () => {
   const router = useRouter();
+  const theme = useTheme();
   const { user, isMaster } = useAuth();
   const { rdos } = useRDOs();
-  const { works } = useAdmin();
 
   const [activeTimeFilter, setActiveTimeFilter] = useState('7 dias');
   const [activeTab, setActiveTab] = useState<DashboardTab>('Obras');
@@ -34,23 +35,38 @@ export const useDashboardHome = () => {
   const approvedCount = useMemo(() => rdos.filter((r) => r.status === 'aprovado').length, [rdos]);
   const returnedCount = useMemo(() => rdos.filter((r) => r.status === 'devolvido').length, [rdos]);
 
-  // Donut chart e indicadores calculados em tempo real a partir dos RDOs
+  // Donut chart e indicadores calculados com tokens semânticos de gráfico e glossário único
   const chartData: ChartData[] = useMemo(
     () => [
-      { value: approvedCount, color: '#10B981' },
-      { value: pendingRdos.length, color: '#F59E0B' },
-      { value: overdueCount, color: '#EF4444' },
+      { value: approvedCount, color: theme.colors.chart.signed },
+      { value: pendingRdos.length, color: theme.colors.chart.inReview },
+      { value: overdueCount, color: theme.colors.chart.pending },
     ],
-    [approvedCount, pendingRdos.length, overdueCount]
+    [approvedCount, pendingRdos.length, overdueCount, theme.colors.chart],
   );
 
   const indicators: IndicatorItem[] = useMemo(
     () => [
-      { id: '1', label: 'Homologados', value: approvedCount, color: '#10B981' },
-      { id: '2', label: 'Em Análise', value: pendingRdos.length, color: '#F59E0B' },
-      { id: '3', label: 'Em Atraso (>24h)', value: overdueCount, color: '#EF4444' },
+      {
+        id: '1',
+        label: strings.status.plural.aprovado,
+        value: approvedCount,
+        color: theme.colors.chart.signed,
+      },
+      {
+        id: '2',
+        label: strings.status.plural.submetido,
+        value: pendingRdos.length,
+        color: theme.colors.chart.inReview,
+      },
+      {
+        id: '3',
+        label: strings.status.plural.atrasado,
+        value: overdueCount,
+        color: theme.colors.chart.pending,
+      },
     ],
-    [approvedCount, pendingRdos.length, overdueCount]
+    [approvedCount, pendingRdos.length, overdueCount, theme.colors.chart],
   );
 
   // 3. Busca Global do Master (pesquisa em todos os relatórios)
@@ -82,7 +98,7 @@ export const useDashboardHome = () => {
         params: { id: rdoId },
       });
     },
-    [router]
+    [router],
   );
 
   return {

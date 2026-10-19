@@ -27,7 +27,7 @@ function RootLayoutNav() {
     } else if (user && inAuthGroup) {
       router.replace('/');
     }
-  }, [user, segments, rootNavigationState?.key]);
+  }, [user, segments, rootNavigationState?.key, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

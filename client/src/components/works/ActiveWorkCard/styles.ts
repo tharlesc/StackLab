@@ -1,6 +1,6 @@
 import styled from 'styled-components/native';
 import { TouchableOpacity } from 'react-native';
-import { TouchableCard } from '../../common/Card';
+import { TouchableCard } from '@/components/common/Card';
 
 type WorkStatus = 'ok' | 'warn';
 
@@ -18,8 +18,8 @@ export const Header = styled.View`
 `;
 
 export const IconPlaceholder = styled.View`
-  width: 40px;
-  height: 40px;
+  width: ${({ theme }) => theme.spacing.xxxl}px;
+  height: ${({ theme }) => theme.spacing.xxxl}px;
   border-radius: ${({ theme }) => theme.borderRadius.lg}px;
   background-color: ${({ theme }) => theme.colors.border};
   margin-right: ${({ theme }) => theme.spacing.md}px;
@@ -27,21 +27,22 @@ export const IconPlaceholder = styled.View`
 
 export const HeaderTextContainer = styled.View`
   flex: 1;
-  margin-right: 8px;
+  margin-right: ${({ theme }) => theme.spacing.sm}px;
 `;
 
 export const Title = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 15px;
-  font-weight: 700;
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.body.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.body.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const Subtitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 12px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
-  margin-top: 2px;
+  margin-top: ${({ theme }) => theme.spacing.xxs}px;
 `;
 
 export const QuickData = styled.View`
@@ -57,40 +58,41 @@ export const DataColumn = styled.View`
 `;
 
 export const DataLabel = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 10px;
-  font-weight: 700;
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.text.secondary};
-  margin-bottom: 4px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
 `;
 
 export const DataValue = styled.Text<{ $isLate?: boolean }>`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 13px;
-  font-weight: 600;
+  font-family: ${({ theme }) => theme.fonts.semiBold};
+  font-size: ${({ theme }) => theme.typography.footnote.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.footnote.lineHeight}px;
   color: ${({ $isLate, theme }) =>
-    $isLate ? theme.colors.status.error.base : theme.colors.text.primary};
+    $isLate ? theme.colors.status.error.text : theme.colors.text.primary};
 `;
 
-export const WeatherIcon = styled.View`
+export const WeatherIconBox = styled.View`
   justify-content: center;
-  align-items: center;
-  height: 50px;
+  align-items: flex-start;
+  min-height: ${({ theme }) => theme.spacing.xl}px;
 `;
 
 export const Footer = styled.View`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  gap: ${({ theme }) => theme.spacing.sm}px;
 `;
 
 export const RdoStatusBox = styled.View<{ $status: WorkStatus }>`
-   align-self: flex-start;
-  padding: 6px 12px;
+  align-self: center;
+  padding: ${({ theme }) => theme.spacing.xsm}px ${({ theme }) => theme.spacing.md}px;
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: ${({ theme }) => theme.spacing.xsm}px;
   background-color: ${({ $status, theme }) =>
     $status === 'ok'
       ? theme.colors.status.success.bg
@@ -98,9 +100,9 @@ export const RdoStatusBox = styled.View<{ $status: WorkStatus }>`
 `;
 
 export const RdoStatusText = styled.Text<{ $status: WorkStatus }>`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 12px;
-  font-weight: 600;
+  font-family: ${({ theme }) => theme.fonts.semiBold};
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ $status, theme }) =>
     $status === 'ok'
       ? theme.colors.status.success.text
@@ -109,29 +111,25 @@ export const RdoStatusText = styled.Text<{ $status: WorkStatus }>`
 
 export const ActionButton = styled(TouchableOpacity)`
   background-color: ${({ theme }) => theme.colors.secondary};
-  padding: 8px 16px;
+  min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.lg}px;
   border-radius: ${({ theme }) => theme.borderRadius.lg}px;
-`;
-
-export const ActionButtonText = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  color: ${({ theme }) => theme.colors.text.inverse};
-  font-size: 13px;
-  font-weight: 700;
-`;
-
-export const ArrowPlaceholder = styled.View`
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-  background-color: ${({ theme }) => theme.colors.border};
   justify-content: center;
   align-items: center;
 `;
 
-export const ArrowText = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 16px;
-  color: ${({ theme }) => theme.colors.text.secondary};
-  font-weight: 700;
+export const ActionButtonText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  color: ${({ theme }) => theme.colors.onSecondary};
+  font-size: ${({ theme }) => theme.typography.footnote.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.footnote.lineHeight}px;
+`;
+
+export const ArrowPlaceholder = styled.View`
+  width: ${({ theme }) => theme.spacing.xxl}px;
+  height: ${({ theme }) => theme.spacing.xxl}px;
+  border-radius: ${({ theme }) => theme.borderRadius.full}px;
+  background-color: ${({ theme }) => theme.colors.border};
+  justify-content: center;
+  align-items: center;
 `;

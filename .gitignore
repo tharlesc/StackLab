@@ -20,14 +20,16 @@ pnpm-debug.log*
 # Build / generated files
 build/
 
-# IDE
+# IDE & AI Assistants
 .vscode/
+.claude/
+.agents/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# Temporary filess
+*.md
 *.tmp
 *.temp
-client/.expo/dev/logs/start.log

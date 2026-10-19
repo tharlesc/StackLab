@@ -3,7 +3,17 @@ import { useTheme } from 'styled-components/native';
 import { Wifi, Moon, Shield, HelpCircle } from 'lucide-react-native';
 
 import { useSettings } from './useSettings';
-import { VersionContainer } from './styles';
+import {
+  ThemeSectionRow,
+  ThemeLabelRow,
+  ThemeLabelText,
+  BrandAboutHeader,
+  BrandSymbol,
+  BrandAboutInfo,
+  BrandAboutTitle,
+  BrandAboutVersion,
+  VersionContainer,
+} from './styles';
 
 import { Header } from '@/components/navigation/Header';
 import { ActionItem } from '@/components/common/ActionItem';
@@ -11,15 +21,23 @@ import { ScrollContent } from '@/components/common/Layout';
 import { SectionTitle } from '@/components/common/Typography';
 import { Card as CardGroup } from '@/components/common/Card';
 import { Toggle } from '@/components/common/Toggle';
+import { SegmentedControl, SegmentOption } from '@/components/common/SegmentedControl';
 import { InteractiveCard } from '@/components/common/InteractiveCard';
 import { Chip } from '@/components/common/Chip';
-import { strings } from '@/constants/strings';
+import { R } from '@/constants/R';
+import type { ThemeMode } from '@/contexts/ThemeContext';
+
+const THEME_OPTIONS: readonly SegmentOption<ThemeMode>[] = [
+  { value: 'system', label: R.strings.settings.themeSystem },
+  { value: 'light', label: R.strings.settings.themeLight },
+  { value: 'dark', label: R.strings.settings.themeDark },
+];
 
 export const SettingsView = () => {
   const theme = useTheme();
   const {
-    isDark,
-    toggleTheme,
+    themeMode,
+    handleThemeModeChange,
     syncOnlyWifi,
     toggleSyncWifi,
     openTerms,
@@ -28,36 +46,44 @@ export const SettingsView = () => {
 
   return (
     <>
-      <Header title={strings.settings.title} />
+      <Header title={R.strings.settings.title} />
 
       <ScrollContent showsVerticalScrollIndicator={false}>
-        <SectionTitle>{strings.settings.preferences}</SectionTitle>
+        <SectionTitle>{R.strings.settings.preferences}</SectionTitle>
         <CardGroup>
           <ActionItem
-            title={strings.settings.syncWifiOnly}
-            leftIcon={<Wifi color={theme.colors.text.secondary} size={20} />}
+            title={R.strings.settings.syncWifiOnly}
+            leftIcon={
+              <Wifi
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.md}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
             rightIcon={
               <Toggle
                 value={syncOnlyWifi}
                 onValueChange={toggleSyncWifi}
-                accessibilityLabel={strings.settings.syncWifiOnly}
+                accessibilityLabel={R.strings.settings.syncWifiOnly}
               />
             }
             onPress={toggleSyncWifi}
           />
-          <ActionItem
-            title={strings.settings.darkMode}
-            leftIcon={<Moon color={theme.colors.text.secondary} size={20} />}
-            rightIcon={
-              <Toggle
-                value={isDark}
-                onValueChange={toggleTheme}
-                accessibilityLabel={strings.settings.darkMode}
+          <ThemeSectionRow>
+            <ThemeLabelRow>
+              <Moon
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.md}
+                strokeWidth={theme.icon.strokeWidth}
               />
-            }
-            onPress={toggleTheme}
-            isLast
-          />
+              <ThemeLabelText>{R.strings.settings.themeLabel}</ThemeLabelText>
+            </ThemeLabelRow>
+            <SegmentedControl
+              options={THEME_OPTIONS}
+              value={themeMode}
+              onChange={handleThemeModeChange}
+            />
+          </ThemeSectionRow>
         </CardGroup>
 
         <SectionTitle>Armazenamento & Diagnóstico</SectionTitle>
@@ -65,21 +91,45 @@ export const SettingsView = () => {
           title="Armazenamento Offline e Cache"
           supportingText="Existem 12 fotos compactadas e dados de 2 obras armazenados no dispositivo. Você pode sincronizar ou liberar espaço."
           actions={[
-            { label: 'Limpar Cache', onPress: () => console.log('Limpar cache') },
-            { label: 'Sincronizar', onPress: () => console.log('Sincronizar dados'), primary: true },
+            { label: 'Limpar Cache', onPress: () => {} },
+            { label: 'Sincronizar', onPress: () => {}, primary: true },
           ]}
         />
 
-        <SectionTitle>{strings.settings.about}</SectionTitle>
+        <SectionTitle>{R.strings.settings.about}</SectionTitle>
         <CardGroup>
+          <BrandAboutHeader>
+            <BrandSymbol
+              source={R.images.logoSymbol}
+              resizeMode="contain"
+              accessibilityRole="image"
+              accessibilityLabel={R.strings.common.appName}
+            />
+            <BrandAboutInfo>
+              <BrandAboutTitle>{R.strings.common.appName}</BrandAboutTitle>
+              <BrandAboutVersion>{R.strings.settings.appVersion}</BrandAboutVersion>
+            </BrandAboutInfo>
+          </BrandAboutHeader>
           <ActionItem
-            title={strings.settings.terms}
-            leftIcon={<Shield color={theme.colors.text.secondary} size={20} />}
+            title={R.strings.settings.terms}
+            leftIcon={
+              <Shield
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.md}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
             onPress={openTerms}
           />
           <ActionItem
-            title={strings.settings.helpCenter}
-            leftIcon={<HelpCircle color={theme.colors.text.secondary} size={20} />}
+            title={R.strings.settings.helpCenter}
+            leftIcon={
+              <HelpCircle
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.md}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
             onPress={openHelp}
             isLast
           />

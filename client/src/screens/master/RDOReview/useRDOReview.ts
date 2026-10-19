@@ -4,8 +4,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
 import { calcManHours, calcHeadcount, isOverdue } from '@/utils/rdo';
+import { getAvailableActions, applySectionFieldEdit } from '@/services/modules/rdoWorkflow';
 import { MOCK_MASTER_PIN } from '@/mocks';
-import type { RDO, RDOSectionKey } from '@/types';
+import type { RDOSectionKey } from '@/types';
 
 export const useRDOReview = () => {
   const router = useRouter();
@@ -42,6 +43,10 @@ export const useRDOReview = () => {
   const manHours = useMemo(() => (rdo ? calcManHours(rdo.labor) : 0), [rdo]);
   const headcount = useMemo(() => (rdo ? calcHeadcount(rdo.labor) : 0), [rdo]);
   const overdue = useMemo(() => (rdo ? isOverdue(rdo) : false), [rdo]);
+  const availableActions = useMemo(
+    () => (rdo && user ? getAvailableActions(rdo, user.profile) : []),
+    [rdo, user],
+  );
 
   // Ações do Master
   const handleOpenReturnDialog = useCallback(() => {
@@ -76,8 +81,8 @@ export const useRDOReview = () => {
     const updated = approveRdo(rdo.id, user);
     setApproveDialogOpen(false);
     Alert.alert(
-      'RDO Homologado e Assinado',
-      `O relatório #${updated.number} foi assinado com sucesso!\n\nHash: ${updated.signature?.hash}\nData: ${updated.signature?.signedAt}`
+      'RDO Aprovado e Assinado',
+      `O relatório #${updated.number} foi assinado com sucesso!\n\nHash: ${updated.signature?.hash}\nData: ${updated.signature?.signedAt}`,
     );
   }, [rdo, user, signPin, approveRdo]);
 
@@ -104,13 +109,16 @@ export const useRDOReview = () => {
       setEditJustification('');
       setEditDialogOpen(true);
     },
-    []
+    [],
   );
 
   const handleConfirmAuditedEdit = useCallback(() => {
     if (!rdo || !user) return;
     if (editJustification.trim().length < 5) {
-      Alert.alert('Justificativa Obrigatória', 'Toda alteração técnica pelo Master exige justificativa formal auditável.');
+      Alert.alert(
+        'Justificativa Obrigatória',
+        'Toda alteração técnica pelo Master exige justificativa formal auditável.',
+      );
       return;
     }
     auditedEdit(rdo.id, user, {
@@ -119,16 +127,7 @@ export const useRDOReview = () => {
       previousValue: editOldValue,
       newValue: editNewValue,
       justification: editJustification,
-      apply: (current) => {
-        // Exemplo de aplicação auditada em ocorrências/atividades
-        return {
-          ...current,
-          occurrences: [
-            ...current.occurrences,
-            { type: 'outro', description: `[Ajuste Master - ${editField}]: ${editNewValue}` },
-          ],
-        };
-      },
+      apply: (current) => applySectionFieldEdit(current, targetSection, editNewValue),
     });
     setEditDialogOpen(false);
     Alert.alert('Alteração Auditada Gravada', 'A modificação foi salva e gravada na trilha de auditoria.');
@@ -149,7 +148,7 @@ export const useRDOReview = () => {
     setRectifyDialogOpen(false);
     Alert.alert(
       'Termo de Retificação Gerado',
-      `A Versão 1 foi congelada e a nova cópia de trabalho (v${newVersion.version}) foi criada para nova homologação.`
+      `A Versão ${rdo.version} foi congelada e a nova cópia de trabalho (v${newVersion.version}) foi criada para nova aprovação.`,
     );
     router.replace({
       pathname: '/rdo-review',
@@ -157,18 +156,15 @@ export const useRDOReview = () => {
     });
   }, [rdo, user, rectifyReason, rectifyRdo, router]);
 
-  const handleExport = useCallback(
-    (type: 'pdf' | 'csv' | 'photos') => {
-      setExportDialogOpen(false);
-      const labels = {
-        pdf: 'Relatório Final PDF emitido com QR Code e Hash de verificação.',
-        csv: 'Planilha CSV com dados analíticos exportada para download.',
-        photos: 'Acervo fotográfico compactado em lote com marcas d’água.',
-      };
-      Alert.alert('Exportação Concluída', labels[type]);
-    },
-    []
-  );
+  const handleExport = useCallback((type: 'pdf' | 'csv' | 'photos') => {
+    setExportDialogOpen(false);
+    const labels = {
+      pdf: 'Relatório Final PDF emitido com QR Code e Hash de verificação.',
+      csv: 'Planilha CSV com dados analíticos exportada para download.',
+      photos: 'Acervo fotográfico compactado em lote com marcas d’água.',
+    };
+    Alert.alert('Exportação Concluída', labels[type]);
+  }, []);
 
   const navigateToAuditTrail = useCallback(() => {
     if (!rdo) return;
@@ -187,6 +183,7 @@ export const useRDOReview = () => {
     manHours,
     headcount,
     overdue,
+    availableActions,
     returnDialogOpen,
     setReturnDialogOpen,
     returnReason,

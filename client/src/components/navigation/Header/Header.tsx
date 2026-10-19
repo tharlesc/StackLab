@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, TitleContainer, Title, Subtitle, ContentContainer } from './styles';
+import { Container, TitleContainer, Title, Subtitle, LeftContentContainer, ContentContainer } from './styles';
 
 export interface HeaderProps {
   title: string;
@@ -16,22 +16,14 @@ export const Header = ({
 }: HeaderProps) => {
   return (
     <Container>
-      {leftContent && (
-        <ContentContainer style={{ marginRight: 16, gap: 0 }}>
-          {leftContent}
-        </ContentContainer>
-      )}
+      {leftContent && <LeftContentContainer>{leftContent}</LeftContentContainer>}
 
       <TitleContainer>
-        <Title>{title}</Title>
+        <Title accessibilityRole="header">{title}</Title>
         {subtitle && <Subtitle>{subtitle}</Subtitle>}
       </TitleContainer>
 
-      {rightContent && (
-        <ContentContainer>
-          {rightContent}
-        </ContentContainer>
-      )}
+      {rightContent && <ContentContainer>{rightContent}</ContentContainer>}
     </Container>
   );
 };

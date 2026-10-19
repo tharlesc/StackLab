@@ -19,57 +19,58 @@ export const InfoContainer = styled.View`
 `;
 
 export const Greeting = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
+  font-family: ${({ theme }) => theme.fonts.semiBold};
   color: ${({ theme }) => theme.colors.hero.textSecondary};
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
 `;
 
 export const NameRow = styled.View`
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  flex-wrap: wrap;
+  gap: ${({ theme }) => theme.spacing.sm}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
 `;
 
 export const Name = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
+  font-family: ${({ theme }) => theme.fonts.bold};
   color: ${({ theme }) => theme.colors.hero.text};
-  font-size: 18px;
-  font-weight: 700;
+  font-size: ${({ theme }) => theme.typography.headline.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.headline.lineHeight}px;
 `;
 
 export const ProfileTag = styled.View<{ $isMaster?: boolean }>`
   background-color: ${({ theme, $isMaster }) =>
-    $isMaster ? theme.colors.tag.masterBg : 'rgba(255, 255, 255, 0.1)'};
-  padding: 2px 6px;
+    $isMaster ? theme.colors.tag.masterBg : theme.colors.tag.commonBg};
+  padding: ${({ theme }) => theme.spacing.xxs}px ${({ theme }) => theme.spacing.xsm}px;
   border-radius: ${({ theme }) => theme.borderRadius.sm}px;
   border-width: 1px;
   border-color: ${({ theme, $isMaster }) =>
-    $isMaster ? theme.colors.secondary : 'rgba(255, 255, 255, 0.2)'};
+    $isMaster ? theme.colors.secondary : theme.colors.tag.commonBorder};
 `;
 
 export const ProfileTagText = styled.Text<{ $isMaster?: boolean }>`
-  font-family: ${({ theme }) => theme.fonts.regular};
+  font-family: ${({ theme }) => theme.fonts.bold};
   color: ${({ theme, $isMaster }) =>
     $isMaster ? theme.colors.secondary : theme.colors.hero.textSecondary};
-  font-size: 9px;
-  font-weight: 800;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   letter-spacing: 0.5px;
 `;
 
 export const CreaRow = styled.View`
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: ${({ theme }) => theme.spacing.xs}px;
 `;
 
 export const CreaText = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
+  font-family: ${({ theme }) => theme.fonts.medium};
   color: ${({ theme }) => theme.colors.hero.textSecondary};
-  font-size: 11px;
-  font-weight: 500;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
 `;
 
 export const Footer = styled.View`
@@ -81,21 +82,21 @@ export const Footer = styled.View`
 export const SyncRow = styled.View`
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: ${({ theme }) => theme.spacing.xsm}px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;
 
 export const StatusDot = styled.View<{ $isOnline: boolean }>`
-  width: 7px;
-  height: 7px;
-  border-radius: 4px;
+  width: ${({ theme }) => theme.spacing.sm}px;
+  height: ${({ theme }) => theme.spacing.sm}px;
+  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
   background-color: ${({ theme, $isOnline }) =>
     $isOnline ? theme.colors.status.success.base : theme.colors.status.warning.base};
 `;
 
 export const SyncText = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
+  font-family: ${({ theme }) => theme.fonts.medium};
   color: ${({ theme }) => theme.colors.hero.textSecondary};
-  font-size: 11px;
-  font-weight: 500;
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
 `;

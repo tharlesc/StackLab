@@ -3,19 +3,20 @@ import { View } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import {
   ChevronLeft,
-  Building2,
-  Users,
-  Shield,
   Plus,
   Check,
-  Power,
 } from 'lucide-react-native';
 
 import { useAdminScreen, AdminTab } from './useAdminScreen';
 import {
   ControlsHeader,
+  ListHeaderWrapper,
   AdminCard,
   CardHeader,
+  HeaderMainInfo,
+  CardActionsRow,
+  UserFooterRow,
+  ProfileToggleRow,
   ItemTitle,
   ItemSubtitle,
   MatrixWorkList,
@@ -27,16 +28,16 @@ import { Header } from '@/components/navigation/Header';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { Screen, ListContent } from '@/components/common/Layout';
 import { SearchBar } from '@/components/common/SearchBar';
-import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { SegmentedControl, SegmentOption } from '@/components/common/SegmentedControl';
 import { Button } from '@/components/common/Button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Dialog } from '@/components/common/Dialog';
 import { Input } from '@/components/common/Input';
-import { EmptyState } from '@/components/common/EmptyState';
 import { Chip } from '@/components/common/Chip';
+import { strings } from '@/constants/strings';
 import type { Work, User } from '@/types';
 
-const TAB_OPTIONS: { value: AdminTab; label: string }[] = [
+const TAB_OPTIONS: readonly SegmentOption<AdminTab>[] = [
   { value: 'obras', label: 'Obras' },
   { value: 'usuarios', label: 'Usuários' },
   { value: 'matriz', label: 'Matriz Acessos' },
@@ -55,7 +56,6 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
     setSearchQuery,
     works,
     filteredWorks,
-    users,
     filteredUsers,
     workDialogOpen,
     setWorkDialogOpen,
@@ -90,48 +90,49 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
   const renderContent = () => {
     if (activeTab === 'obras') {
       return (
-        <ListContent
+        <ListContent<Work>
           data={filteredWorks}
-          keyExtractor={(item: any) => item.id}
+          keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 4,
-            paddingBottom: 110,
-          }}
           ListHeaderComponent={
-            <View style={{ marginBottom: 14 }}>
+            <ListHeaderWrapper>
               <Button
                 title="Cadastrar Nova Obra"
                 variant="primary"
-                icon={<Plus size={16} color={theme.colors.text.inverse} />}
+                icon={
+                  <Plus
+                    size={theme.icon.size.sm}
+                    color={theme.colors.text.inverse}
+                    strokeWidth={theme.icon.strokeWidth}
+                  />
+                }
                 onPress={handleOpenAddWork}
               />
-            </View>
+            </ListHeaderWrapper>
           }
-          renderItem={({ item }: { item: any }) => (
+          renderItem={({ item }) => (
             <AdminCard>
               <CardHeader>
-                <View style={{ flex: 1, marginRight: 8 }}>
+                <HeaderMainInfo>
                   <ItemTitle>{item.name}</ItemTitle>
                   <ItemSubtitle>{item.subtitle}</ItemSubtitle>
-                  <ItemSubtitle style={{ marginTop: 4 }}>
+                  <ItemSubtitle>
                     Cliente: {item.client} • {item.address}
                   </ItemSubtitle>
-                </View>
+                </HeaderMainInfo>
                 <StatusBadge
                   label={item.active ? 'Ativa' : 'Inativa'}
                   variant={item.active ? 'success' : 'error'}
                 />
               </CardHeader>
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+              <CardActionsRow>
                 <Button
                   title={item.active ? 'Desativar Obra' : 'Ativar Obra'}
                   variant="outline"
                   size="small"
                   onPress={() => toggleWorkActive(item.id)}
                 />
-              </View>
+              </CardActionsRow>
             </AdminCard>
           )}
         />
@@ -140,38 +141,41 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
 
     if (activeTab === 'usuarios') {
       return (
-        <ListContent
+        <ListContent<User>
           data={filteredUsers}
-          keyExtractor={(item: any) => item.id}
+          keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 4,
-            paddingBottom: 110,
-          }}
           ListHeaderComponent={
-            <View style={{ marginBottom: 14 }}>
+            <ListHeaderWrapper>
               <Button
                 title="Novo Usuário"
                 variant="primary"
-                icon={<Plus size={16} color={theme.colors.text.inverse} />}
+                icon={
+                  <Plus
+                    size={theme.icon.size.sm}
+                    color={theme.colors.text.inverse}
+                    strokeWidth={theme.icon.strokeWidth}
+                  />
+                }
                 onPress={handleOpenAddUser}
               />
-            </View>
+            </ListHeaderWrapper>
           }
-          renderItem={({ item }: { item: any }) => (
+          renderItem={({ item }) => (
             <AdminCard>
               <CardHeader>
-                <View style={{ flex: 1, marginRight: 8 }}>
+                <HeaderMainInfo>
                   <ItemTitle>{item.name}</ItemTitle>
-                  <ItemSubtitle>{item.email} • {item.role}</ItemSubtitle>
-                </View>
+                  <ItemSubtitle>
+                    {item.email} • {item.role}
+                  </ItemSubtitle>
+                </HeaderMainInfo>
                 <Chip
-                  label={item.profile === 'master' ? 'MASTER' : 'OPERACIONAL'}
+                  label={item.profile === 'master' ? strings.common.master : 'OPERACIONAL'}
                   variant={item.profile === 'master' ? 'accent' : 'dark'}
                 />
               </CardHeader>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+              <UserFooterRow>
                 <ItemSubtitle>{item.assignedWorkIds.length} obra(s) vinculada(s)</ItemSubtitle>
                 <Button
                   title={item.active ? 'Suspender' : 'Ativar'}
@@ -179,7 +183,7 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
                   size="small"
                   onPress={() => toggleUserActive(item.id)}
                 />
-              </View>
+              </UserFooterRow>
             </AdminCard>
           )}
         />
@@ -189,19 +193,14 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
     // Matriz de Acessos
     const commonUsers = filteredUsers.filter((u) => u.profile === 'common');
     return (
-      <ListContent
+      <ListContent<User>
         data={commonUsers}
-        keyExtractor={(item: any) => item.id}
+        keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 4,
-          paddingBottom: 110,
-        }}
-        renderItem={({ item: user }: { item: any }) => (
+        renderItem={({ item: user }) => (
           <AdminCard>
             <ItemTitle>{user.name}</ItemTitle>
-            <ItemSubtitle>{user.role} — Clique para vincular/desvincular obras:</ItemSubtitle>
+            <ItemSubtitle>{user.role} — Toque para vincular ou desvincular obras:</ItemSubtitle>
             <MatrixWorkList>
               {works.map((work) => {
                 const assigned = user.assignedWorkIds.includes(work.id);
@@ -212,9 +211,16 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
                     onPress={() => toggleAssignment(user.id, work.id)}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: assigned }}
+                    accessibilityLabel={`${work.name}, ${assigned ? 'vinculada' : 'não vinculada'}`}
                   >
                     <MatrixWorkName $assigned={assigned}>{work.name}</MatrixWorkName>
-                    {assigned && <Check size={16} color={theme.colors.secondary} />}
+                    {assigned && (
+                      <Check
+                        size={theme.icon.size.sm}
+                        color={theme.colors.tintText}
+                        strokeWidth={theme.icon.strokeWidth}
+                      />
+                    )}
                   </MatrixWorkItem>
                 );
               })}
@@ -234,9 +240,15 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
         leftContent={
           isTab ? undefined : (
             <HeaderAction
-              icon={<ChevronLeft color={theme.colors.text.secondary} size={24} />}
+              icon={
+                <ChevronLeft
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.lg}
+                  strokeWidth={theme.icon.strokeWidth}
+                />
+              }
               onPress={goBack}
-              accessibilityLabel="Voltar"
+              accessibilityLabel={strings.accessibility.backButton}
             />
           )
         }
@@ -249,11 +261,7 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
           placeholder="Filtrar cadastros..."
         />
 
-        <SegmentedControl
-          options={TAB_OPTIONS}
-          value={activeTab}
-          onChange={setActiveTab}
-        />
+        <SegmentedControl options={TAB_OPTIONS} value={activeTab} onChange={setActiveTab} />
       </ControlsHeader>
 
       {renderContent()}
@@ -264,28 +272,32 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
         title="Cadastrar Nova Obra"
         description="Adicione um novo empreendimento ao acervo corporativo:"
         primaryAction={{ label: 'Salvar Obra', onPress: handleConfirmAddWork }}
-        secondaryAction={{ label: 'Cancelar', onPress: () => setWorkDialogOpen(false) }}
+        secondaryAction={{ label: strings.common.cancel, onPress: () => setWorkDialogOpen(false) }}
         onClose={() => setWorkDialogOpen(false)}
       >
         <Input
           placeholder="Nome da Obra (ex: Residencial Bellagio)"
           value={newWorkName}
           onChangeText={setNewWorkName}
+          accessibilityLabel="Nome da Obra"
         />
         <Input
           placeholder="Frente / Descrição (ex: Torre 1 - Estrutura)"
           value={newWorkSubtitle}
           onChangeText={setNewWorkSubtitle}
+          accessibilityLabel="Frente ou Descrição da Obra"
         />
         <Input
           placeholder="Cliente / Contratante"
           value={newWorkClient}
           onChangeText={setNewWorkClient}
+          accessibilityLabel="Cliente ou Contratante"
         />
         <Input
           placeholder="Endereço / Localização"
           value={newWorkAddress}
           onChangeText={setNewWorkAddress}
+          accessibilityLabel="Endereço ou Localização"
         />
       </Dialog>
 
@@ -295,26 +307,30 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
         title="Novo Usuário"
         description="Defina dados de acesso e perfil funcional:"
         primaryAction={{ label: 'Criar Usuário', onPress: handleConfirmAddUser }}
-        secondaryAction={{ label: 'Cancelar', onPress: () => setUserDialogOpen(false) }}
+        secondaryAction={{ label: strings.common.cancel, onPress: () => setUserDialogOpen(false) }}
         onClose={() => setUserDialogOpen(false)}
       >
         <Input
           placeholder="Nome Completo"
           value={newUserName}
           onChangeText={setNewUserName}
+          accessibilityLabel="Nome Completo"
         />
         <Input
           placeholder="E-mail profissional"
           value={newUserEmail}
           onChangeText={setNewUserEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+          accessibilityLabel="E-mail profissional"
         />
         <Input
           placeholder="Cargo (ex: Estagiário de Obras)"
           value={newUserRole}
           onChangeText={setNewUserRole}
+          accessibilityLabel="Cargo"
         />
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+        <ProfileToggleRow>
           <Button
             title="Perfil Operacional"
             variant={newUserProfile === 'common' ? 'primary' : 'outline'}
@@ -327,7 +343,7 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
             size="small"
             onPress={() => setNewUserProfile('master')}
           />
-        </View>
+        </ProfileToggleRow>
       </Dialog>
     </ContainerWrapper>
   );

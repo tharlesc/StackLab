@@ -1,14 +1,13 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import {
   Bell,
-  Menu,
+  HardHat,
   Plus,
   RefreshCcw,
   Settings as SettingsIcon,
   Inbox as InboxIcon,
-  Building,
+  Building2,
 } from 'lucide-react-native';
 
 import { useDashboardHome } from './useDashboardHome';
@@ -16,7 +15,9 @@ import {
   Section,
   SectionHeader,
   SeeAllText,
-  SearchResultsBox,
+  AvatarButton,
+  SearchWrapper,
+  SearchSectionHeader,
   SearchResultItem,
   SearchResultTitle,
   SearchResultSubtitle,
@@ -33,8 +34,9 @@ import { ActiveWorkCard } from '@/components/works/ActiveWorkCard';
 import { Screen, ScrollContent } from '@/components/common/Layout';
 import { SectionTitle } from '@/components/common/Typography';
 import { SearchBar } from '@/components/common/SearchBar';
-import { InteractiveCard } from '@/components/common/InteractiveCard';
 import { Avatar } from '@/components/common/Avatar';
+import { RDO_STATUS_META, getDisplayStatus } from '@/utils/rdo';
+import { strings } from '@/constants/strings';
 
 import { NewRDOView } from '@/screens/NewRDO/NewRDOView';
 import { SyncQueueView } from '@/screens/SyncQueue/SyncQueueView';
@@ -58,12 +60,10 @@ export const DashboardHomeView = () => {
     indicators,
     activeWorks,
     pendingCount,
-    overdueCount,
     returnedCount,
     navigateToNotifications,
     navigateToProfile,
     navigateToInbox,
-    navigateToAdmin,
     navigateToReview,
   } = useDashboardHome();
 
@@ -89,19 +89,26 @@ export const DashboardHomeView = () => {
               rightContent={
                 <>
                   <HeaderAction
-                    icon={<Bell color={theme.colors.text.primary} size={22} />}
+                    icon={
+                      <Bell
+                        color={theme.colors.text.primary}
+                        size={theme.icon.size.lg}
+                        strokeWidth={theme.icon.strokeWidth}
+                      />
+                    }
                     onPress={navigateToNotifications}
                     hasNotification={isMaster ? pendingCount > 0 : returnedCount > 0}
                     badgeCount={isMaster ? pendingCount : returnedCount}
-                    accessibilityLabel="Notificações"
+                    accessibilityLabel={strings.accessibility.notificationsButton}
                   />
-                  <TouchableOpacity
+                  <AvatarButton
                     onPress={navigateToProfile}
+                    hitSlop={theme.touchTarget.hitSlop}
                     accessibilityRole="button"
-                    accessibilityLabel="Abrir perfil"
+                    accessibilityLabel={strings.accessibility.profileButton}
                   >
                     <Avatar name={user?.name} size={36} />
-                  </TouchableOpacity>
+                  </AvatarButton>
                 </>
               }
             />
@@ -119,81 +126,68 @@ export const DashboardHomeView = () => {
 
               {/* Recurso Master: Busca Global em Todos os Relatórios da Organização */}
               {isMaster && (
-                <View style={{ marginBottom: 14 }}>
+                <SearchWrapper>
                   <SearchBar
                     value={globalSearch}
                     onChangeText={setGlobalSearch}
-                    placeholder="Buscar por obra, número ou autor..."
-                  />
-
-                  {globalSearch.trim().length > 0 && (
-                    <SearchResultsBox>
-                      <SectionTitle style={{ marginTop: 0 }}>
-                        Resultados ({searchResults.length})
-                      </SectionTitle>
-                      {searchResults.length === 0 ? (
-                        <SearchResultSubtitle>Nenhum relatório encontrado.</SearchResultSubtitle>
-                      ) : (
-                        searchResults.slice(0, 5).map((r) => (
-                          <SearchResultItem
-                            key={r.id}
-                            onPress={() => navigateToReview(r.id)}
-                            activeOpacity={0.7}
-                          >
-                            <SearchResultTitle>RDO #{r.number} — {r.workName}</SearchResultTitle>
-                            <SearchResultSubtitle>
-                              Por {r.authorName} em {r.date} • Status: {r.status}
-                            </SearchResultSubtitle>
-                          </SearchResultItem>
-                        ))
-                      )}
-                    </SearchResultsBox>
-                  )}
-                </View>
+                    placeholder={strings.dashboard.searchPlaceholder}
+                  >
+                    {globalSearch.trim().length > 0 && (
+                      <>
+                        <SearchSectionHeader>
+                          {strings.dashboard.searchResultsTitle} ({searchResults.length})
+                        </SearchSectionHeader>
+                        {searchResults.length === 0 ? (
+                          <SearchResultSubtitle>
+                            {strings.dashboard.emptySearchMessage(globalSearch)}
+                          </SearchResultSubtitle>
+                        ) : (
+                          searchResults.slice(0, 5).map((r, index) => {
+                            const isLast = index === Math.min(searchResults.length, 5) - 1;
+                            const statusLabel = RDO_STATUS_META[getDisplayStatus(r)].label;
+                            return (
+                              <SearchResultItem
+                                key={r.id}
+                                onPress={() => navigateToReview(r.id)}
+                                activeOpacity={0.7}
+                                $isLast={isLast}
+                                accessibilityRole="button"
+                                accessibilityLabel={`RDO ${r.number}, obra ${r.workName}, status ${statusLabel}`}
+                              >
+                                <SearchResultTitle>
+                                  RDO #{r.number} — {r.workName}
+                                </SearchResultTitle>
+                                <SearchResultSubtitle>
+                                  Por {r.authorName} em {r.date} • Status: {statusLabel}
+                                </SearchResultSubtitle>
+                              </SearchResultItem>
+                            );
+                          })
+                        )}
+                      </>
+                    )}
+                  </SearchBar>
+                </SearchWrapper>
               )}
 
-              {/* 1º (Movido para cima conforme feedback amarelo):
-                  Dashboard Gerencial / Resumo Semanal */}
+              {/* 2º Dashboard Gerencial / Resumo Semanal */}
               <WeeklySummaryCard
-                title={isMaster ? 'Métricas Globais da Construtora' : 'Resumo da Semana'}
-                subtitle={isMaster ? 'Todos os RDOs homologados e pendentes' : 'Últimos 7 dias'}
+                title={isMaster ? 'Métricas Globais da Construtora' : strings.dashboard.weeklySummary}
+                subtitle={isMaster ? 'Todos os RDOs aprovados e submetidos' : strings.dashboard.last7Days}
                 chartData={chartData}
                 chartTotal={chartData.reduce((acc, curr) => acc + curr.value, 0)}
                 indicators={indicators}
               />
 
-              {/* 2º (Movido para baixo conforme feedback amarelo):
-                  Card de Caixa de Validação do Master apontando para Inbox */}
-              {isMaster && (
-                <View style={{ marginTop: 8 }}>
-                  <InteractiveCard
-                    title={`Caixa de Validação (${pendingCount} RDOs pendentes)`}
-                    supportingText={
-                      overdueCount > 0
-                        ? `⚠️ ${overdueCount} relatório(s) com mais de 24 horas sem análise (Status Atrasado). Priorize a homologação.`
-                        : 'Todos os diários enviados pelo campo estão dentro do prazo de SLA.'
-                    }
-                    actions={[
-                      { label: 'Administração', onPress: navigateToAdmin, secondary: true },
-                      { label: 'Abrir Inbox', onPress: navigateToInbox, primary: true },
-                    ]}
-                  />
-                </View>
-              )}
-
               {/* Lista de Obras (Designadas para Operacional vs Todas para Master) */}
-              <Section style={{ marginTop: isMaster ? 0 : 8 }}>
+              <Section>
                 <SectionHeader>
                   <SectionTitle>
                     {isMaster ? 'Visão Global de Obras' : 'Minhas Obras Designadas'}
                   </SectionTitle>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Ver todas as ${activeWorks.length} obras`}
-                  >
-                    <SeeAllText>Total ({activeWorks.length})</SeeAllText>
-                  </TouchableOpacity>
+                  <SeeAllText accessibilityRole="text">
+                    {strings.dashboard.totalWorks(activeWorks.length)}
+                  </SeeAllText>
                 </SectionHeader>
 
                 {activeWorks.map((work) => (
@@ -230,77 +224,117 @@ export const DashboardHomeView = () => {
       <BottomNavigation>
         <NavigationItem
           icon={
-            <Menu
-              color={activeTab === 'Obras' ? theme.colors.secondary : theme.colors.text.secondary}
-              size={24}
-              style={{ marginBottom: 4 }}
+            <HardHat
+              color={theme.colors.text.secondary}
+              size={theme.icon.size.lg}
+              strokeWidth={1.75}
             />
           }
-          label="Obras"
+          activeIcon={
+            <HardHat
+              color={theme.colors.tintText}
+              size={theme.icon.size.lg}
+              strokeWidth={2.5}
+            />
+          }
+          label={strings.navigation.works}
           active={activeTab === 'Obras'}
           onPress={() => setActiveTab('Obras')}
-          accessibilityLabel="Aba de Obras"
+          accessibilityLabel={strings.navigation.works}
         />
 
         {isMaster ? (
           <PrimaryActionItem
-            icon={<InboxIcon color={theme.colors.text.inverse} size={24} />}
+            icon={
+              <InboxIcon
+                color={theme.colors.text.inverse}
+                size={theme.icon.size.lg}
+                strokeWidth={2.25}
+              />
+            }
             label="Inbox"
             onPress={() => setActiveTab('Inbox')}
             accessibilityLabel={`Inbox de Validação com ${pendingCount} pendentes`}
           />
         ) : (
           <PrimaryActionItem
-            icon={<Plus color={theme.colors.text.inverse} size={26} strokeWidth={2.5} />}
-            label="Novo RDO"
+            icon={
+              <Plus
+                color={theme.colors.surfaceVariant}
+                size={theme.icon.size.lg}
+                strokeWidth={2.5}
+              />
+            }
+            label={strings.navigation.newRDO}
             onPress={() => setActiveTab('Novo RDO')}
-            accessibilityLabel="Criar novo RDO"
+            accessibilityLabel={strings.accessibility.newRdoAction}
           />
         )}
 
         {isMaster ? (
           <NavigationItem
             icon={
-              <Building
-                color={activeTab === 'Cadastros' ? theme.colors.secondary : theme.colors.text.secondary}
-                size={22}
-                style={{ marginBottom: 4 }}
+              <Building2
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.lg}
+                strokeWidth={1.75}
+              />
+            }
+            activeIcon={
+              <Building2
+                color={theme.colors.tintText}
+                size={theme.icon.size.lg}
+                strokeWidth={2.5}
               />
             }
             label="Cadastros"
             active={activeTab === 'Cadastros'}
             onPress={() => setActiveTab('Cadastros')}
-            accessibilityLabel="Módulo de Administração e Cadastros"
+            accessibilityLabel="Cadastros"
           />
         ) : (
           <NavigationItem
             icon={
               <RefreshCcw
-                color={activeTab === 'Fila' ? theme.colors.secondary : theme.colors.text.secondary}
-                size={22}
-                style={{ marginBottom: 4 }}
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.lg}
+                strokeWidth={1.75}
               />
             }
-            label="Fila"
+            activeIcon={
+              <RefreshCcw
+                color={theme.colors.tintText}
+                size={theme.icon.size.lg}
+                strokeWidth={2.5}
+              />
+            }
+            label={strings.navigation.queue}
             active={activeTab === 'Fila'}
             onPress={() => setActiveTab('Fila')}
             badgeCount={2}
-            accessibilityLabel="Fila de sincronização offline"
+            accessibilityLabel={strings.navigation.queue}
           />
         )}
 
         <NavigationItem
           icon={
             <SettingsIcon
-              color={activeTab === 'Ajustes' ? theme.colors.secondary : theme.colors.text.secondary}
-              size={24}
-              style={{ marginBottom: 4 }}
+              color={theme.colors.text.secondary}
+              size={theme.icon.size.lg}
+              strokeWidth={1.75}
             />
           }
-          label="Ajustes"
+          activeIcon={
+            <SettingsIcon
+              color={theme.colors.tintText}
+              size={theme.icon.size.lg}
+              strokeWidth={2.5}
+            />
+          }
+          label={strings.navigation.settings}
           active={activeTab === 'Ajustes'}
           onPress={() => setActiveTab('Ajustes')}
-          accessibilityLabel="Ajustes"
+          accessibilityLabel={strings.navigation.settings}
         />
       </BottomNavigation>
     </Screen>

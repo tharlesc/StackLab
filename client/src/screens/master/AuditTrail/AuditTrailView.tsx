@@ -1,8 +1,7 @@
 import React from 'react';
-import { View } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, ShieldCheck, History } from 'lucide-react-native';
+import { ChevronLeft, History } from 'lucide-react-native';
 
 import { useRDOs } from '@/contexts/RDOContext';
 import { Header } from '@/components/navigation/Header';
@@ -11,12 +10,12 @@ import { Screen, ListContent } from '@/components/common/Layout';
 import { EmptyState } from '@/components/common/EmptyState';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/utils';
+import { strings } from '@/constants/strings';
 import type { AuditLogEntry, StatusVariant } from '@/types';
 
 import {
   LogCard,
   LogHeader,
-  LogAction,
   LogTimestamp,
   LogActor,
   LogJustification,
@@ -50,24 +49,36 @@ export const AuditTrailView = () => {
         title={rdo ? `Trilha de Auditoria • RDO #${rdo.number}` : 'Trilha de Auditoria'}
         leftContent={
           <HeaderAction
-            icon={<ChevronLeft color={theme.colors.text.secondary} size={24} />}
+            icon={
+              <ChevronLeft
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.lg}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
             onPress={() => router.back()}
-            accessibilityLabel="Fechar"
+            accessibilityLabel={strings.accessibility.backButton}
           />
         }
       />
 
       {logs.length === 0 ? (
         <EmptyState
-          icon={<History size={56} color={theme.colors.text.secondary} />}
+          icon={
+            <History
+              size={theme.icon.size.empty}
+              color={theme.colors.text.secondary}
+              strokeWidth={theme.icon.strokeWidth}
+            />
+          }
           message="Nenhum registro de auditoria gerado para este RDO ainda."
         />
       ) : (
-        <ListContent
+        <ListContent<AuditLogEntry>
           data={logs}
-          keyExtractor={(item: any) => item.id}
+          keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }: { item: any }) => {
+          renderItem={({ item }) => {
             const variant = ACTION_VARIANTS[item.action] || 'info';
             return (
               <LogCard>

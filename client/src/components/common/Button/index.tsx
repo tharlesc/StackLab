@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, ViewStyle, StyleProp } from 'react-native';
-import { ButtonContainer, ButtonText, ButtonVariant, ButtonSize } from './styles';
 import { useTheme } from 'styled-components/native';
+import { ButtonContainer, ButtonText, ButtonVariant, ButtonSize } from './styles';
 
 export interface ButtonProps {
   title: string;
@@ -29,21 +29,34 @@ export const Button = ({
   style,
 }: ButtonProps) => {
   const theme = useTheme();
+  const [pressed, setPressed] = useState(false);
+  const isDisabled = disabled || loading;
+
+  const indicatorColor =
+    variant === 'outline'
+      ? theme.colors.text.primary
+      : variant === 'secondary'
+        ? theme.colors.onSecondary
+        : theme.colors.text.inverse;
 
   return (
     <ButtonContainer
       $variant={variant}
       $size={size}
       $fullWidth={fullWidth}
+      $pressed={pressed}
       onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.8}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      disabled={isDisabled}
+      activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || title}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={style}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? theme.colors.primary : theme.colors.text.inverse} />
+        <ActivityIndicator color={indicatorColor} />
       ) : (
         <>
           {icon}
