@@ -10,14 +10,14 @@ export const ActionContainer = styled.View`
 `;
 
 export const ActionButton = styled(TouchableOpacity)`
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   background-color: ${({ theme }) => theme.colors.secondary};
   align-items: center;
   justify-content: center;
   position: absolute;
-  top: -18px;
+  top: -26px;
   elevation: 4;
   shadow-color: ${({ theme }) => theme.colors.secondary};
   shadow-offset: 0px 4px;

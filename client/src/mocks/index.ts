@@ -92,6 +92,14 @@ export const MOCK_WORKS: Work[] = [
     address: 'BR-135, Km 8',
     active: false,
   },
+  {
+    id: 'w5',
+    name: 'Residencial Palmeiras',
+    subtitle: 'Torre A — Alvenaria e Estrutura',
+    client: 'Palmeiras Construtora',
+    address: 'Cohama',
+    active: false,
+  },
 ];
 
 export const MOCK_CHART_DATA: ChartData[] = [

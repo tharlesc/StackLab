@@ -55,8 +55,6 @@ export const ActionsContainer = styled.View`
   gap: ${({ theme }) => theme.spacing.md}px;
   margin-top: ${({ theme }) => theme.spacing.md}px;
   padding-top: ${({ theme }) => theme.spacing.md}px;
-  border-top-width: 1px;
-  border-top-color: ${({ theme }) => theme.colors.border};
 `;
 
 export const DialogActionButton = styled(TouchableOpacity)<{

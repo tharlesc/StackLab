@@ -247,7 +247,7 @@ export const DashboardHomeView = () => {
           <PrimaryActionItem
             icon={
               <InboxIcon
-                color={theme.colors.onSecondary}
+                color={theme.colors.text.inverse}
                 size={theme.icon.size.lg}
                 strokeWidth={2.25}
               />
@@ -260,7 +260,7 @@ export const DashboardHomeView = () => {
           <PrimaryActionItem
             icon={
               <Plus
-                color={theme.colors.onSecondary}
+                color={theme.colors.surfaceVariant}
                 size={theme.icon.size.lg}
                 strokeWidth={2.5}
               />

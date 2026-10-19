@@ -2,6 +2,7 @@ import styled from 'styled-components/native';
 
 export const Container = styled.View`
   padding: ${({ theme }) => theme.spacing.md}px ${({ theme }) => theme.spacing.lg}px;
+  margin-top: ${({ theme }) => theme.spacing.smd}px;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
