@@ -11,7 +11,12 @@ export const useLogin = () => {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const toggleShowPassword = useCallback(() => {
+    setShowPassword((prev) => !prev);
+  }, []);
 
   const handleLogin = useCallback(() => {
     if (!email.trim()) {
@@ -43,6 +48,9 @@ export const useLogin = () => {
     setEmail,
     password,
     setPassword,
+    showPassword,
+    setShowPassword,
+    toggleShowPassword,
     loading,
     mockUsers: MOCK_USERS,
     handleLogin,
