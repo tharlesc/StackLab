@@ -1,12 +1,17 @@
 import styled from 'styled-components/native';
 import { TouchableOpacity } from 'react-native';
-import { TouchableCard } from '@/components/common/Card';
+import { Card as BaseCard } from '@/components/common/Card';
 
 type WorkStatus = 'ok' | 'warn';
 
-export const Card = styled(TouchableCard)`
+export const CardContainer = styled(BaseCard)`
   border-width: 1px;
   border-color: ${({ theme }) => theme.colors.border};
+  flex-direction: column;
+  align-items: stretch;
+`;
+
+export const CardContent = styled(TouchableOpacity)`
   flex-direction: column;
   align-items: stretch;
 `;

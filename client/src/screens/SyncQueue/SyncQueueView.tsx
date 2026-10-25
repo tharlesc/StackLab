@@ -82,7 +82,7 @@ export const SyncQueueView = () => {
       {queue.length === 0 ? (
         <ListContent<SyncQueueItem>
           data={[]}
-          renderItem={null}
+          renderItem={() => null}
           ListEmptyComponent={
             <EmptyState
               icon={

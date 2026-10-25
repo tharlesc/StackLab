@@ -1,4 +1,5 @@
 import React from 'react';
+import { TouchableOpacity } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
 import { useTheme } from 'styled-components/native';
 import { getWeatherIcon } from '@/components/ui/WeatherIcon';
@@ -6,7 +7,8 @@ import { formatRdoLabel } from '@/utils/rdo';
 import { strings } from '@/constants/strings';
 import type { ActiveWork } from '@/types';
 import {
-  Card,
+  CardContainer,
+  CardContent,
   Header,
   IconPlaceholder,
   HeaderTextContainer,
@@ -53,36 +55,38 @@ export const ActiveWorkCard = ({
   const rdoLabel = formatRdoLabel(rdoStatus, rdoDate, rdoNumber);
 
   return (
-    <Card
-      activeOpacity={0.7}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Obra: ${name}, ${subtitle}. Status: ${statusType}`}
-    >
-      <Header>
-        <IconPlaceholder />
-        <HeaderTextContainer>
-          <Title numberOfLines={1}>{name}</Title>
-          <Subtitle numberOfLines={1}>{subtitle}</Subtitle>
-        </HeaderTextContainer>
-      </Header>
+    <CardContainer>
+      <CardContent
+        activeOpacity={0.7}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Obra: ${name}, ${subtitle}. Status: ${statusType}`}
+      >
+        <Header>
+          <IconPlaceholder />
+          <HeaderTextContainer>
+            <Title numberOfLines={1}>{name}</Title>
+            <Subtitle numberOfLines={1}>{subtitle}</Subtitle>
+          </HeaderTextContainer>
+        </Header>
 
-      <QuickData>
-        <DataColumn>
-          <DataLabel>{strings.dashboard.lastRdoLabel}</DataLabel>
-          <DataValue $isLate={isLate}>{lastRdo}</DataValue>
-        </DataColumn>
-        <DataColumn>
-          <DataLabel>{strings.dashboard.weatherLabel}</DataLabel>
-          <WeatherIconBox>
-            {getWeatherIcon(weather, theme.icon.size.md, theme.colors.text.secondary)}
-          </WeatherIconBox>
-        </DataColumn>
-        <DataColumn>
-          <DataLabel>{strings.dashboard.effectiveLabel}</DataLabel>
-          <DataValue>{team}</DataValue>
-        </DataColumn>
-      </QuickData>
+        <QuickData>
+          <DataColumn>
+            <DataLabel>{strings.dashboard.lastRdoLabel}</DataLabel>
+            <DataValue $isLate={isLate}>{lastRdo}</DataValue>
+          </DataColumn>
+          <DataColumn>
+            <DataLabel>{strings.dashboard.weatherLabel}</DataLabel>
+            <WeatherIconBox>
+              {getWeatherIcon(weather, theme.icon.size.md, theme.colors.text.secondary)}
+            </WeatherIconBox>
+          </DataColumn>
+          <DataColumn>
+            <DataLabel>{strings.dashboard.effectiveLabel}</DataLabel>
+            <DataValue>{team}</DataValue>
+          </DataColumn>
+        </QuickData>
+      </CardContent>
 
       <Footer>
         <RdoStatusBox $status={status}>
@@ -98,7 +102,13 @@ export const ActiveWorkCard = ({
             <ActionButtonText>{actionText}</ActionButtonText>
           </ActionButton>
         ) : (
-          <ArrowPlaceholder>
+          <ArrowPlaceholder
+            as={TouchableOpacity}
+            activeOpacity={0.7}
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel="Ver detalhes da obra"
+          >
             <ArrowRight
               color={theme.colors.text.secondary}
               size={theme.icon.size.md}
@@ -107,6 +117,6 @@ export const ActiveWorkCard = ({
           </ArrowPlaceholder>
         )}
       </Footer>
-    </Card>
+    </CardContainer>
   );
 };

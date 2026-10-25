@@ -26,7 +26,6 @@ export const CardHeader = styled.View`
 
 export const CardTitleContainer = styled.View`
   flex: 1;
-  margin-right: ${({ theme }) => theme.spacing.sm}px;
 `;
 
 export const RdoNumber = styled.Text`

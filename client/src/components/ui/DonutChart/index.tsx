@@ -40,7 +40,7 @@ export const DonutChart = ({
       accessibilityLabel={summaryLabel}
     >
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <G rotation="-90" originX={size / 2} originY={size / 2}>
+        <G transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           {/* Fundo do gráfico */}
           <Circle
             cx={size / 2}

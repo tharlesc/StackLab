@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, Platform } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { strings } from '@/constants/strings';
@@ -34,7 +34,7 @@ export const NavigationItem = ({
   accessibilityLabel,
 }: NavigationItemProps) => {
   const theme = useTheme();
-  const animatedValue = useRef(new Animated.Value(active ? 1 : 0)).current;
+  const [animatedValue] = useState(() => new Animated.Value(active ? 1 : 0));
 
   useEffect(() => {
     Animated.spring(animatedValue, {

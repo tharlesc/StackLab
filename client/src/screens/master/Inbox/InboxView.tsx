@@ -34,7 +34,6 @@ import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { Screen, ListContent } from '@/components/common/Layout';
 import { SearchBar } from '@/components/common/SearchBar';
 import { SegmentedControl, SegmentOption } from '@/components/common/SegmentedControl';
-import { StatusBadge } from '@/components/common/StatusBadge';
 import { EmptyState } from '@/components/common/EmptyState';
 import { isOverdue, RDO_STATUS_META, getDisplayStatus } from '@/utils/rdo';
 import { formatRelative } from '@/utils';
@@ -97,7 +96,6 @@ export const InboxView = ({ isTab = false }: InboxViewProps) => {
             </RdoNumber>
             <WorkName numberOfLines={1}>{item.workName}</WorkName>
           </CardTitleContainer>
-          <StatusBadge label={meta.label} variant={meta.variant} />
         </CardHeader>
 
         <MetaRow>
@@ -118,8 +116,7 @@ export const InboxView = ({ isTab = false }: InboxViewProps) => {
                 strokeWidth={theme.icon.strokeWidth}
               />
               <MetaText $highlight={overdue}>
-                {overdue ? `${strings.status.atrasado} ` : `${strings.status.submetido} `}
-                {formatRelative(item.submittedAt)}
+                {meta.label} {formatRelative(item.submittedAt)}
               </MetaText>
             </MetaItem>
           ) : null}

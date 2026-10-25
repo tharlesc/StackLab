@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useLogin } from './useLogin';
 import {
   BrandHeader,
+  BrandTextContainer,
   BrandLogo,
   UserList,
   UserCardItem,
@@ -44,12 +45,14 @@ export const LoginView = () => {
           <BrandHeader>
             <BrandLogo
               source={R.images.logo}
-              resizeMode="contain"
+              resizeMode="cover"
               accessibilityRole="image"
               accessibilityLabel={R.strings.common.appName}
             />
-            <Title>{R.strings.login.title}</Title>
-            <Subtitle>{R.strings.login.subtitle}</Subtitle>
+            <BrandTextContainer>
+              <Title>{R.strings.login.title}</Title>
+              <Subtitle>{R.strings.login.subtitle}</Subtitle>
+            </BrandTextContainer>
           </BrandHeader>
 
           <FormContainer>
