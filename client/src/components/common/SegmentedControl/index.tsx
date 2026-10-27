@@ -74,7 +74,7 @@ const Segment = styled(TouchableOpacity)<{ $active: boolean }>`
 `;
 
 const SegmentText = styled.Text<{ $active: boolean; $tone: 'light' | 'dark' }>`
-  font-family: ${({ theme }) => theme.fonts.bold};
+  font-family: ${({ theme, $active }) => ($active ? theme.fonts.bold : theme.fonts.regular)};
   font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
   line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   text-align: center;
