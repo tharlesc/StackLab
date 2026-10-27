@@ -253,7 +253,7 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
   {
     id: '5',
     title: 'RDO #183 Devolvido',
-    message: 'Refazer a foto 2 — imagem desfocada e sem legenda adequada.',
+    message: 'Refazer a foto 2: imagem desfocada e sem legenda adequada.',
     time: '1 hora atrás',
     variant: 'error',
     isUnread: true,

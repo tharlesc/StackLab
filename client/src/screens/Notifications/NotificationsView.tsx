@@ -8,33 +8,56 @@ import {
   AlertCircle,
   Info,
   CheckCheck,
+  ChevronRight,
 } from 'lucide-react-native';
 
-import { useNotifications } from './useNotifications';
+import { useNotifications, NotificationFilter } from './useNotifications';
 import {
+  ControlsHeader,
+  StatusBarRow,
+  StatusCounterText,
+  MarkAllButton,
+  MarkAllButtonText,
   NotificationCard,
+  UnreadBar,
   IconContainer,
   ContentContainer,
   TitleRow,
   NotificationTitle,
   TimeText,
   NotificationMessage,
-  UnreadDot,
+  ActionIndicator,
+  ActionText,
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { Screen, ListContent } from '@/components/common/Layout';
+import { SegmentedControl, SegmentOption } from '@/components/common/SegmentedControl';
 import { EmptyState } from '@/components/common/EmptyState';
 import { strings } from '@/constants/strings';
 import type { AppNotification, NotificationVariant } from '@/types';
 
+const FILTER_OPTIONS: readonly SegmentOption<NotificationFilter>[] = [
+  { value: 'todas', label: 'Todas' },
+  { value: 'nao_lidas', label: 'Não lidas' },
+  { value: 'rdos', label: 'RDOs' },
+];
+
 export const NotificationsView = () => {
   const theme = useTheme();
-  const { notifications, unreadCount, markAllAsRead, handlePressNotification, goBack } =
-    useNotifications();
+  const {
+    notifications,
+    rawCount,
+    unreadCount,
+    filter,
+    setFilter,
+    markAllAsRead,
+    handlePressNotification,
+    goBack,
+  } = useNotifications();
 
-  const getIcon = (variant: NotificationVariant) => {
+  const getVariantIcon = (variant: NotificationVariant) => {
     switch (variant) {
       case 'success':
         return (
@@ -72,25 +95,47 @@ export const NotificationsView = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: AppNotification }) => (
-    <NotificationCard
-      $isUnread={item.isUnread}
-      activeOpacity={0.7}
-      onPress={() => handlePressNotification(item)}
-      accessibilityRole="button"
-      accessibilityLabel={`Notificação: ${item.title}. ${item.message}. Recebida ${item.time}.${item.isUnread ? ' Não lida.' : ''}`}
-    >
-      <IconContainer $variant={item.variant}>{getIcon(item.variant)}</IconContainer>
-      <ContentContainer>
-        <TitleRow>
-          <NotificationTitle $isUnread={item.isUnread}>{item.title}</NotificationTitle>
-          <TimeText>{item.time}</TimeText>
-        </TitleRow>
-        <NotificationMessage numberOfLines={2}>{item.message}</NotificationMessage>
-      </ContentContainer>
-      {item.isUnread && <UnreadDot />}
-    </NotificationCard>
-  );
+  const renderItem = ({ item }: { item: AppNotification }) => {
+    const hasAction = Boolean(item.rdoId);
+
+    return (
+      <NotificationCard
+        $isUnread={item.isUnread}
+        activeOpacity={0.75}
+        onPress={() => handlePressNotification(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`Notificação: ${item.title}. ${item.message}. Recebida ${item.time}.${
+          item.isUnread ? ' Não lida.' : ''
+        }${hasAction ? ' Toque para abrir RDO.' : ''}`}
+      >
+        {item.isUnread && <UnreadBar />}
+
+        <IconContainer $variant={item.variant}>{getVariantIcon(item.variant)}</IconContainer>
+
+        <ContentContainer>
+          <TitleRow>
+            <NotificationTitle $isUnread={item.isUnread} numberOfLines={1}>
+              {item.title}
+            </NotificationTitle>
+            <TimeText>{item.time}</TimeText>
+          </TitleRow>
+
+          <NotificationMessage numberOfLines={3}>{item.message}</NotificationMessage>
+
+          {hasAction && (
+            <ActionIndicator>
+              <ActionText>Ver RDO</ActionText>
+              <ChevronRight
+                color={theme.colors.tintText}
+                size={theme.icon.size.sm}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            </ActionIndicator>
+          )}
+        </ContentContainer>
+      </NotificationCard>
+    );
+  };
 
   return (
     <Screen>
@@ -126,6 +171,31 @@ export const NotificationsView = () => {
         }
       />
 
+      {rawCount > 0 && (
+        <ControlsHeader>
+          <SegmentedControl options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
+
+          <StatusBarRow>
+            <StatusCounterText>
+              {unreadCount > 0
+                ? `${unreadCount} ${unreadCount === 1 ? 'não lida' : 'não lidas'}`
+                : 'Tudo em dia'}
+            </StatusCounterText>
+
+            {unreadCount > 0 && (
+              <MarkAllButton
+                onPress={markAllAsRead}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={strings.notifications.markAllRead}
+              >
+                <MarkAllButtonText>{strings.notifications.markAllRead}</MarkAllButtonText>
+              </MarkAllButton>
+            )}
+          </StatusBarRow>
+        </ControlsHeader>
+      )}
+
       {notifications.length === 0 ? (
         <EmptyState
           icon={
@@ -135,7 +205,13 @@ export const NotificationsView = () => {
               strokeWidth={theme.icon.strokeWidth}
             />
           }
-          message={strings.notifications.emptyMessage}
+          message={
+            filter === 'nao_lidas'
+              ? 'Nenhuma notificação não lida no momento.'
+              : filter === 'rdos'
+                ? 'Nenhuma notificação de RDO encontrada.'
+                : strings.notifications.emptyMessage
+          }
         />
       ) : (
         <ListContent<AppNotification>

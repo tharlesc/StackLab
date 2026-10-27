@@ -1,5 +1,6 @@
 import styled from 'styled-components/native';
 import { TouchableCard } from '@/components/common/Card';
+import type { RDODisplayStatus } from '@/types';
 
 export const ControlsHeader = styled.View`
   padding: ${({ theme }) => theme.spacing.lg}px ${({ theme }) => theme.spacing.lg}px
@@ -7,10 +8,23 @@ export const ControlsHeader = styled.View`
   gap: ${({ theme }) => theme.spacing.md}px;
 `;
 
-export const InboxCard = styled(TouchableCard)<{ $isOverdue?: boolean }>`
+export const InboxCard = styled(TouchableCard)<{
+  $isOverdue?: boolean;
+  $displayStatus?: RDODisplayStatus;
+}>`
   border-left-width: 4px;
-  border-left-color: ${({ theme, $isOverdue }) =>
-    $isOverdue ? theme.colors.status.error.base : theme.colors.status.warning.base};
+  border-left-color: ${({ theme, $isOverdue, $displayStatus }) => {
+    if ($isOverdue || $displayStatus === 'atrasado') {
+      return theme.colors.status.error.base;
+    }
+    if ($displayStatus === 'submetido') {
+      return theme.colors.status.success.base;
+    }
+    if ($displayStatus === 'devolvido') {
+      return theme.colors.status.warning.base;
+    }
+    return theme.colors.status.warning.base;
+  }};
   padding: ${({ theme }) => theme.spacing.md}px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
   flex-direction: column;

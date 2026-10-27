@@ -68,6 +68,7 @@ export const InboxView = ({ isTab = false }: InboxViewProps) => {
     return (
       <InboxCard
         $isOverdue={overdue}
+        $displayStatus={displayStatus}
         activeOpacity={0.8}
         onPress={() => navigateToReview(item.id)}
         accessibilityRole="button"
