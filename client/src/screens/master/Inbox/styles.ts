@@ -96,20 +96,3 @@ export const ReviewButtonText = styled.Text`
   line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.onSecondary};
 `;
-
-export const SlaWarningBanner = styled.View`
-  flex-direction: row;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.xsm}px;
-  background-color: ${({ theme }) => theme.colors.status.error.bg};
-  border-radius: ${({ theme }) => theme.borderRadius.md}px;
-  padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
-  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
-`;
-
-export const SlaWarningText = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
-  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
-  color: ${({ theme }) => theme.colors.status.error.text};
-`;

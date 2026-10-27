@@ -39,7 +39,13 @@ export function SegmentedControl<T extends string>({
             accessibilityState={{ selected: active }}
             accessibilityLabel={opt.label}
           >
-            <SegmentText $active={active} $tone={tone}>
+            <SegmentText
+              $active={active}
+              $tone={tone}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               {opt.label}
             </SegmentText>
           </Segment>
@@ -60,7 +66,7 @@ const Container = styled.View<{ $tone: 'light' | 'dark' }>`
 const Segment = styled(TouchableOpacity)<{ $active: boolean }>`
   flex: 1;
   min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
-  padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
+  padding: ${({ theme }) => theme.spacing.xs}px 2px;
   justify-content: center;
   align-items: center;
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
@@ -71,6 +77,7 @@ const SegmentText = styled.Text<{ $active: boolean; $tone: 'light' | 'dark' }>`
   font-family: ${({ theme }) => theme.fonts.bold};
   font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
   line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
+  text-align: center;
   color: ${({ theme, $active, $tone }) =>
     $active
       ? theme.colors.onSecondary

@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   Clock,
   Calendar,
-  AlertTriangle,
   ChevronRight,
   Inbox as InboxIcon,
 } from 'lucide-react-native';
@@ -25,8 +24,6 @@ import {
   AuthorText,
   ReviewIndicator,
   ReviewButtonText,
-  SlaWarningBanner,
-  SlaWarningText,
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
@@ -76,19 +73,6 @@ export const InboxView = ({ isTab = false }: InboxViewProps) => {
         accessibilityRole="button"
         accessibilityLabel={`Analisar RDO número ${item.number}, Obra ${item.workName}, Status ${meta.label}`}
       >
-        {overdue && (
-          <SlaWarningBanner>
-            <AlertTriangle
-              color={theme.colors.status.error.text}
-              size={theme.icon.size.sm}
-              strokeWidth={theme.icon.strokeWidth}
-            />
-            <SlaWarningText>
-              {strings.status.atrasado}: Mais de 24h sem aprovação
-            </SlaWarningText>
-          </SlaWarningBanner>
-        )}
-
         <CardHeader>
           <CardTitleContainer>
             <RdoNumber>
