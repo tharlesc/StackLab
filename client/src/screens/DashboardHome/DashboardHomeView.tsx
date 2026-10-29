@@ -35,6 +35,8 @@ import { Screen, ScrollContent } from '@/components/common/Layout';
 import { SectionTitle } from '@/components/common/Typography';
 import { SearchBar } from '@/components/common/SearchBar';
 import { Avatar } from '@/components/common/Avatar';
+import { Pagination } from '@/components/common/Pagination';
+import { EmptyState } from '@/components/common/EmptyState';
 import { RDO_STATUS_META, getDisplayStatus } from '@/utils/rdo';
 import { strings } from '@/constants/strings';
 
@@ -59,6 +61,11 @@ export const DashboardHomeView = () => {
     chartData,
     indicators,
     activeWorks,
+    paginatedWorks,
+    currentPage,
+    totalPages,
+    setCurrentPage,
+    pageSize,
     pendingCount,
     returnedCount,
     navigateToNotifications,
@@ -190,26 +197,45 @@ export const DashboardHomeView = () => {
                   </SeeAllText>
                 </SectionHeader>
 
-                {activeWorks.map((work) => (
-                  <ActiveWorkCard
-                    key={work.id}
-                    {...work}
-                    onPress={() => {
-                      if (isMaster) {
-                        navigateToInbox();
-                      } else {
-                        setActiveTab('Novo RDO');
-                      }
-                    }}
-                    onActionPress={() => {
-                      if (isMaster) {
-                        navigateToInbox();
-                      } else {
-                        setActiveTab('Novo RDO');
-                      }
-                    }}
+                {activeWorks.length === 0 ? (
+                  <EmptyState
+                    icon={<Building2 size={40} color={theme.colors.text.secondary} />}
+                    title={strings.dashboard.emptyWorksTitle}
+                    message={strings.dashboard.emptyWorksMessage}
                   />
-                ))}
+                ) : (
+                  <>
+                    {paginatedWorks.map((work) => (
+                      <ActiveWorkCard
+                        key={work.id}
+                        {...work}
+                        onPress={() => {
+                          if (isMaster) {
+                            navigateToInbox();
+                          } else {
+                            setActiveTab('Novo RDO');
+                          }
+                        }}
+                        onActionPress={() => {
+                          if (isMaster) {
+                            navigateToInbox();
+                          } else {
+                            setActiveTab('Novo RDO');
+                          }
+                        }}
+                      />
+                    ))}
+
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={activeWorks.length}
+                      pageSize={pageSize}
+                      onPageChange={setCurrentPage}
+                      itemName="obras"
+                    />
+                  </>
+                )}
               </Section>
             </ScrollContent>
           </>

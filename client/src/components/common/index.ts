@@ -8,6 +8,7 @@ export * from './EmptyState';
 export * from './Input';
 export * from './InteractiveCard';
 export * from './Layout';
+export * from './Pagination';
 export * from './SearchBar';
 export * from './SegmentedControl';
 export * from './StatusBadge';
