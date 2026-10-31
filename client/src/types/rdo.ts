@@ -26,6 +26,7 @@ export type Shift = 'manha' | 'tarde' | 'noite';
 export interface WeatherEntry {
   shift: Shift;
   condition: string;
+  practical?: boolean;
   /** Obrigatório quando condition = "Chuva". */
   stoppageHours?: number;
   impact?: string;
@@ -35,14 +36,17 @@ export interface LaborEntry {
   role: string;
   quantity: number;
   hours: number;
+  isContractor?: boolean;
 }
 
 export interface EquipmentEntry {
   name: string;
+  quantity?: number;
   activeHours: number;
   idleHours: number;
   /** Obrigatório quando idleHours > 0. */
   idleJustification?: string;
+  isRented?: boolean;
 }
 
 export interface ActivityEntry {
@@ -50,25 +54,52 @@ export interface ActivityEntry {
   location: string;
   unit: string;
   quantity: number;
+  progress?: number; // Percentual de avanço físico (0 a 100%)
 }
 
 export interface MaterialEntry {
   name: string;
   supplier: string;
   invoice: string;
+  quantity?: number;
+  unit?: string;
 }
 
+export type OccurrenceType =
+  | 'dds'
+  | 'acidente'
+  | 'paralisacao'
+  | 'interferencia'
+  | 'pendencia'
+  | 'outro';
+
 export interface OccurrenceEntry {
-  type: 'dds' | 'acidente' | 'pendencia' | 'outro';
+  type: OccurrenceType;
   description: string;
+}
+
+export interface PhotoMetadata {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  address?: string;
+  capturedAt: string;
+  authorId: string;
+  authorName: string;
+  workId: string;
+  workName: string;
+  rdoNumber: number;
+  hash: string;
 }
 
 export interface PhotoEntry {
   id: string;
   caption: string;
   uri?: string;
+  watermarkedUri?: string;
   takenAt: string;
   author: string;
+  metadata?: PhotoMetadata;
 }
 
 export interface RDOComment {

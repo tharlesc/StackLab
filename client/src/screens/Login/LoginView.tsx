@@ -24,7 +24,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 
-import { useLogin } from './useLogin';
+import { useLogin } from '@/hooks';
 import {
   LoginScreen,
   BackgroundLayer,

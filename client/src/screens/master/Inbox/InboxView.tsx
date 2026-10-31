@@ -9,7 +9,7 @@ import {
   Inbox as InboxIcon,
 } from 'lucide-react-native';
 
-import { useInbox, InboxFilter } from './useInbox';
+import { useInbox, InboxFilter } from '@/hooks';
 import {
   ControlsHeader,
   InboxCard,

@@ -33,3 +33,13 @@ Thumbs.db
 *.md
 *.tmp
 *.temp
+
+# Whitelist project and educational documentation
+!PROJECT.md
+!server/MIGRATIONS_GUIDE.md
+
+# SQLite database and locks
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

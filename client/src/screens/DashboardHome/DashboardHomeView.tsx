@@ -10,7 +10,7 @@ import {
   Building2,
 } from 'lucide-react-native';
 
-import { useDashboardHome } from './useDashboardHome';
+import { useDashboardHome } from '@/hooks';
 import {
   Section,
   SectionHeader,

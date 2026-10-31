@@ -2,7 +2,7 @@ import React from 'react';
 import { useTheme } from 'styled-components/native';
 import { ChevronLeft, UserRound, Bell, Shield, LogOut } from 'lucide-react-native';
 
-import { useProfile } from './useProfile';
+import { useProfile } from '@/hooks';
 import {
   PhotoSection,
   ProfileName,

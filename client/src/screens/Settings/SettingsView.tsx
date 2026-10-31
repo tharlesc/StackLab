@@ -2,7 +2,7 @@ import React from 'react';
 import { useTheme } from 'styled-components/native';
 import { Wifi, Moon, Shield, HelpCircle } from 'lucide-react-native';
 
-import { useSettings } from './useSettings';
+import { useSettings } from '@/hooks';
 import {
   ThemeSectionRow,
   ThemeLabelRow,

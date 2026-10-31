@@ -11,7 +11,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 
-import { useNotifications, NotificationFilter } from './useNotifications';
+import { useNotifications, NotificationFilter } from '@/hooks';
 import {
   ControlsHeader,
   StatusBarRow,

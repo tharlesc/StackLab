@@ -1,0 +1,293 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// Enums
+// ==========================================
+
+enum UserProfile {
+  common
+  master
+}
+
+enum RDOStatus {
+  rascunho
+  submetido
+  devolvido
+  aprovado
+}
+
+enum Shift {
+  manha
+  tarde
+  noite
+}
+
+enum OccurrenceType {
+  dds
+  acidente
+  paralisacao
+  interferencia
+  pendencia
+  outro
+}
+
+enum AuditAction {
+  criado
+  submetido
+  devolvido
+  editado
+  comentado
+  aprovado
+  retificado
+}
+
+// ==========================================
+// Core Identity & Work Models
+// ==========================================
+
+model User {
+  id            String       @id @default(uuid())
+  name          String
+  email         String       @unique
+  password      String
+  role          String       // e.g. "Engenheiro Residente", "Encarregado"
+  crea          String?
+  profile       UserProfile  @default(common)
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  assignedWorks UserWork[]
+  rdosAuthored  RDO[]        @relation("RDOAuthor")
+  auditLogs     AuditLog[]
+  comments      RDOComment[]
+}
+
+model Work {
+  id            String       @id @default(uuid())
+  name          String
+  subtitle      String?
+  client        String
+  address       String
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  users         UserWork[]
+  rdos          RDO[]
+  photos        RDOPhoto[]
+}
+
+model UserWork {
+  userId        String
+  workId        String
+  assignedAt    DateTime     @default(now())
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  work          Work         @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workId])
+  @@index([workId])
+}
+
+// ==========================================
+// RDO Root Aggregate Model
+// ==========================================
+
+model RDO {
+  id                 String           @id @default(uuid())
+  number             Int              // Sequential RDO number per work
+  version            Int              @default(1)
+  previousVersionId  String?          // ID of prior frozen version when rectified
+  workId             String
+  work               Work             @relation(fields: [workId], references: [id])
+  authorId           String
+  author             User             @relation("RDOAuthor", fields: [authorId], references: [id])
+  date               String           // Format "YYYY-MM-DD"
+  status             RDOStatus        @default(rascunho)
+  submittedAt        DateTime?
+  returnReason       String?
+  locked             Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // Nested RDO Modules
+  weather            WeatherEntry[]
+  labor              LaborEntry[]
+  equipment          EquipmentEntry[]
+  activities         ActivityEntry[]
+  materials          MaterialEntry[]
+  occurrences        OccurrenceEntry[]
+  photos             RDOPhoto[]
+  comments           RDOComment[]
+  signature          SignatureMeta?
+  auditLogs          AuditLog[]
+
+  @@unique([workId, number, version])
+  @@index([status])
+  @@index([workId])
+  @@index([authorId])
+  @@index([date])
+}
+
+// ==========================================
+// RDO Sub-Entity Modules
+// ==========================================
+
+model WeatherEntry {
+  id             String   @id @default(uuid())
+  rdoId          String
+  rdo            RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  shift          Shift
+  condition      String   // "Ensolarado", "Nublado", "Chuva", "Instável"
+  practical      Boolean  @default(true) // Praticabilidade do canteiro
+  stoppageHours  Float?   // Horas paradas (obrigatório se Chuva com impacto)
+  impact         String?  // Descrição do impacto
+
+  @@index([rdoId])
+}
+
+model LaborEntry {
+  id             String   @id @default(uuid())
+  rdoId          String
+  rdo            RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  role           String   // Função / cargo
+  quantity       Int      // Quantidade de colaboradores
+  hours          Float    // Horas trabalhadas no dia
+  isContractor   Boolean  @default(false) // Próprio (false) vs Terceirizado (true)
+
+  @@index([rdoId])
+}
+
+model EquipmentEntry {
+  id                 String   @id @default(uuid())
+  rdoId              String
+  rdo                RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  name               String   // Nome do equipamento
+  quantity           Int      @default(1)
+  isRented           Boolean  @default(false) // Próprio (false) vs Locado (true)
+  activeHours        Float    // Horas produtivas
+  idleHours          Float    // Horas ociosas
+  idleJustification  String?  // Obrigatório se idleHours > 0
+
+  @@index([rdoId])
+}
+
+model ActivityEntry {
+  id             String   @id @default(uuid())
+  rdoId          String
+  rdo            RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  description    String   // Descrição da atividade executada
+  location       String   // Pavimento / trecho
+  unit           String   // "m²", "m³", "un", "kg", "m"
+  quantity       Float    // Quantidade executada
+  progress       Float    @default(0) // Avanço físico percentual (0 a 100)
+
+  @@index([rdoId])
+}
+
+model MaterialEntry {
+  id             String   @id @default(uuid())
+  rdoId          String
+  rdo            RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  name           String   // Nome do insumo
+  quantity       Float?   // Quantidade recebida
+  unit           String?  // Unidade de medida
+  supplier       String   // Fornecedor
+  invoice        String   // Número da nota fiscal (NF-e)
+
+  @@index([rdoId])
+}
+
+model OccurrenceEntry {
+  id             String          @id @default(uuid())
+  rdoId          String
+  rdo            RDO             @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  type           OccurrenceType  // dds, acidente, paralisacao, interferencia, pendencia, outro
+  description    String          // Detalhamento do fato relevante
+
+  @@index([rdoId])
+}
+
+model RDOPhoto {
+  id             String   @id @default(uuid())
+  rdoId          String?  // Nullable para uploads temporários de rascunho
+  rdo            RDO?     @relation(fields: [rdoId], references: [id], onDelete: SetNull)
+  workId         String
+  work           Work     @relation(fields: [workId], references: [id])
+  caption        String   // Legenda descritiva
+  fileUrl        String   // URL estática para visualização (/uploads/...)
+  fileName       String   // Nome do arquivo salvo no disco
+  fileSize       Int      // Tamanho em bytes
+  mimeType       String   // "image/jpeg", "image/png"
+  takenAt        DateTime // Data/hora capturada pelo dispositivo
+  authorId       String
+  authorName     String
+  latitude       Float    // Coordenada GPS Latitude
+  longitude      Float    // Coordenada GPS Longitude
+  accuracy       Float?   // Precisão do GPS em metros
+  address        String?  // Endereço aproximado
+  watermarkText  String   // Texto da marca d'água estampada na imagem
+  hash           String?  // Hash criptográfico de integridade da imagem
+  createdAt      DateTime @default(now())
+
+  @@index([rdoId])
+  @@index([workId])
+  @@index([authorId])
+}
+
+model RDOComment {
+  id             String   @id @default(uuid())
+  rdoId          String
+  rdo            RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  section        String   // identificacao, clima, maoDeObra, equipamentos, atividades, materiais, ocorrencias, fotos
+  authorId       String
+  author         User     @relation(fields: [authorId], references: [id])
+  authorName     String   // Nome em cache para rápida renderização
+  text           String
+  createdAt      DateTime @default(now())
+
+  @@index([rdoId])
+  @@index([authorId])
+}
+
+model AuditLog {
+  id             String      @id @default(uuid())
+  rdoId          String
+  rdo            RDO         @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  action         AuditAction // criado, submetido, devolvido, editado, comentado, aprovado, retificado
+  actorId        String
+  actor          User        @relation(fields: [actorId], references: [id])
+  actorName      String
+  timestamp      DateTime    @default(now())
+  justification  String?     // Justificativa obrigatória para devolução/edição
+  section        String?     // Seção alterada
+  field          String?     // Campo alterado
+  previousValue  String?     // Valor anterior
+  newValue       String?     // Novo valor
+
+  @@index([rdoId])
+  @@index([actorId])
+}
+
+model SignatureMeta {
+  id             String   @id @default(uuid())
+  rdoId          String   @unique
+  rdo            RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  signedById     String
+  signedByName   String
+  signedAt       DateTime
+  ip             String
+  deviceId       String
+  hash           String   // Hash SHA-256 de integridade digital
+  createdAt      DateTime @default(now())
+
+  @@index([rdoId])
+}
