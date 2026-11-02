@@ -52,14 +52,12 @@ export const StepProgressBar = styled.View`
   background-color: ${({ theme }) => theme.colors.surface};
   border-bottom-width: 1px;
   border-bottom-color: ${({ theme }) => theme.colors.border};
-  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.md}px;
+  padding: ${({ theme }) => theme.spacing.sm}px 0;
 `;
 
-export const StepScrollList = styled.ScrollView`
-  flex-direction: row;
-`;
+export const StepScrollList = styled.ScrollView``;
 
-export const StepTab = styled.TouchableOpacity<{ $active: boolean; $completed: boolean }>`
+export const StepTab = styled.View<{ $active: boolean; $completed: boolean }>`
   flex-direction: row;
   align-items: center;
   padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
@@ -67,6 +65,7 @@ export const StepTab = styled.TouchableOpacity<{ $active: boolean; $completed: b
   background-color: ${({ $active, theme }) =>
     $active ? theme.colors.primary : 'transparent'};
   margin-right: ${({ theme }) => theme.spacing.xs}px;
+  flex-shrink: 0;
 `;
 
 export const StepCircle = styled.View<{ $active: boolean; $completed: boolean }>`
@@ -92,7 +91,7 @@ export const StepCircleText = styled.Text<{ $active: boolean }>`
 
 export const StepTabText = styled.Text<{ $active: boolean }>`
   font-family: ${({ $active, theme }) => ($active ? theme.fonts.bold : theme.fonts.medium)};
-  font-size: 13px;
+  font-size: 12px;
   color: ${({ $active, theme }) => ($active ? theme.colors.text.inverse : theme.colors.text.secondary)};
 `;
 
@@ -111,15 +110,15 @@ export const StepHeader = styled.View`
 
 export const StepTitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: ${({ theme }) => theme.typography.headline.fontSize}px;
-  line-height: ${({ theme }) => theme.typography.headline.lineHeight}px;
+  font-size: 16px;
+  line-height: 22px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const StepSubtitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
-  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
+  font-size: 12px;
+  line-height: 16px;
   color: ${({ theme }) => theme.colors.text.secondary};
   margin-top: ${({ theme }) => theme.spacing.xxs}px;
 `;
@@ -137,7 +136,8 @@ export const FormCol = styled.View<{ flex?: number }>`
 
 export const FieldLabel = styled.Text`
   font-family: ${({ theme }) => theme.fonts.medium};
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 16px;
   color: ${({ theme }) => theme.colors.text.secondary};
   margin-bottom: ${({ theme }) => theme.spacing.xxs}px;
 `;
@@ -194,13 +194,15 @@ export const AddedItemInfo = styled.View`
 
 export const AddedItemTitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.semiBold};
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 18px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
 export const AddedItemSubtitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 15px;
   color: ${({ theme }) => theme.colors.text.secondary};
   margin-top: 2px;
 `;
@@ -230,7 +232,8 @@ export const ShiftHeader = styled.View`
 
 export const ShiftTitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 18px;
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
@@ -255,7 +258,7 @@ export const ConditionChip = styled.TouchableOpacity<{ $selected: boolean }>`
 `;
 
 export const ConditionChipText = styled.Text<{ $selected: boolean }>`
-  font-size: 12px;
+  font-size: 11px;
   font-family: ${({ $selected, theme }) => ($selected ? theme.fonts.bold : theme.fonts.medium)};
   color: ${({ $selected, theme }) =>
     $selected ? theme.colors.text.inverse : theme.colors.text.primary};
@@ -266,12 +269,22 @@ export const ToggleRow = styled.View`
   justify-content: space-between;
   align-items: center;
   margin-top: ${({ theme }) => theme.spacing.xs}px;
+  gap: ${({ theme }) => theme.spacing.sm}px;
+  flex-wrap: wrap;
 `;
 
 export const ToggleLabel = styled.Text`
   font-family: ${({ theme }) => theme.fonts.medium};
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 17px;
   color: ${({ theme }) => theme.colors.text.primary};
+  flex: 1;
+  min-width: 140px;
+`;
+
+export const ToggleControlWrapper = styled.View`
+  min-width: 120px;
+  flex-shrink: 0;
 `;
 
 // ============================================================================
@@ -333,12 +346,136 @@ export const BottomActionBar = styled.View`
   background-color: ${({ theme }) => theme.colors.surface};
   border-top-width: 1px;
   border-top-color: ${({ theme }) => theme.colors.border};
-  padding: ${({ theme }) => theme.spacing.md}px;
+  padding: ${({ theme }) => theme.spacing.md}px ${({ theme }) => theme.spacing.lg}px;
   flex-direction: row;
-  gap: ${({ theme }) => theme.spacing.sm}px;
+  gap: ${({ theme }) => theme.spacing.md}px;
   align-items: center;
+  z-index: 10;
 `;
 
 export const ActionButtonWrapper = styled.View<{ flex?: number }>`
   flex: ${({ flex }) => flex ?? 1};
+`;
+
+// ============================================================================
+// Passo de Revisão & Prévia Consolidada (Read-Only)
+// ============================================================================
+
+export const ReviewSectionCard = styled.View`
+  background-color: ${({ theme }) => theme.colors.surfaceVariant};
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  padding: ${({ theme }) => theme.spacing.md}px;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+  border-left-width: 4px;
+  border-left-color: ${({ theme }) => theme.colors.primary};
+`;
+
+export const ReviewSectionHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+export const ReviewSectionTitle = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 13px;
+  line-height: 18px;
+  color: ${({ theme }) => theme.colors.text.primary};
+  flex: 1;
+`;
+
+export const ReviewEditButton = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
+  background-color: ${({ theme }) => theme.colors.surface};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
+`;
+
+export const ReviewEditText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.medium};
+  font-size: 11px;
+  color: ${({ theme }) => theme.colors.primary};
+`;
+
+export const ReviewInfoRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding-vertical: 4px;
+  border-bottom-width: 1px;
+  border-bottom-color: rgba(0, 0, 0, 0.04);
+`;
+
+export const ReviewLabel = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.medium};
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  flex: 1;
+`;
+
+export const ReviewValue = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text.primary};
+  text-align: right;
+`;
+
+export const ReviewEmptyText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.regular};
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-style: italic;
+  padding-vertical: ${({ theme }) => theme.spacing.xs}px;
+`;
+
+export const ReviewItemBox = styled.View`
+  background-color: ${({ theme }) => theme.colors.surface};
+  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
+  padding: ${({ theme }) => theme.spacing.sm}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
+`;
+
+export const ReviewItemHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+export const ReviewItemTitle = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.semiBold};
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text.primary};
+  flex: 1;
+`;
+
+export const ReviewItemSubtitle = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.regular};
+  font-size: 11px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-top: 2px;
+`;
+
+export const ReviewBadge = styled.View<{ $variant?: 'primary' | 'secondary' | 'neutral' }>`
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: ${({ theme, $variant }) =>
+    $variant === 'secondary'
+      ? theme.colors.secondary
+      : $variant === 'neutral'
+        ? theme.colors.border
+        : theme.colors.primary};
+`;
+
+export const ReviewBadgeText = styled.Text<{ $variant?: 'primary' | 'secondary' | 'neutral' }>`
+  font-size: 10px;
+  font-family: ${({ theme }) => theme.fonts.bold};
+  color: ${({ theme, $variant }) =>
+    $variant === 'neutral' ? theme.colors.text.primary : theme.colors.text.inverse};
 `;

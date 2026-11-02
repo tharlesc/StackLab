@@ -33,7 +33,7 @@ import React, { act } from 'react';
 // @ts-ignore
 import { createRoot } from 'react-dom/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNewRDO } from '@/hooks';
+import { useNewRDO, STEPS } from '@/hooks';
 import { RDOProvider } from '../contexts/RDOContext';
 import { AuthProvider } from '../contexts/AuthContext';
 import { MOCK_ACTIVE_WORKS } from '../mocks';
@@ -92,7 +92,7 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
     expect(hookValue!.currentStep).toBe(0);
   });
 
-  it('selects a work and starts a new draft with 7 steps', async () => {
+  it('selects a work and starts a new draft with 8 steps including preview', async () => {
     await act(async () => {
       hookValue!.handleSelectWork(MOCK_ACTIVE_WORKS[0]!);
     });
@@ -222,5 +222,51 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
     });
 
     expect(hookValue!.isSuccessDialogOpen).toBe(true);
+  });
+
+  it('navigates through all 8 steps including preview (Revisão) and allows jumping back to edit', async () => {
+    await act(async () => {
+      hookValue!.handleSelectWork(MOCK_ACTIVE_WORKS[0]!);
+    });
+    await act(async () => {
+      await hookValue!.handleConfirmStart();
+    });
+
+    expect(hookValue!.currentStep).toBe(0);
+
+    // Avança passo a passo até o passo 7 (Revisão & Prévia)
+    for (let i = 0; i < 7; i++) {
+      await act(async () => {
+        hookValue!.handleNextStep();
+      });
+    }
+
+    expect(hookValue!.currentStep).toBe(7);
+
+    // Permite voltar ao passo 6 (Fotos)
+    await act(async () => {
+      hookValue!.handlePrevStep();
+    });
+    expect(hookValue!.currentStep).toBe(6);
+
+    // Permite saltar diretamente para editar o passo 1 (Mão de Obra) a partir da prévia
+    await act(async () => {
+      hookValue!.goToStep(1);
+    });
+    expect(hookValue!.currentStep).toBe(1);
+  });
+
+  it('defines 8 sequential steps in STEPS to support complete progress indicator without truncation', () => {
+    expect(STEPS).toHaveLength(8);
+    expect(STEPS.map((s) => s.label)).toEqual([
+      'Clima',
+      'Efetivo',
+      'Máquinas',
+      'Atividades',
+      'Insumos',
+      'Fatos',
+      'Fotos',
+      'Revisão',
+    ]);
   });
 });

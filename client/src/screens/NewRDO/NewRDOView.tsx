@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Image } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Image, ScrollView, useWindowDimensions } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import {
   Building2,
@@ -20,6 +20,7 @@ import {
   Briefcase,
   Layers,
   FileSpreadsheet,
+  Edit3,
 } from 'lucide-react-native';
 
 import { useNewRDO, STEPS } from '@/hooks';
@@ -60,6 +61,7 @@ import {
   ConditionChipText,
   ToggleRow,
   ToggleLabel,
+  ToggleControlWrapper,
   PhotoCard,
   PhotoPreviewBox,
   WatermarkBanner,
@@ -67,6 +69,21 @@ import {
   WatermarkDataText,
   BottomActionBar,
   ActionButtonWrapper,
+  ReviewSectionCard,
+  ReviewSectionHeader,
+  ReviewSectionTitle,
+  ReviewEditButton,
+  ReviewEditText,
+  ReviewInfoRow,
+  ReviewLabel,
+  ReviewValue,
+  ReviewEmptyText,
+  ReviewItemBox,
+  ReviewItemHeader,
+  ReviewItemTitle,
+  ReviewItemSubtitle,
+  ReviewBadge,
+  ReviewBadgeText,
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
@@ -81,7 +98,11 @@ import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { strings } from '@/constants/strings';
 import type { Shift, OccurrenceType } from '@/types';
 
-export const NewRDOView = () => {
+interface NewRDOViewProps {
+  onWizardActiveChange?: (isActive: boolean) => void;
+}
+
+export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const theme = useTheme();
   const {
     works,
@@ -126,6 +147,36 @@ export const NewRDOView = () => {
     handleFinishSuccess,
     setIsValidationDialogOpen,
   } = useNewRDO();
+
+  useEffect(() => {
+    onWizardActiveChange?.(Boolean(activeDraft));
+    return () => {
+      onWizardActiveChange?.(false);
+    };
+  }, [activeDraft, onWizardActiveChange]);
+
+  // Rolagem automática e medição de posições dos passos da barra superior
+  const { width: screenWidth } = useWindowDimensions();
+  const stepScrollRef = useRef<any>(null);
+  const stepLayouts = useRef<{ [key: number]: { x: number; width: number } }>({});
+
+  const scrollToActiveStep = useCallback(
+    (stepIndex: number) => {
+      const layout = stepLayouts.current[stepIndex];
+      if (layout && stepScrollRef.current) {
+        const targetX = Math.max(0, layout.x - (screenWidth - layout.width) / 2);
+        stepScrollRef.current.scrollTo({ x: targetX, animated: true });
+      } else if (stepScrollRef.current) {
+        const approxX = Math.max(0, stepIndex * 105 - screenWidth / 2 + 50);
+        stepScrollRef.current.scrollTo({ x: approxX, animated: true });
+      }
+    },
+    [screenWidth],
+  );
+
+  useEffect(() => {
+    scrollToActiveStep(currentStep);
+  }, [currentStep, scrollToActiveStep]);
 
   // Estados locais para os formulários de adição de itens
   // Mão de Obra
@@ -272,9 +323,21 @@ export const NewRDOView = () => {
         }
       />
 
-      {/* Barra de Progresso / Abas dos Passos */}
-      <StepProgressBar>
-        <StepScrollList horizontal showsHorizontalScrollIndicator={false}>
+      {/* Barra de Progresso / Indicador Visual dos Passos (Apenas Leitura, Sem Toque) */}
+      <StepProgressBar
+        pointerEvents="none"
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Etapa ${currentStep + 1} de ${STEPS.length}: ${STEPS[currentStep]?.label}`}
+      >
+        <StepScrollList
+          ref={stepScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.md,
+            alignItems: 'center',
+          }}
+        >
           {STEPS.map((step) => {
             const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
@@ -283,10 +346,16 @@ export const NewRDOView = () => {
                 key={step.id}
                 $active={isActive}
                 $completed={isCompleted}
-                onPress={() => goToStep(step.id)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={step.title}
+                onLayout={(e) => {
+                  stepLayouts.current[step.id] = e.nativeEvent.layout;
+                  if (step.id === currentStep) {
+                    scrollToActiveStep(currentStep);
+                  }
+                }}
+                accessibilityRole="none"
+                accessibilityLabel={`${step.id + 1}. ${step.label}${
+                  isActive ? ' (atual)' : isCompleted ? ' (concluído)' : ''
+                }`}
               >
                 <StepCircle $active={isActive} $completed={isCompleted}>
                   <StepCircleText $active={isActive}>{step.id + 1}</StepCircleText>
@@ -299,7 +368,7 @@ export const NewRDOView = () => {
       </StepProgressBar>
 
       {/* Conteúdo Dinâmico do Passo Atual */}
-      <ScrollContent showsVerticalScrollIndicator={false}>
+      <ScrollContent showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {savedFeedback && (
           <InteractiveCard
             title="Rascunho Salvo"
@@ -370,14 +439,16 @@ export const NewRDOView = () => {
 
                   <ToggleRow>
                     <ToggleLabel>Canteiro Praticável no Turno?</ToggleLabel>
-                    <SegmentedControl
-                      options={[
-                        { label: 'Sim', value: 'sim' },
-                        { label: 'Não', value: 'nao' },
-                      ]}
-                      value={weatherEntry.practical ? 'sim' : 'nao'}
-                      onChange={(val) => updateWeatherShift(shift, { practical: val === 'sim' })}
-                    />
+                    <ToggleControlWrapper>
+                      <SegmentedControl
+                        options={[
+                          { label: 'Sim', value: 'sim' },
+                          { label: 'Não', value: 'nao' },
+                        ]}
+                        value={weatherEntry.practical ? 'sim' : 'nao'}
+                        onChange={(val) => updateWeatherShift(shift, { practical: val === 'sim' })}
+                      />
+                    </ToggleControlWrapper>
                   </ToggleRow>
 
                   {isRain && (
@@ -952,34 +1023,258 @@ export const NewRDOView = () => {
             )}
           </StepCard>
         )}
+
+        {/* ================================================================== */}
+        {/* PASSO 7: REVISÃO & PRÉVIA CONSOLIDADA (READ-ONLY)                 */}
+        {/* ================================================================== */}
+        {currentStep === 7 && (
+          <StepCard>
+            <StepHeader>
+              <StepTitle>8. Revisão & Prévia</StepTitle>
+              <StepSubtitle>
+                Confira o consolidado de todas as informações antes de finalizar o envio.
+              </StepSubtitle>
+            </StepHeader>
+
+            {/* 1. Clima */}
+            <ReviewSectionCard>
+              <ReviewSectionHeader>
+                <ReviewSectionTitle>1. Identificação & Clima</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(0)} accessibilityLabel="Editar clima">
+                  <Edit3 size={12} color={theme.colors.primary} />
+                  <ReviewEditText>Editar</ReviewEditText>
+                </ReviewEditButton>
+              </ReviewSectionHeader>
+              <ReviewInfoRow>
+                <ReviewLabel>Data do Registro:</ReviewLabel>
+                <ReviewValue>{activeDraft.date}</ReviewValue>
+              </ReviewInfoRow>
+              {(['manha', 'tarde', 'noite'] as Shift[]).map((shift) => {
+                const w = activeDraft.weather.find((entry) => entry.shift === shift) || {
+                  shift,
+                  condition: 'Ensolarado',
+                  practical: true,
+                };
+                const shiftName = shift === 'manha' ? 'Manhã' : shift === 'tarde' ? 'Tarde' : 'Noite';
+                return (
+                  <ReviewItemBox key={shift}>
+                    <ReviewItemHeader>
+                      <ReviewItemTitle>Turno {shiftName}</ReviewItemTitle>
+                      <ReviewBadge $variant={w.practical ? 'primary' : 'secondary'}>
+                        <ReviewBadgeText $variant={w.practical ? 'primary' : 'secondary'}>
+                          {w.practical ? 'Praticável' : 'Impraticável'}
+                        </ReviewBadgeText>
+                      </ReviewBadge>
+                    </ReviewItemHeader>
+                    <ReviewItemSubtitle>Condição: {w.condition}</ReviewItemSubtitle>
+                    {(w.stoppageHours ?? 0) > 0 && (
+                      <ReviewItemSubtitle>
+                        Paralisação por Chuva: {w.stoppageHours}h {w.impact ? `(${w.impact})` : ''}
+                      </ReviewItemSubtitle>
+                    )}
+                  </ReviewItemBox>
+                );
+              })}
+            </ReviewSectionCard>
+
+            {/* 2. Mão de Obra */}
+            <ReviewSectionCard>
+              <ReviewSectionHeader>
+                <ReviewSectionTitle>2. Mão de Obra ({activeDraft.labor.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(1)} accessibilityLabel="Editar mão de obra">
+                  <Edit3 size={12} color={theme.colors.primary} />
+                  <ReviewEditText>Editar</ReviewEditText>
+                </ReviewEditButton>
+              </ReviewSectionHeader>
+              <KpiBanner>
+                <KpiItem>
+                  <KpiValue>{headcount}</KpiValue>
+                  <KpiLabel>Efetivo Total</KpiLabel>
+                </KpiItem>
+                <KpiItem>
+                  <KpiValue>{manHours}h</KpiValue>
+                  <KpiLabel>Horas Homem (Hh)</KpiLabel>
+                </KpiItem>
+              </KpiBanner>
+              {activeDraft.labor.length === 0 ? (
+                <ReviewEmptyText>Nenhum efetivo adicionado.</ReviewEmptyText>
+              ) : (
+                activeDraft.labor.map((l, idx) => (
+                  <ReviewItemBox key={idx}>
+                    <ReviewItemHeader>
+                      <ReviewItemTitle>{l.role}</ReviewItemTitle>
+                      <ReviewBadge $variant={l.isContractor ? 'secondary' : 'neutral'}>
+                        <ReviewBadgeText $variant={l.isContractor ? 'secondary' : 'neutral'}>
+                          {l.isContractor ? 'Terceirizado' : 'Próprio'}
+                        </ReviewBadgeText>
+                      </ReviewBadge>
+                    </ReviewItemHeader>
+                    <ReviewItemSubtitle>
+                      Qtd: {l.quantity} colaborador(es) • Jornada: {l.hours}h ({l.quantity * l.hours} Hh)
+                    </ReviewItemSubtitle>
+                  </ReviewItemBox>
+                ))
+              )}
+            </ReviewSectionCard>
+
+            {/* 3. Equipamentos */}
+            <ReviewSectionCard>
+              <ReviewSectionHeader>
+                <ReviewSectionTitle>3. Equipamentos ({activeDraft.equipment.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(2)} accessibilityLabel="Editar equipamentos">
+                  <Edit3 size={12} color={theme.colors.primary} />
+                  <ReviewEditText>Editar</ReviewEditText>
+                </ReviewEditButton>
+              </ReviewSectionHeader>
+              {activeDraft.equipment.length === 0 ? (
+                <ReviewEmptyText>Nenhum equipamento registrado.</ReviewEmptyText>
+              ) : (
+                activeDraft.equipment.map((eq, idx) => (
+                  <ReviewItemBox key={idx}>
+                    <ReviewItemHeader>
+                      <ReviewItemTitle>{eq.name}</ReviewItemTitle>
+                      <ReviewBadge $variant={eq.isRented ? 'secondary' : 'neutral'}>
+                        <ReviewBadgeText $variant={eq.isRented ? 'secondary' : 'neutral'}>
+                          {eq.isRented ? 'Locado' : 'Próprio'}
+                        </ReviewBadgeText>
+                      </ReviewBadge>
+                    </ReviewItemHeader>
+                    <ReviewItemSubtitle>
+                      Qtd: {eq.quantity ?? 1} • Horas Ativas: {eq.activeHours}h • Horas Ociosas: {eq.idleHours}h
+                    </ReviewItemSubtitle>
+                    {eq.idleHours > 0 && eq.idleJustification && (
+                      <ReviewItemSubtitle>Motivo Ociosidade: {eq.idleJustification}</ReviewItemSubtitle>
+                    )}
+                  </ReviewItemBox>
+                ))
+              )}
+            </ReviewSectionCard>
+
+            {/* 4. Atividades */}
+            <ReviewSectionCard>
+              <ReviewSectionHeader>
+                <ReviewSectionTitle>4. Atividades Executadas ({activeDraft.activities.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(3)} accessibilityLabel="Editar atividades">
+                  <Edit3 size={12} color={theme.colors.primary} />
+                  <ReviewEditText>Editar</ReviewEditText>
+                </ReviewEditButton>
+              </ReviewSectionHeader>
+              {activeDraft.activities.length === 0 ? (
+                <ReviewEmptyText>Nenhuma atividade registrada.</ReviewEmptyText>
+              ) : (
+                activeDraft.activities.map((act, idx) => (
+                  <ReviewItemBox key={idx}>
+                    <ReviewItemHeader>
+                      <ReviewItemTitle>{act.description}</ReviewItemTitle>
+                      <ReviewBadge $variant="primary">
+                        <ReviewBadgeText>{act.progress ?? 0}% Concluído</ReviewBadgeText>
+                      </ReviewBadge>
+                    </ReviewItemHeader>
+                    <ReviewItemSubtitle>
+                      Local: {act.location} • Produção: {act.quantity} {act.unit}
+                    </ReviewItemSubtitle>
+                  </ReviewItemBox>
+                ))
+              )}
+            </ReviewSectionCard>
+
+            {/* 5. Insumos */}
+            <ReviewSectionCard>
+              <ReviewSectionHeader>
+                <ReviewSectionTitle>5. Materiais Recebidos ({activeDraft.materials.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(4)} accessibilityLabel="Editar materiais">
+                  <Edit3 size={12} color={theme.colors.primary} />
+                  <ReviewEditText>Editar</ReviewEditText>
+                </ReviewEditButton>
+              </ReviewSectionHeader>
+              {activeDraft.materials.length === 0 ? (
+                <ReviewEmptyText>Nenhum material recebido no dia.</ReviewEmptyText>
+              ) : (
+                activeDraft.materials.map((mat, idx) => (
+                  <ReviewItemBox key={idx}>
+                    <ReviewItemHeader>
+                      <ReviewItemTitle>{mat.name}</ReviewItemTitle>
+                      <ReviewBadge $variant="neutral">
+                        <ReviewBadgeText $variant="neutral">NF: {mat.invoice}</ReviewBadgeText>
+                      </ReviewBadge>
+                    </ReviewItemHeader>
+                    <ReviewItemSubtitle>
+                      Fornecedor: {mat.supplier} • Quantidade: {mat.quantity ?? 1} {mat.unit ?? 'un'}
+                    </ReviewItemSubtitle>
+                  </ReviewItemBox>
+                ))
+              )}
+            </ReviewSectionCard>
+
+            {/* 6. Ocorrências & DDS */}
+            <ReviewSectionCard>
+              <ReviewSectionHeader>
+                <ReviewSectionTitle>6. Ocorrências & DDS ({activeDraft.occurrences.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(5)} accessibilityLabel="Editar ocorrências">
+                  <Edit3 size={12} color={theme.colors.primary} />
+                  <ReviewEditText>Editar</ReviewEditText>
+                </ReviewEditButton>
+              </ReviewSectionHeader>
+              {activeDraft.occurrences.length === 0 ? (
+                <ReviewEmptyText>Nenhuma ocorrência ou DDS registrado.</ReviewEmptyText>
+              ) : (
+                activeDraft.occurrences.map((occ, idx) => (
+                  <ReviewItemBox key={idx}>
+                    <ReviewItemHeader>
+                      <ReviewItemTitle>{occ.type.toUpperCase()}</ReviewItemTitle>
+                    </ReviewItemHeader>
+                    <ReviewItemSubtitle>{occ.description}</ReviewItemSubtitle>
+                  </ReviewItemBox>
+                ))
+              )}
+            </ReviewSectionCard>
+
+            {/* 7. Fotos */}
+            <ReviewSectionCard>
+              <ReviewSectionHeader>
+                <ReviewSectionTitle>7. Fotos na Obra ({activeDraft.photos.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(6)} accessibilityLabel="Editar fotos">
+                  <Edit3 size={12} color={theme.colors.primary} />
+                  <ReviewEditText>Editar</ReviewEditText>
+                </ReviewEditButton>
+              </ReviewSectionHeader>
+              {activeDraft.photos.length === 0 ? (
+                <ReviewEmptyText>Nenhuma foto anexada ao diário.</ReviewEmptyText>
+              ) : (
+                activeDraft.photos.map((p, idx) => (
+                  <ReviewItemBox key={p.id || idx}>
+                    <ReviewItemHeader>
+                      <ReviewItemTitle>{p.caption || `Foto #${idx + 1}`}</ReviewItemTitle>
+                      <ReviewBadge $variant="neutral">
+                        <ReviewBadgeText $variant="neutral">Registrada</ReviewBadgeText>
+                      </ReviewBadge>
+                    </ReviewItemHeader>
+                    <ReviewItemSubtitle>
+                      Horário: {p.takenAt}
+                    </ReviewItemSubtitle>
+                  </ReviewItemBox>
+                ))
+              )}
+            </ReviewSectionCard>
+          </StepCard>
+        )}
       </ScrollContent>
 
       {/* Barra de Ações Inferior (Fixa) */}
       <BottomActionBar>
-        {currentStep > 0 && (
-          <ActionButtonWrapper flex={1}>
-            <Button
-              title="Voltar"
-              variant="outline"
-              size="small"
-              onPress={handlePrevStep}
-              accessibilityLabel="Voltar ao passo anterior"
-            />
-          </ActionButtonWrapper>
-        )}
-
         <ActionButtonWrapper flex={1}>
           <Button
-            title="Salvar Rascunho"
+            title="Voltar"
             variant="outline"
             size="small"
-            onPress={handleSaveDraft}
-            accessibilityLabel="Salvar rascunho"
+            disabled={currentStep === 0}
+            onPress={handlePrevStep}
+            accessibilityLabel="Voltar ao passo anterior"
           />
         </ActionButtonWrapper>
 
-        {currentStep < STEPS.length - 1 ? (
-          <ActionButtonWrapper flex={1.5}>
+        <ActionButtonWrapper flex={1.5}>
+          {currentStep < STEPS.length - 2 ? (
             <Button
               title="Próximo Passo"
               variant="primary"
@@ -987,19 +1282,25 @@ export const NewRDOView = () => {
               onPress={handleNextStep}
               accessibilityLabel="Avançar para o próximo passo"
             />
-          </ActionButtonWrapper>
-        ) : (
-          <ActionButtonWrapper flex={1.5}>
+          ) : currentStep === STEPS.length - 2 ? (
             <Button
-              title={isSubmitting ? 'Submetendo...' : 'Finalizar e Submeter'}
+              title="Ver Prévia"
+              variant="primary"
+              size="small"
+              onPress={handleNextStep}
+              accessibilityLabel="Avançar para a tela de revisão e prévia"
+            />
+          ) : (
+            <Button
+              title={isSubmitting ? 'Submetendo...' : 'Concluir e Salvar'}
               variant="primary"
               size="small"
               disabled={isSubmitting}
               onPress={handleSubmit}
               accessibilityLabel="Finalizar e submeter o relatório diário de obra"
             />
-          </ActionButtonWrapper>
-        )}
+          )}
+        </ActionButtonWrapper>
       </BottomActionBar>
 
       {/* Dialog de Erros de Validação de Pré-Submissão */}

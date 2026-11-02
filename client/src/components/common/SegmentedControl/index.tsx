@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components/native';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 
 export interface SegmentOption<T extends string> {
   value: T;
@@ -13,6 +13,7 @@ export interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   /** `dark` para uso sobre o Hero Card escuro. */
   tone?: 'light' | 'dark';
+  style?: StyleProp<ViewStyle>;
 }
 
 /** Controle segmentado (filtros de período, filtros de inbox, tema etc.). */
@@ -21,12 +22,13 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   tone = 'light',
+  style,
 }: SegmentedControlProps<T>) {
   const normalized: SegmentOption<T>[] = options.map((o) =>
     typeof o === 'string' ? { value: o, label: o } : o,
   );
   return (
-    <Container $tone={tone} accessibilityRole="tablist">
+    <Container $tone={tone} style={style} accessibilityRole="tablist">
       {normalized.map((opt) => {
         const active = opt.value === value;
         return (
@@ -43,8 +45,6 @@ export function SegmentedControl<T extends string>({
               $active={active}
               $tone={tone}
               numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
             >
               {opt.label}
             </SegmentText>
@@ -61,12 +61,15 @@ const Container = styled.View<{ $tone: 'light' | 'dark' }>`
   border-radius: ${({ theme }) => theme.borderRadius.lg}px;
   background-color: ${({ theme, $tone }) =>
     $tone === 'dark' ? theme.colors.tag.timeFilterBg : theme.colors.surfaceVariant};
+  min-width: 120px;
+  flex-shrink: 0;
 `;
 
 const Segment = styled(TouchableOpacity)<{ $active: boolean }>`
   flex: 1;
+  min-width: 50px;
   min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
-  padding: ${({ theme }) => theme.spacing.xs}px 2px;
+  padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
   justify-content: center;
   align-items: center;
   border-radius: ${({ theme }) => theme.borderRadius.md}px;

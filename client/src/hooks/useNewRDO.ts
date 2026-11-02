@@ -26,6 +26,7 @@ export const STEPS = [
   { id: 4, label: 'Insumos', title: '5. Materiais Recebidos' },
   { id: 5, label: 'Fatos', title: '6. Ocorrências & DDS' },
   { id: 6, label: 'Fotos', title: '7. Fotos na Obra' },
+  { id: 7, label: 'Revisão', title: '8. Revisão & Prévia' },
 ] as const;
 
 export const useNewRDO = () => {

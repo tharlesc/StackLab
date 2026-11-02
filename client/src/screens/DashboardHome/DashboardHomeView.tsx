@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from 'styled-components/native';
 import {
   Bell,
@@ -48,6 +48,7 @@ import { AdminView } from '@/screens/master/Admin/AdminView';
 
 export const DashboardHomeView = () => {
   const theme = useTheme();
+  const [isWizardActive, setIsWizardActive] = useState(false);
   const {
     user,
     isMaster,
@@ -77,7 +78,7 @@ export const DashboardHomeView = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'Novo RDO':
-        return <NewRDOView />;
+        return <NewRDOView onWizardActiveChange={setIsWizardActive} />;
       case 'Inbox':
         return <InboxView isTab />;
       case 'Cadastros':
@@ -247,138 +248,140 @@ export const DashboardHomeView = () => {
     <Screen>
       {renderContent()}
 
-      <BottomNavigation>
-        <NavigationItem
-          icon={
-            <HardHat
-              color={theme.colors.text.secondary}
-              size={theme.icon.size.lg}
-              strokeWidth={1.75}
-            />
-          }
-          activeIcon={
-            <HardHat
-              color={theme.colors.text.inverse}
-              size={theme.icon.size.lg}
-              strokeWidth={2.5}
-            />
-          }
-          label={strings.navigation.works}
-          active={activeTab === 'Obras'}
-          onPress={() => setActiveTab('Obras')}
-          accessibilityLabel={strings.navigation.works}
-        />
-
-        {isMaster ? (
-          <PrimaryActionItem
-            icon={
-              <InboxIcon
-                color={theme.colors.text.secondary}
-                size={theme.icon.size.lg}
-                strokeWidth={2.25}
-              />
-            }
-            activeIcon={
-              <InboxIcon
-                color={theme.colors.text.inverse}
-                size={theme.icon.size.lg}
-                strokeWidth={2.25}
-              />
-            }
-            label="Inbox"
-            active={activeTab === 'Inbox'}
-            onPress={() => setActiveTab('Inbox')}
-            accessibilityLabel={`Inbox de Validação com ${pendingCount} pendentes`}
-          />
-        ) : (
-          <PrimaryActionItem
-            icon={
-              <Plus
-                color={theme.colors.text.secondary}
-                size={26}
-                strokeWidth={2.5}
-              />
-            }
-            activeIcon={
-              <Plus
-                color={theme.colors.text.inverse}
-                size={26}
-                strokeWidth={2.5}
-              />
-            }
-            label={strings.navigation.newRDO}
-            active={activeTab === 'Novo RDO'}
-            onPress={() => setActiveTab('Novo RDO')}
-            accessibilityLabel={strings.accessibility.newRdoAction}
-          />
-        )}
-
-        {isMaster ? (
+      {(!isWizardActive || activeTab !== 'Novo RDO') && (
+        <BottomNavigation>
           <NavigationItem
             icon={
-              <Building2
+              <HardHat
                 color={theme.colors.text.secondary}
                 size={theme.icon.size.lg}
                 strokeWidth={1.75}
               />
             }
             activeIcon={
-              <Building2
+              <HardHat
                 color={theme.colors.text.inverse}
                 size={theme.icon.size.lg}
                 strokeWidth={2.5}
               />
             }
-            label="Cadastros"
-            active={activeTab === 'Cadastros'}
-            onPress={() => setActiveTab('Cadastros')}
-            accessibilityLabel="Cadastros"
+            label={strings.navigation.works}
+            active={activeTab === 'Obras'}
+            onPress={() => setActiveTab('Obras')}
+            accessibilityLabel={strings.navigation.works}
           />
-        ) : (
+
+          {isMaster ? (
+            <PrimaryActionItem
+              icon={
+                <InboxIcon
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.lg}
+                  strokeWidth={2.25}
+                />
+              }
+              activeIcon={
+                <InboxIcon
+                  color={theme.colors.text.inverse}
+                  size={theme.icon.size.lg}
+                  strokeWidth={2.25}
+                />
+              }
+              label="Inbox"
+              active={activeTab === 'Inbox'}
+              onPress={() => setActiveTab('Inbox')}
+              accessibilityLabel={`Inbox de Validação com ${pendingCount} pendentes`}
+            />
+          ) : (
+            <PrimaryActionItem
+              icon={
+                <Plus
+                  color={theme.colors.text.secondary}
+                  size={26}
+                  strokeWidth={2.5}
+                />
+              }
+              activeIcon={
+                <Plus
+                  color={theme.colors.text.inverse}
+                  size={26}
+                  strokeWidth={2.5}
+                />
+              }
+              label={strings.navigation.newRDO}
+              active={activeTab === 'Novo RDO'}
+              onPress={() => setActiveTab('Novo RDO')}
+              accessibilityLabel={strings.accessibility.newRdoAction}
+            />
+          )}
+
+          {isMaster ? (
+            <NavigationItem
+              icon={
+                <Building2
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.lg}
+                  strokeWidth={1.75}
+                />
+              }
+              activeIcon={
+                <Building2
+                  color={theme.colors.text.inverse}
+                  size={theme.icon.size.lg}
+                  strokeWidth={2.5}
+                />
+              }
+              label="Cadastros"
+              active={activeTab === 'Cadastros'}
+              onPress={() => setActiveTab('Cadastros')}
+              accessibilityLabel="Cadastros"
+            />
+          ) : (
+            <NavigationItem
+              icon={
+                <RefreshCcw
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.lg}
+                  strokeWidth={1.75}
+                />
+              }
+              activeIcon={
+                <RefreshCcw
+                  color={theme.colors.text.inverse}
+                  size={theme.icon.size.lg}
+                  strokeWidth={2.5}
+                />
+              }
+              label={strings.navigation.queue}
+              active={activeTab === 'Fila'}
+              onPress={() => setActiveTab('Fila')}
+              badgeCount={2}
+              accessibilityLabel={strings.navigation.queue}
+            />
+          )}
+
           <NavigationItem
             icon={
-              <RefreshCcw
+              <SettingsIcon
                 color={theme.colors.text.secondary}
                 size={theme.icon.size.lg}
                 strokeWidth={1.75}
               />
             }
             activeIcon={
-              <RefreshCcw
+              <SettingsIcon
                 color={theme.colors.text.inverse}
                 size={theme.icon.size.lg}
                 strokeWidth={2.5}
               />
             }
-            label={strings.navigation.queue}
-            active={activeTab === 'Fila'}
-            onPress={() => setActiveTab('Fila')}
-            badgeCount={2}
-            accessibilityLabel={strings.navigation.queue}
+            label={strings.navigation.settings}
+            active={activeTab === 'Ajustes'}
+            onPress={() => setActiveTab('Ajustes')}
+            accessibilityLabel={strings.navigation.settings}
           />
-        )}
-
-        <NavigationItem
-          icon={
-            <SettingsIcon
-              color={theme.colors.text.secondary}
-              size={theme.icon.size.lg}
-              strokeWidth={1.75}
-            />
-          }
-          activeIcon={
-            <SettingsIcon
-              color={theme.colors.text.inverse}
-              size={theme.icon.size.lg}
-              strokeWidth={2.5}
-            />
-          }
-          label={strings.navigation.settings}
-          active={activeTab === 'Ajustes'}
-          onPress={() => setActiveTab('Ajustes')}
-          accessibilityLabel={strings.navigation.settings}
-        />
-      </BottomNavigation>
+        </BottomNavigation>
+      )}
     </Screen>
   );
 };
