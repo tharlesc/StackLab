@@ -14,7 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react-native';
 
-import { useRDOReview } from './useRDOReview';
+import { useRDOReview } from '@/hooks';
 import {
   SectionCard,
   SectionHeader,

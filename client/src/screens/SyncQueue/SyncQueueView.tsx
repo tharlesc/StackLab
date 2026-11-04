@@ -3,7 +3,7 @@ import { ActivityIndicator } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { CloudOff, RefreshCcw, WifiOff } from 'lucide-react-native';
 
-import { useSyncQueue } from './useSyncQueue';
+import { useSyncQueue } from '@/hooks';
 import {
   QueueCard,
   InfoContainer,

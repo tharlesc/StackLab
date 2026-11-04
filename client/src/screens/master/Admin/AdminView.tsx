@@ -7,7 +7,7 @@ import {
   Check,
 } from 'lucide-react-native';
 
-import { useAdminScreen, AdminTab } from './useAdminScreen';
+import { useAdminScreen, AdminTab } from '@/hooks';
 import {
   ControlsHeader,
   ListHeaderWrapper,

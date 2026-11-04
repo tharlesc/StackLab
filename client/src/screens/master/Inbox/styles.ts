@@ -1,5 +1,6 @@
 import styled from 'styled-components/native';
 import { TouchableCard } from '@/components/common/Card';
+import type { RDODisplayStatus } from '@/types';
 
 export const ControlsHeader = styled.View`
   padding: ${({ theme }) => theme.spacing.lg}px ${({ theme }) => theme.spacing.lg}px
@@ -7,10 +8,23 @@ export const ControlsHeader = styled.View`
   gap: ${({ theme }) => theme.spacing.md}px;
 `;
 
-export const InboxCard = styled(TouchableCard)<{ $isOverdue?: boolean }>`
+export const InboxCard = styled(TouchableCard)<{
+  $isOverdue?: boolean;
+  $displayStatus?: RDODisplayStatus;
+}>`
   border-left-width: 4px;
-  border-left-color: ${({ theme, $isOverdue }) =>
-    $isOverdue ? theme.colors.status.error.base : theme.colors.status.warning.base};
+  border-left-color: ${({ theme, $isOverdue, $displayStatus }) => {
+    if ($isOverdue || $displayStatus === 'atrasado') {
+      return theme.colors.status.error.base;
+    }
+    if ($displayStatus === 'submetido') {
+      return theme.colors.status.success.base;
+    }
+    if ($displayStatus === 'devolvido') {
+      return theme.colors.status.warning.base;
+    }
+    return theme.colors.status.warning.base;
+  }};
   padding: ${({ theme }) => theme.spacing.md}px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
   flex-direction: column;
@@ -95,21 +109,4 @@ export const ReviewButtonText = styled.Text`
   font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
   line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.onSecondary};
-`;
-
-export const SlaWarningBanner = styled.View`
-  flex-direction: row;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.xsm}px;
-  background-color: ${({ theme }) => theme.colors.status.error.bg};
-  border-radius: ${({ theme }) => theme.borderRadius.md}px;
-  padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
-  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
-`;
-
-export const SlaWarningText = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
-  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
-  color: ${({ theme }) => theme.colors.status.error.text};
 `;

@@ -319,6 +319,14 @@ export const strings = {
     sessionsEndedDialogDesc:
       'Todos os outros dispositivos foram desconectados com sucesso.',
   },
+  pagination: {
+    previousPage: 'Página anterior',
+    nextPage: 'Próxima página',
+    pageOf: (current: number, total: number) => `Página ${current} de ${total}`,
+    showingRange: (start: number, end: number, total: number, item: string) =>
+      `Mostrando ${start}–${end} de ${total} ${item}`,
+    pageNumber: (page: number) => `Página ${page}`,
+  },
 } as const;
 
 export default strings;

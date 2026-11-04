@@ -45,7 +45,11 @@ const getPadding = (theme: DefaultTheme, size: ButtonSize) => {
 
 export const ButtonContainer = styled(TouchableOpacity)<StyledButtonProps>`
   background-color: ${({ theme, $variant, disabled }) =>
-    disabled ? theme.colors.border : getBackgroundColor(theme, $variant)};
+    disabled
+      ? $variant === 'outline'
+        ? 'transparent'
+        : theme.colors.border
+      : getBackgroundColor(theme, $variant)};
   border-radius: ${({ theme }) => theme.borderRadius.lg}px;
   padding: ${({ theme, $size }) => getPadding(theme, $size)};
   width: ${({ $fullWidth }) => ($fullWidth ? '100%' : 'auto')};
@@ -54,12 +58,17 @@ export const ButtonContainer = styled(TouchableOpacity)<StyledButtonProps>`
   justify-content: center;
   flex-direction: row;
   border-width: ${({ $variant }) => ($variant === 'outline' ? '1px' : '0px')};
-  border-color: ${({ theme, $variant }) => getBorderColor(theme, $variant)};
-  opacity: ${({ disabled, $pressed }) => (disabled ? 0.6 : $pressed ? 0.85 : 1)};
+  border-color: ${({ theme, $variant, disabled }) =>
+    $variant === 'outline'
+      ? disabled
+        ? theme.colors.border
+        : theme.colors.border
+      : 'transparent'};
+  opacity: ${({ disabled, $pressed }) => (disabled ? 0.45 : $pressed ? 0.85 : 1)};
   transform: ${({ $pressed }) => ($pressed ? 'scale(0.99)' : 'scale(1)')};
 `;
 
-export const ButtonText = styled.Text<{ $variant: ButtonVariant; $size: ButtonSize }>`
+export const ButtonText = styled.Text<{ $variant: ButtonVariant; $size: ButtonSize; disabled?: boolean }>`
   font-family: ${({ theme }) => theme.fonts.bold};
   font-size: ${({ theme, $size }) =>
     $size === 'small'
@@ -73,8 +82,10 @@ export const ButtonText = styled.Text<{ $variant: ButtonVariant; $size: ButtonSi
       : $size === 'large'
         ? theme.typography.headline.lineHeight
         : theme.typography.body.lineHeight}px;
-  color: ${({ theme, $variant }) => {
-    if ($variant === 'outline') return theme.colors.text.primary;
+  color: ${({ theme, $variant, disabled }) => {
+    if ($variant === 'outline') {
+      return disabled ? theme.colors.text.secondary : theme.colors.text.primary;
+    }
     if ($variant === 'secondary') return theme.colors.onSecondary;
     return theme.colors.text.inverse;
   }};

@@ -6,7 +6,10 @@ import { useRDOs } from '@/contexts/RDOContext';
 import { MOCK_ACTIVE_WORKS } from '@/mocks';
 import { strings } from '@/constants/strings';
 import { isOverdue, rdoMatchesQuery } from '@/utils/rdo';
+import { getTotalPages, paginateItems } from '@/utils/pagination';
 import type { ChartData, IndicatorItem, ActiveWork, RDO } from '@/types';
+
+export const WORKS_PER_PAGE = 3;
 
 export type DashboardTab = 'Obras' | 'Novo RDO' | 'Inbox' | 'Cadastros' | 'Fila' | 'Ajustes';
 
@@ -19,6 +22,7 @@ export const useDashboardHome = () => {
   const [activeTimeFilter, setActiveTimeFilter] = useState('7 dias');
   const [activeTab, setActiveTab] = useState<DashboardTab>('Obras');
   const [globalSearch, setGlobalSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // 1. Filtragem de obras por perfil:
   // - Usuário comum: apenas obras às quais está alocado (assignedWorkIds)
@@ -28,6 +32,33 @@ export const useDashboardHome = () => {
     if (isMaster) return MOCK_ACTIVE_WORKS;
     return MOCK_ACTIVE_WORKS.filter((w) => user.assignedWorkIds?.includes(w.id));
   }, [user, isMaster]);
+
+  // Paginação das obras (3 por página)
+  const totalPages = useMemo(
+    () => getTotalPages(userWorks.length, WORKS_PER_PAGE),
+    [userWorks.length],
+  );
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  // Redefine a página caso o usuário ou permissão mude (padrão React de ajuste de estado durante render)
+  const userScopeKey = `${user?.id}-${isMaster}`;
+  const [prevUserScope, setPrevUserScope] = useState(userScopeKey);
+  if (prevUserScope !== userScopeKey) {
+    setPrevUserScope(userScopeKey);
+    setCurrentPage(1);
+  }
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(Math.min(Math.max(1, page), totalPages));
+    },
+    [totalPages],
+  );
+
+  const paginatedWorks: ActiveWork[] = useMemo(
+    () => paginateItems(userWorks, safeCurrentPage, WORKS_PER_PAGE),
+    [userWorks, safeCurrentPage],
+  );
 
   // 2. Métricas do Master:
   const pendingRdos = useMemo(() => rdos.filter((r) => r.status === 'submetido'), [rdos]);
@@ -114,6 +145,11 @@ export const useDashboardHome = () => {
     chartData,
     indicators,
     activeWorks: userWorks,
+    paginatedWorks,
+    currentPage: safeCurrentPage,
+    totalPages,
+    setCurrentPage: handlePageChange,
+    pageSize: WORKS_PER_PAGE,
     pendingCount: pendingRdos.length,
     overdueCount,
     returnedCount,

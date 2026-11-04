@@ -60,7 +60,7 @@ export const Button = ({
       ) : (
         <>
           {icon}
-          <ButtonText $variant={variant} $size={size}>
+          <ButtonText $variant={variant} $size={size} disabled={isDisabled}>
             {title}
           </ButtonText>
         </>

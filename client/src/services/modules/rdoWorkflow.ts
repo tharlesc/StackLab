@@ -9,6 +9,7 @@ import type {
   User,
   UserProfile,
 } from '@/types';
+import { calcHeadcount } from '@/utils/rdo';
 
 /**
  * ⚙️ Máquina de estados do RDO — funções PURAS (sem React, sem I/O).
@@ -211,6 +212,7 @@ export const auditedEdit = (
 };
 
 export const addComment = (rdo: RDO, actor: User, section: RDOSectionKey, text: string): TransitionResult => {
+  assert(!rdo.locked && rdo.status === 'submetido', 'Comentários técnicos são permitidos apenas em RDOs submetidos e não congelados.');
   assert(text.trim().length > 0, 'O comentário não pode ser vazio.');
   const comment: RDOComment = {
     id: uid('cmt'),
@@ -272,7 +274,7 @@ export const rectifyRdo = (
 ): { original: RDO; newVersion: RDO; rdos: RDO[]; log: AuditLogEntry } => {
   assert(rdo.status === 'aprovado' && rdo.locked, 'Apenas RDOs aprovados podem ser retificados.');
   requireText(reason, 'Justificativa da retificação');
-  const baseId = rdo.id.split('-v')[0];
+  const baseId = rdo.id.replace(/-v\d+$/, '');
   const nextId = `${baseId}-v${rdo.version + 1}`;
   assert(
     !existingRdos.some((item) => item.id === nextId || item.previousVersionId === rdo.id),
@@ -302,5 +304,124 @@ export const rectifyRdo = (
       justification: reason.trim(),
       newValue: `Versão ${newVersion.version}`,
     }),
+  };
+};
+
+export const DRAFT_STORAGE_KEY_PREFIX = '@stacklab:rdo_draft_';
+
+export const getDraftStorageKey = (workId: string): string => {
+  assert(!!workId && workId.trim().length > 0, 'workId é obrigatório para chave de rascunho.');
+  return `${DRAFT_STORAGE_KEY_PREFIX}${workId.trim()}`;
+};
+
+export interface CreateDraftParams {
+  workId: string;
+  workName: string;
+  author: User;
+  date?: string;
+  initialData?: Partial<RDO>;
+}
+
+export const createDraft = (params: CreateDraftParams): RDO => {
+  assert(!!params.workId, 'workId é obrigatório para criar rascunho.');
+  assert(!!params.author, 'author é obrigatório para criar rascunho.');
+
+  const today = params.date ?? new Date().toLocaleDateString('pt-BR');
+  const base: RDO = {
+    id: uid('rdo-draft'),
+    number: 0,
+    version: 1,
+    workId: params.workId,
+    workName: params.workName,
+    date: today,
+    authorId: params.author.id,
+    authorName: params.author.name,
+    status: 'rascunho',
+    weather: [
+      { shift: 'manha', condition: 'Ensolarado', practical: true },
+      { shift: 'tarde', condition: 'Ensolarado', practical: true },
+    ],
+    labor: [],
+    equipment: [],
+    activities: [],
+    materials: [],
+    occurrences: [],
+    photos: [],
+    comments: [],
+    locked: false,
+    ...params.initialData,
+  };
+  return base;
+};
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+export const validateDraftForSubmission = (rdo: RDO): ValidationResult => {
+  const errors: string[] = [];
+
+  // 1. Headcount e Efetivo Individual
+  const headcount = calcHeadcount(rdo.labor || []);
+  if (headcount < 1) {
+    errors.push('Informe ao menos 1 colaborador no efetivo.');
+  }
+
+  rdo.labor?.forEach((l, idx) => {
+    if (typeof l.quantity !== 'number' || l.quantity < 1 || !Number.isInteger(l.quantity)) {
+      errors.push(
+        `Colaborador #${idx + 1} (${l.role || 'função não informada'}): quantidade deve ser um número inteiro maior ou igual a 1.`,
+      );
+    }
+    if (typeof l.hours !== 'number' || l.hours < 0 || l.hours > 24 || isNaN(l.hours)) {
+      errors.push(
+        `Colaborador #${idx + 1} (${l.role || 'função não informada'}): jornada de trabalho deve ser entre 0 e 24 horas.`,
+      );
+    }
+  });
+
+  // 2. Atividades Executadas
+  if (!rdo.activities || rdo.activities.length === 0) {
+    errors.push('Informe ao menos uma atividade executada.');
+  }
+
+  rdo.activities?.forEach((act, idx) => {
+    if (!act.description || act.description.trim().length < 3) {
+      errors.push(`Atividade #${idx + 1}: descrição da atividade é obrigatória (mínimo 3 caracteres).`);
+    }
+    if (act.progress !== undefined) {
+      if (typeof act.progress !== 'number' || act.progress < 0 || act.progress > 100 || isNaN(act.progress)) {
+        errors.push(`Atividade #${idx + 1}: o progresso deve ser um percentual entre 0 e 100.`);
+      }
+    }
+  });
+
+  // 3. Equipamentos: justificativa obrigatória se idleHours > 0 (mínimo 5 caracteres)
+  rdo.equipment?.forEach((eq, idx) => {
+    if ((eq.idleHours ?? 0) > 0) {
+      if (!eq.idleJustification || eq.idleJustification.trim().length < 5) {
+        errors.push(
+          `Equipamento "${eq.name || `#${idx + 1}`}": justificativa obrigatória quando houver horas ociosas (mínimo 5 caracteres).`,
+        );
+      }
+    }
+  });
+
+  // 4. Clima: impacto obrigatório se condição for Chuva ou Chuvoso com horas paradas (mínimo 3 caracteres)
+  rdo.weather?.forEach((w) => {
+    const isRain = w.condition ? /chuva|chuvoso/i.test(w.condition) : false;
+    if (isRain && (w.stoppageHours ?? 0) > 0) {
+      if (!w.impact || w.impact.trim().length < 3) {
+        errors.push(
+          `Turno ${w.shift}: informe a justificativa do impacto da chuva para horas paradas (mínimo 3 caracteres).`,
+        );
+      }
+    }
+  });
+
+  return {
+    isValid: errors.length === 0,
+    errors,
   };
 };
