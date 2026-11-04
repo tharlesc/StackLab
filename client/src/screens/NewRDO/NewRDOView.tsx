@@ -39,9 +39,14 @@ import {
   StepHeader,
   StepTitle,
   StepSubtitle,
+  FormGroup,
   FormRow,
   FormCol,
   FieldLabel,
+  SectionDivider,
+  AddedItemsHeader,
+  AddedItemsTitle,
+  AddItemButtonWrapper,
   KpiBanner,
   KpiItem,
   KpiValue,
@@ -66,6 +71,9 @@ import {
   WatermarkTitle,
   WatermarkDataText,
   BottomActionBar,
+  StepValidationHint,
+  StepValidationHintText,
+  ActionButtonsRow,
   ActionButtonWrapper,
   ReviewSectionCard,
   ReviewSectionHeader,
@@ -194,6 +202,9 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
     handleNextStep,
     handlePrevStep,
     goToStep,
+    canAdvance,
+    stepError,
+    canJumpToStep,
     updateDate,
     updateWeatherShift,
     addLaborEntry,
@@ -423,16 +434,21 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
           {STEPS.map((step) => {
             const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
+            const isAccessible = canJumpToStep(step.id);
             return (
               <StepTab
                 key={step.id}
                 $active={isActive}
                 $completed={isCompleted}
+                $disabled={!isAccessible}
+                disabled={!isAccessible}
                 onPress={() => goToStep(step.id)}
                 activeOpacity={0.7}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`Passo ${step.id + 1}: ${step.label}`}
+                accessibilityState={{ selected: isActive, disabled: !isAccessible }}
+                accessibilityLabel={`Passo ${step.id + 1}: ${step.label}${
+                  !isAccessible ? ' (bloqueado até preencher etapa anterior)' : ''
+                }`}
                 onLayout={(e: LayoutChangeEvent) => {
                   const { x, width } = e.nativeEvent.layout;
                   stepLayouts.current[step.id] = { x, width };
@@ -440,7 +456,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               >
                 <StepCircle $active={isActive} $completed={isCompleted}>
                   {isCompleted ? (
-                    <CheckCircle2 size={14} color="#ffffff" />
+                    <CheckCircle2 size={14} color={theme.colors.text.inverse} />
                   ) : (
                     <StepCircleText $active={isActive}>{step.id + 1}</StepCircleText>
                   )}
@@ -466,15 +482,17 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               <StepSubtitle>Defina a data do diário e as condições climáticas de cada turno.</StepSubtitle>
             </StepHeader>
 
-            <FieldLabel>Data do Relatório:</FieldLabel>
-            <Input
-              accessibilityLabel="Data do diário de obra"
-              value={activeDraft.date}
-              onChangeText={updateDate}
-              placeholder="DD/MM/AAAA"
-            />
+            <FormGroup>
+              <FieldLabel $noMarginTop>Data do Relatório:</FieldLabel>
+              <Input
+                accessibilityLabel="Data do diário de obra"
+                value={activeDraft.date}
+                onChangeText={updateDate}
+                placeholder="DD/MM/AAAA"
+              />
+            </FormGroup>
 
-            <FieldLabel style={{ marginTop: theme.spacing.md }}>Condições do Clima por Turno:</FieldLabel>
+            <FieldLabel>Condições do Clima por Turno:</FieldLabel>
 
             {(['manha', 'tarde', 'noite'] as Shift[]).map((shift) => {
               const weatherEntry =
@@ -500,10 +518,66 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
 
                   <ConditionButtonsRow>
                     {[
-                      { cond: 'Ensolarado', icon: <Sun size={14} color={weatherEntry.condition === 'Ensolarado' ? '#fff' : '#0B2240'} /> },
-                      { cond: 'Nublado', icon: <Cloud size={14} color={weatherEntry.condition === 'Nublado' ? '#fff' : '#0B2240'} /> },
-                      { cond: 'Chuvoso', icon: <CloudRain size={14} color={weatherEntry.condition === 'Chuvoso' ? '#fff' : '#0B2240'} /> },
-                      { cond: 'Instável', icon: <CloudLightning size={14} color={weatherEntry.condition === 'Instável' ? '#fff' : '#0B2240'} /> },
+                      {
+                        cond: 'Ensolarado',
+                        icon: (
+                          <Sun
+                            size={14}
+                            color={
+                              weatherEntry.condition === 'Ensolarado'
+                                ? theme.name === 'dark'
+                                  ? theme.colors.onSecondary
+                                  : theme.colors.text.inverse
+                                : theme.colors.text.primary
+                            }
+                          />
+                        ),
+                      },
+                      {
+                        cond: 'Nublado',
+                        icon: (
+                          <Cloud
+                            size={14}
+                            color={
+                              weatherEntry.condition === 'Nublado'
+                                ? theme.name === 'dark'
+                                  ? theme.colors.onSecondary
+                                  : theme.colors.text.inverse
+                                : theme.colors.text.primary
+                            }
+                          />
+                        ),
+                      },
+                      {
+                        cond: 'Chuvoso',
+                        icon: (
+                          <CloudRain
+                            size={14}
+                            color={
+                              weatherEntry.condition === 'Chuvoso'
+                                ? theme.name === 'dark'
+                                  ? theme.colors.onSecondary
+                                  : theme.colors.text.inverse
+                                : theme.colors.text.primary
+                            }
+                          />
+                        ),
+                      },
+                      {
+                        cond: 'Instável',
+                        icon: (
+                          <CloudLightning
+                            size={14}
+                            color={
+                              weatherEntry.condition === 'Instável'
+                                ? theme.name === 'dark'
+                                  ? theme.colors.onSecondary
+                                  : theme.colors.text.inverse
+                                : theme.colors.text.primary
+                            }
+                          />
+                        ),
+                      },
                     ].map(({ cond, icon }) => (
                       <ConditionChip
                         key={cond}
@@ -534,7 +608,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                   </ToggleRow>
 
                   {isRain && (
-                    <View style={{ marginTop: theme.spacing.sm }}>
+                    <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.md }}>
                       <Input
                         accessibilityLabel={`Horas paradas por chuva no turno ${shift}`}
                         label="Horas Paradas por Chuva:"
@@ -582,105 +656,122 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               </KpiItem>
             </KpiBanner>
 
-            <FieldLabel>Adicionar Equipe / Função:</FieldLabel>
+            <FieldLabel $noMarginTop>Adicionar Colaborador à Equipe:</FieldLabel>
 
             {/* Dropdown Dinâmico com Inserção Manual para Função/Cargo */}
-            <DynamicDropdown
-              label="Função / Cargo"
-              placeholder="Selecione a função..."
-              manualPlaceholder="Digite o cargo..."
-              options={DEFAULT_LABOR_ROLES}
-              value={laborRole}
-              onChange={setLaborRole}
-              accessibilityLabel="Função ou cargo do colaborador"
-            />
+            <FormGroup>
+              <DynamicDropdown
+                label="Função / Cargo"
+                placeholder="Selecione a função..."
+                manualPlaceholder="Digite o cargo..."
+                options={DEFAULT_LABOR_ROLES}
+                value={laborRole}
+                onChange={setLaborRole}
+                accessibilityLabel="Função ou cargo do colaborador"
+              />
+            </FormGroup>
 
             {/* Campo Opcional de Nome */}
-            <Input
-              accessibilityLabel="Nome do colaborador (opcional)"
-              label="Nome (opcional)"
-              value={laborName}
-              onChangeText={setLaborName}
-              placeholder="Ex: João da Silva"
-            />
+            <FormGroup>
+              <Input
+                accessibilityLabel="Nome do colaborador (opcional)"
+                label="Nome (opcional)"
+                value={laborName}
+                onChangeText={setLaborName}
+                placeholder="Ex: João da Silva"
+              />
+            </FormGroup>
 
             {/* Stepper de Quantidade */}
-            <QuantityStepper
-              label="Quantidade de Trabalhadores"
-              value={laborQty}
-              onChange={setLaborQty}
-              min={1}
-              accessibilityLabel="Quantidade de trabalhadores"
-            />
+            <FormGroup>
+              <QuantityStepper
+                label="Quantidade de Trabalhadores"
+                value={laborQty}
+                onChange={setLaborQty}
+                min={1}
+                accessibilityLabel="Quantidade de trabalhadores"
+              />
+            </FormGroup>
 
             {/* Accordion Expansível para Horários */}
-            <TimeIntervalAccordion
-              title="Registrar horário (opcional)"
-              horaInicio={laborHoraInicio}
-              horaFim={laborHoraFim}
-              onChangeHoraInicio={(val) => {
-                setLaborHoraInicio(val);
-                const diff = calculateHoursFromInterval(val, laborHoraFim);
-                if (diff !== null) setLaborHours(String(diff));
-              }}
-              onChangeHoraFim={(val) => {
-                setLaborHoraFim(val);
-                const diff = calculateHoursFromInterval(laborHoraInicio, val);
-                if (diff !== null) setLaborHours(String(diff));
-              }}
-            >
-              <View style={{ marginTop: theme.spacing.sm }}>
-                <Input
-                  accessibilityLabel="Jornada diária em horas calculada"
-                  label="Jornada Diária (Horas/trabalhador)"
-                  value={laborHours}
-                  keyboardType="numeric"
-                  onChangeText={setLaborHours}
-                  placeholder="8"
-                />
-              </View>
-            </TimeIntervalAccordion>
+            <FormGroup>
+              <TimeIntervalAccordion
+                title="Registrar horário (opcional)"
+                horaInicio={laborHoraInicio}
+                horaFim={laborHoraFim}
+                onChangeHoraInicio={(val) => {
+                  setLaborHoraInicio(val);
+                  const diff = calculateHoursFromInterval(val, laborHoraFim);
+                  if (diff !== null) setLaborHours(String(diff));
+                }}
+                onChangeHoraFim={(val) => {
+                  setLaborHoraFim(val);
+                  const diff = calculateHoursFromInterval(laborHoraInicio, val);
+                  if (diff !== null) setLaborHours(String(diff));
+                }}
+              >
+                <View style={{ marginTop: theme.spacing.md }}>
+                  <Input
+                    accessibilityLabel="Jornada diária em horas calculada"
+                    label="Jornada Diária (Horas/trabalhador)"
+                    value={laborHours}
+                    keyboardType="numeric"
+                    onChangeText={setLaborHours}
+                    placeholder="8"
+                  />
+                </View>
+              </TimeIntervalAccordion>
+            </FormGroup>
 
-            <FieldLabel>Vínculo:</FieldLabel>
-            <SegmentedControl
-              options={[
-                { label: 'Próprio', value: 'proprio' },
-                { label: 'Terceirizado', value: 'terceirizado' },
-              ]}
-              value={laborContractor}
-              onChange={setLaborContractor}
-            />
+            <FormGroup>
+              <FieldLabel $noMarginTop>Vínculo:</FieldLabel>
+              <SegmentedControl
+                options={[
+                  { label: 'Próprio', value: 'proprio' },
+                  { label: 'Terceirizado', value: 'terceirizado' },
+                ]}
+                value={laborContractor}
+                onChange={setLaborContractor}
+              />
+            </FormGroup>
 
-            <Button
-              title="Adicionar à Lista de Efetivo"
-              variant="outline"
-              size="small"
-              onPress={() => {
-                if (!laborRole.trim()) return;
-                const hoursVal = parseFloat(laborHours) || 8;
-                addLaborEntry({
-                  role: laborRole.trim(),
-                  name: laborName.trim() || undefined,
-                  quantity: laborQty || 1,
-                  hours: hoursVal,
-                  isContractor: laborContractor === 'terceirizado',
-                  horaInicio: laborHoraInicio || undefined,
-                  horaFim: laborHoraFim || undefined,
-                });
-                setLaborName('');
-              }}
-              style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.lg }}
-            />
+            <AddItemButtonWrapper>
+              <Button
+                title="Adicionar à Lista de Efetivo"
+                variant="outline"
+                size="small"
+                onPress={() => {
+                  if (!laborRole.trim()) return;
+                  const hoursVal = parseFloat(laborHours) || 8;
+                  addLaborEntry({
+                    role: laborRole.trim(),
+                    name: laborName.trim() || undefined,
+                    quantity: laborQty || 1,
+                    hours: hoursVal,
+                    isContractor: laborContractor === 'terceirizado',
+                    horaInicio: laborHoraInicio || undefined,
+                    horaFim: laborHoraFim || undefined,
+                  });
+                  setLaborName('');
+                }}
+              />
+            </AddItemButtonWrapper>
 
-            <FieldLabel>Colaboradores Cadastrados ({activeDraft.labor.length}):</FieldLabel>
+            <SectionDivider />
+
+            <AddedItemsHeader>
+              <AddedItemsTitle>Colaboradores Cadastrados ({activeDraft.labor.length})</AddedItemsTitle>
+            </AddedItemsHeader>
             {activeDraft.labor.length === 0 ? (
-              <StepSubtitle>Nenhum colaborador adicionado ainda. É obrigatório ao menos 1.</StepSubtitle>
+              <StepSubtitle style={{ color: theme.colors.status.warning.text }}>
+                ⚠️ Nenhum colaborador adicionado ainda. É obrigatório ao menos 1 para avançar.
+              </StepSubtitle>
             ) : (
               activeDraft.labor.map((l, idx) => (
                 <AddedItemCard key={idx}>
                   <AddedItemInfo>
                     <AddedItemTitle>
-                      {l.name ? `${l.name} — ` : ''}{l.role} ({l.isContractor ? 'Terceirizado' : 'Próprio'})
+                      {l.name ? `${l.name} · ` : ''}{l.role} ({l.isContractor ? 'Terceirizado' : 'Próprio'})
                     </AddedItemTitle>
                     <AddedItemSubtitle>
                       {l.quantity} profissionais • Jornada: {l.hours}h ({l.quantity * l.hours} Hh total)
@@ -706,18 +797,20 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               <StepSubtitle>Controle de horas ativas e ociosas dos equipamentos presentes.</StepSubtitle>
             </StepHeader>
 
-            <FieldLabel>Adicionar Equipamento:</FieldLabel>
+            <FieldLabel $noMarginTop>Adicionar Equipamento:</FieldLabel>
 
             {/* Dropdown Dinâmico com Inserção Manual para Nome da Máquina */}
-            <DynamicDropdown
-              label="Nome da Máquina"
-              placeholder="Selecione o equipamento..."
-              manualPlaceholder="Digite o nome da máquina..."
-              options={DEFAULT_EQUIPMENT_NAMES}
-              value={equipName}
-              onChange={setEquipName}
-              accessibilityLabel="Nome do equipamento ou máquina"
-            />
+            <FormGroup>
+              <DynamicDropdown
+                label="Nome da Máquina"
+                placeholder="Selecione o equipamento..."
+                manualPlaceholder="Digite o nome da máquina..."
+                options={DEFAULT_EQUIPMENT_NAMES}
+                value={equipName}
+                onChange={setEquipName}
+                accessibilityLabel="Nome do equipamento ou máquina"
+              />
+            </FormGroup>
 
             {/* Marca e Código lado a lado */}
             <FormRow>
@@ -742,115 +835,130 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             </FormRow>
 
             {/* Stepper de Quantidade */}
-            <QuantityStepper
-              label="Quantidade de Máquinas"
-              value={equipQty}
-              onChange={setEquipQty}
-              min={1}
-              accessibilityLabel="Quantidade de máquinas"
-            />
+            <FormGroup>
+              <QuantityStepper
+                label="Quantidade de Máquinas"
+                value={equipQty}
+                onChange={setEquipQty}
+                min={1}
+                accessibilityLabel="Quantidade de máquinas"
+              />
+            </FormGroup>
 
             {/* Accordion Expansível para Horários Produtivas/Ociosas */}
-            <TimeIntervalAccordion
-              title="Registrar horário (opcional)"
-              horaInicio={equipHoraInicio}
-              horaFim={equipHoraFim}
-              onChangeHoraInicio={(val) => {
-                setEquipHoraInicio(val);
-                const diff = calculateHoursFromInterval(val, equipHoraFim);
-                if (diff !== null) setEquipActiveHours(String(diff));
-              }}
-              onChangeHoraFim={(val) => {
-                setEquipHoraFim(val);
-                const diff = calculateHoursFromInterval(equipHoraInicio, val);
-                if (diff !== null) setEquipActiveHours(String(diff));
-              }}
-            >
-              <FormRow style={{ marginTop: theme.spacing.sm }}>
-                <FormCol flex={1}>
-                  <Input
-                    accessibilityLabel="Horas ativas produtivas"
-                    label="Horas Produtivas"
-                    value={equipActiveHours}
-                    keyboardType="numeric"
-                    onChangeText={setEquipActiveHours}
-                  />
-                </FormCol>
-                <FormCol flex={1}>
-                  <Input
-                    accessibilityLabel="Horas inativas ociosas"
-                    label="Horas Ociosas"
-                    value={equipIdleHours}
-                    keyboardType="numeric"
-                    onChangeText={setEquipIdleHours}
-                  />
-                </FormCol>
-              </FormRow>
+            <FormGroup>
+              <TimeIntervalAccordion
+                title="Registrar horário (opcional)"
+                horaInicio={equipHoraInicio}
+                horaFim={equipHoraFim}
+                onChangeHoraInicio={(val) => {
+                  setEquipHoraInicio(val);
+                  const diff = calculateHoursFromInterval(val, equipHoraFim);
+                  if (diff !== null) setEquipActiveHours(String(diff));
+                }}
+                onChangeHoraFim={(val) => {
+                  setEquipHoraFim(val);
+                  const diff = calculateHoursFromInterval(equipHoraInicio, val);
+                  if (diff !== null) setEquipActiveHours(String(diff));
+                }}
+              >
+                <FormRow style={{ marginTop: theme.spacing.md }}>
+                  <FormCol flex={1}>
+                    <Input
+                      accessibilityLabel="Horas ativas produtivas"
+                      label="Horas Produtivas"
+                      value={equipActiveHours}
+                      keyboardType="numeric"
+                      onChangeText={setEquipActiveHours}
+                    />
+                  </FormCol>
+                  <FormCol flex={1}>
+                    <Input
+                      accessibilityLabel="Horas inativas ociosas"
+                      label="Horas Ociosas"
+                      value={equipIdleHours}
+                      keyboardType="numeric"
+                      onChangeText={setEquipIdleHours}
+                    />
+                  </FormCol>
+                </FormRow>
 
-              {parseFloat(equipIdleHours) > 0 && (
-                <Input
-                  accessibilityLabel="Justificativa da inatividade"
-                  label="Justificativa da Ociosidade (Obrigatória):"
-                  value={equipJustification}
-                  onChangeText={setEquipJustification}
-                  placeholder="Ex: Aguardando liberação de caçamba (mín. 5 chars)"
-                />
-              )}
-            </TimeIntervalAccordion>
+                {parseFloat(equipIdleHours) > 0 && (
+                  <View style={{ marginTop: theme.spacing.sm }}>
+                    <Input
+                      accessibilityLabel="Justificativa da inatividade"
+                      label="Justificativa da Ociosidade (Obrigatória):"
+                      value={equipJustification}
+                      onChangeText={setEquipJustification}
+                      placeholder="Ex: Aguardando liberação de caçamba (mín. 5 chars)"
+                    />
+                  </View>
+                )}
+              </TimeIntervalAccordion>
+            </FormGroup>
 
             {/* TextArea Observações Opcionais com Limite de 200 caracteres */}
-            <Input
-              accessibilityLabel="Observações do equipamento"
-              label={`Observações (opcional) — ${equipObservations.length}/200`}
-              value={equipObservations}
-              onChangeText={(txt) => setEquipObservations(txt.slice(0, 200))}
-              multiline
-              numberOfLines={3}
-              placeholder="Ex: Manutenção preventiva agendada para sexta-feira."
-              maxLength={200}
-            />
+            <FormGroup>
+              <Input
+                accessibilityLabel="Observações do equipamento"
+                label={`Observações (opcional) (${equipObservations.length}/200)`}
+                value={equipObservations}
+                onChangeText={(txt) => setEquipObservations(txt.slice(0, 200))}
+                multiline
+                numberOfLines={3}
+                placeholder="Ex: Manutenção preventiva agendada para sexta-feira."
+                maxLength={200}
+              />
+            </FormGroup>
 
-            <FieldLabel style={{ marginTop: theme.spacing.xs }}>Vínculo da Máquina:</FieldLabel>
-            <SegmentedControl
-              options={[
-                { label: 'Próprio', value: 'proprio' },
-                { label: 'Locado', value: 'locado' },
-              ]}
-              value={equipRented}
-              onChange={setEquipRented}
-            />
+            <FormGroup>
+              <FieldLabel $noMarginTop>Vínculo da Máquina:</FieldLabel>
+              <SegmentedControl
+                options={[
+                  { label: 'Próprio', value: 'proprio' },
+                  { label: 'Locado', value: 'locado' },
+                ]}
+                value={equipRented}
+                onChange={setEquipRented}
+              />
+            </FormGroup>
 
-            <Button
-              title="Adicionar à Lista de Equipamentos"
-              variant="outline"
-              size="small"
-              onPress={() => {
-                if (!equipName.trim()) return;
-                const idle = parseFloat(equipIdleHours) || 0;
-                addEquipmentEntry({
-                  name: equipName.trim(),
-                  brand: equipBrand.trim() || undefined,
-                  code: equipCode.trim() || undefined,
-                  quantity: equipQty || 1,
-                  activeHours: parseFloat(equipActiveHours) || 0,
-                  idleHours: idle,
-                  idleJustification: idle > 0 ? equipJustification.trim() : undefined,
-                  horaInicio: equipHoraInicio || undefined,
-                  horaFim: equipHoraFim || undefined,
-                  observations: equipObservations.trim() || undefined,
-                  isRented: equipRented === 'locado',
-                });
-                setEquipBrand('');
-                setEquipCode('');
-                setEquipObservations('');
-                setEquipJustification('');
-              }}
-              style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.lg }}
-            />
+            <AddItemButtonWrapper>
+              <Button
+                title="Adicionar à Lista de Equipamentos"
+                variant="outline"
+                size="small"
+                onPress={() => {
+                  if (!equipName.trim()) return;
+                  const idle = parseFloat(equipIdleHours) || 0;
+                  addEquipmentEntry({
+                    name: equipName.trim(),
+                    brand: equipBrand.trim() || undefined,
+                    code: equipCode.trim() || undefined,
+                    quantity: equipQty || 1,
+                    activeHours: parseFloat(equipActiveHours) || 0,
+                    idleHours: idle,
+                    idleJustification: idle > 0 ? equipJustification.trim() : undefined,
+                    horaInicio: equipHoraInicio || undefined,
+                    horaFim: equipHoraFim || undefined,
+                    observations: equipObservations.trim() || undefined,
+                    isRented: equipRented === 'locado',
+                  });
+                  setEquipBrand('');
+                  setEquipCode('');
+                  setEquipObservations('');
+                  setEquipJustification('');
+                }}
+              />
+            </AddItemButtonWrapper>
 
-            <FieldLabel>Equipamentos no Canteiro ({activeDraft.equipment.length}):</FieldLabel>
+            <SectionDivider />
+
+            <AddedItemsHeader>
+              <AddedItemsTitle>Equipamentos no Canteiro ({activeDraft.equipment.length})</AddedItemsTitle>
+            </AddedItemsHeader>
             {activeDraft.equipment.length === 0 ? (
-              <StepSubtitle>Nenhum equipamento adicionado para hoje.</StepSubtitle>
+              <StepSubtitle>Nenhum equipamento adicionado para hoje (opcional).</StepSubtitle>
             ) : (
               activeDraft.equipment.map((e, idx) => (
                 <AddedItemCard key={idx}>
@@ -884,27 +992,31 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               <StepSubtitle>Detalhamento das frentes de serviço e avanço físico do dia.</StepSubtitle>
             </StepHeader>
 
-            <FieldLabel>Adicionar Frente de Serviço:</FieldLabel>
+            <FieldLabel $noMarginTop>Adicionar Frente de Serviço:</FieldLabel>
 
             {/* Descrição em TextArea aberto */}
-            <Input
-              accessibilityLabel="Descrição da atividade executada"
-              label="Descrição da Atividade (mín. 3 caracteres)"
-              value={actDesc}
-              onChangeText={setActDesc}
-              multiline
-              numberOfLines={3}
-              placeholder="Ex: Concretagem dos pilares do 2º pavimento e montagem de fôrmas."
-            />
+            <FormGroup>
+              <Input
+                accessibilityLabel="Descrição da atividade executada"
+                label="Descrição da Atividade (mín. 3 caracteres)"
+                value={actDesc}
+                onChangeText={setActDesc}
+                multiline
+                numberOfLines={3}
+                placeholder="Ex: Concretagem dos pilares do 2º pavimento e montagem de fôrmas."
+              />
+            </FormGroup>
 
             {/* Dropdown de Status da Atividade */}
-            <DynamicDropdown
-              label="Status da Atividade"
-              options={ACTIVITY_STATUS_OPTIONS}
-              value={actStatus}
-              onChange={(val) => setActStatus(val as ActivityStatus)}
-              accessibilityLabel="Status da atividade executada"
-            />
+            <FormGroup>
+              <DynamicDropdown
+                label="Status da Atividade"
+                options={ACTIVITY_STATUS_OPTIONS}
+                value={actStatus}
+                onChange={(val) => setActStatus(val as ActivityStatus)}
+                accessibilityLabel="Status da atividade executada"
+              />
+            </FormGroup>
 
             <FormRow>
               <FormCol flex={2}>
@@ -950,28 +1062,35 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               </FormCol>
             </FormRow>
 
-            <Button
-              title="Adicionar à Lista de Atividades"
-              variant="outline"
-              size="small"
-              onPress={() => {
-                if (!actDesc.trim() || actDesc.trim().length < 3) return;
-                addActivityEntry({
-                  description: actDesc.trim(),
-                  location: actLocation.trim() || 'Canteiro Geral',
-                  unit: actUnit.trim() || 'un',
-                  quantity: parseFloat(actQty) || 1,
-                  progress: parseFloat(actProgress) || 0,
-                  status: actStatus,
-                });
-                setActDesc('');
-              }}
-              style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.lg }}
-            />
+            <AddItemButtonWrapper>
+              <Button
+                title="Adicionar à Lista de Atividades"
+                variant="outline"
+                size="small"
+                onPress={() => {
+                  if (!actDesc.trim() || actDesc.trim().length < 3) return;
+                  addActivityEntry({
+                    description: actDesc.trim(),
+                    location: actLocation.trim() || 'Canteiro Geral',
+                    unit: actUnit.trim() || 'un',
+                    quantity: parseFloat(actQty) || 1,
+                    progress: parseFloat(actProgress) || 0,
+                    status: actStatus,
+                  });
+                  setActDesc('');
+                }}
+              />
+            </AddItemButtonWrapper>
 
-            <FieldLabel>Atividades Registradas ({activeDraft.activities.length}):</FieldLabel>
+            <SectionDivider />
+
+            <AddedItemsHeader>
+              <AddedItemsTitle>Atividades Registradas ({activeDraft.activities.length})</AddedItemsTitle>
+            </AddedItemsHeader>
             {activeDraft.activities.length === 0 ? (
-              <StepSubtitle>Nenhuma atividade cadastrada. É obrigatório ao menos 1.</StepSubtitle>
+              <StepSubtitle style={{ color: theme.colors.status.warning.text }}>
+                ⚠️ Nenhuma atividade cadastrada ainda. É obrigatório ao menos 1 para avançar.
+              </StepSubtitle>
             ) : (
               activeDraft.activities.map((a, idx) => (
                 <AddedItemCard key={idx}>
@@ -1000,27 +1119,31 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               <StepSubtitle>Fatos relevantes, diálogos diários de segurança e paralisações.</StepSubtitle>
             </StepHeader>
 
-            <FieldLabel>Tipo de Registro:</FieldLabel>
+            <FieldLabel $noMarginTop>Tipo de Registro:</FieldLabel>
 
             {/* Dropdown Dinâmico para Tipo de Registro sem cortar palavras */}
-            <DynamicDropdown
-              options={OCCURRENCE_TYPE_OPTIONS}
-              value={occTypeLabel}
-              onChange={setOccTypeLabel}
-              accessibilityLabel="Tipo de ocorrência ou registro"
-            />
+            <FormGroup>
+              <DynamicDropdown
+                options={OCCURRENCE_TYPE_OPTIONS}
+                value={occTypeLabel}
+                onChange={setOccTypeLabel}
+                accessibilityLabel="Tipo de ocorrência ou registro"
+              />
+            </FormGroup>
 
             {/* Accordion Expansível para Horários */}
-            <TimeIntervalAccordion
-              title="Registrar horário (opcional)"
-              horaInicio={occHoraInicio}
-              horaFim={occHoraFim}
-              onChangeHoraInicio={setOccHoraInicio}
-              onChangeHoraFim={setOccHoraFim}
-            />
+            <FormGroup>
+              <TimeIntervalAccordion
+                title="Registrar horário (opcional)"
+                horaInicio={occHoraInicio}
+                horaFim={occHoraFim}
+                onChangeHoraInicio={setOccHoraInicio}
+                onChangeHoraFim={setOccHoraFim}
+              />
+            </FormGroup>
 
             {/* Detalhamento como TextArea Limpo */}
-            <View style={{ marginTop: theme.spacing.sm }}>
+            <FormGroup>
               <Input
                 accessibilityLabel="Detalhamento da ocorrência ou tema do DDS"
                 label="Detalhamento do Fato / Tema do DDS:"
@@ -1030,29 +1153,34 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 numberOfLines={4}
                 placeholder="Ex: Diálogo diário sobre segurança nas escavações e uso de EPIs adequados."
               />
-            </View>
+            </FormGroup>
 
-            {/* Botão Adicionar com Fundo Sólido Primário */}
-            <Button
-              title="Adicionar à Lista de Ocorrências"
-              variant="primary"
-              size="small"
-              onPress={() => {
-                if (!occDesc.trim() || occDesc.trim().length < 5) return;
-                addOccurrenceEntry({
-                  type: mapLabelToOccType(occTypeLabel),
-                  description: occDesc.trim(),
-                  horaInicio: occHoraInicio || undefined,
-                  horaFim: occHoraFim || undefined,
-                });
-                setOccDesc('');
-                setOccHoraInicio('');
-                setOccHoraFim('');
-              }}
-              style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.lg }}
-            />
+            {/* Botão Adicionar à Lista de Ocorrências */}
+            <AddItemButtonWrapper>
+              <Button
+                title="Adicionar à Lista de Ocorrências"
+                variant="outline"
+                size="small"
+                onPress={() => {
+                  if (!occDesc.trim() || occDesc.trim().length < 5) return;
+                  addOccurrenceEntry({
+                    type: mapLabelToOccType(occTypeLabel),
+                    description: occDesc.trim(),
+                    horaInicio: occHoraInicio || undefined,
+                    horaFim: occHoraFim || undefined,
+                  });
+                  setOccDesc('');
+                  setOccHoraInicio('');
+                  setOccHoraFim('');
+                }}
+              />
+            </AddItemButtonWrapper>
 
-            <FieldLabel>Ocorrências Cadastradas ({activeDraft.occurrences.length}):</FieldLabel>
+            <SectionDivider />
+
+            <AddedItemsHeader>
+              <AddedItemsTitle>Ocorrências Cadastradas ({activeDraft.occurrences.length})</AddedItemsTitle>
+            </AddedItemsHeader>
             {activeDraft.occurrences.length === 0 ? (
               <StepSubtitle>Nenhum fato relevante adicionado hoje (opcional).</StepSubtitle>
             ) : (
@@ -1086,16 +1214,21 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               </StepSubtitle>
             </StepHeader>
 
-            <Button
-              title="Tirar Foto na Obra (com Marca d'Água)"
-              variant="primary"
-              onPress={() => handleCapturePhoto('Registro fotográfico do canteiro')}
-              style={{ marginBottom: theme.spacing.lg }}
-            />
+            <AddItemButtonWrapper>
+              <Button
+                title="Tirar Foto na Obra (com Marca d'Água)"
+                variant="primary"
+                onPress={() => handleCapturePhoto('Registro fotográfico do canteiro')}
+              />
+            </AddItemButtonWrapper>
 
-            <FieldLabel>Fotos Anexadas ({activeDraft.photos.length}):</FieldLabel>
+            <SectionDivider />
+
+            <AddedItemsHeader>
+              <AddedItemsTitle>Fotos Anexadas ({activeDraft.photos.length})</AddedItemsTitle>
+            </AddedItemsHeader>
             {activeDraft.photos.length === 0 ? (
-              <StepSubtitle>Nenhuma foto capturada ainda.</StepSubtitle>
+              <StepSubtitle>Nenhuma foto capturada ainda (opcional).</StepSubtitle>
             ) : (
               activeDraft.photos.map((p, idx) => (
                 <PhotoCard key={p.id || idx}>
@@ -1208,7 +1341,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                   <ReviewItemBox key={idx}>
                     <ReviewItemHeader>
                       <ReviewItemTitle>
-                        {l.name ? `${l.name} — ` : ''}{l.role}
+                        {l.name ? `${l.name} · ` : ''}{l.role}
                       </ReviewItemTitle>
                       <ReviewBadge $variant={l.isContractor ? 'secondary' : 'primary'}>
                         <ReviewBadgeText $variant={l.isContractor ? 'secondary' : 'primary'}>
@@ -1350,48 +1483,59 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         )}
       </ScrollContent>
 
-      {/* Navegação Inferior (Sticky Footer) */}
+      {/* Navegação Inferior (Sticky Footer) com Validação de Etapa */}
       <BottomActionBar>
-        {currentStep > 0 && (
-          <ActionButtonWrapper flex={1}>
-            <Button
-              title="Voltar"
-              variant="outline"
-              size="small"
-              onPress={handlePrevStep}
-              accessibilityLabel="Voltar ao passo anterior"
-            />
-          </ActionButtonWrapper>
+        {!canAdvance && stepError && (
+          <StepValidationHint>
+            <AlertTriangle size={16} color={theme.colors.status.warning.text} />
+            <StepValidationHintText>{stepError}</StepValidationHintText>
+          </StepValidationHint>
         )}
 
-        <ActionButtonWrapper flex={currentStep === 0 ? 1 : 1.5}>
-          {currentStep < STEPS.length - 2 ? (
-            <Button
-              title="Próximo"
-              variant="primary"
-              size="small"
-              onPress={handleNextStep}
-              accessibilityLabel="Avançar para o próximo passo"
-            />
-          ) : currentStep === STEPS.length - 2 ? (
-            <Button
-              title="Revisar/Ver Prévia"
-              variant="primary"
-              size="small"
-              onPress={handleNextStep}
-              accessibilityLabel="Avançar para a tela de revisão e prévia"
-            />
-          ) : (
-            <Button
-              title={isSubmitting ? 'Submetendo...' : 'Concluir/Salvar'}
-              variant="primary"
-              size="small"
-              disabled={isSubmitting}
-              onPress={handleSubmit}
-              accessibilityLabel="Finalizar e submeter o relatório diário de obra"
-            />
+        <ActionButtonsRow>
+          {currentStep > 0 && (
+            <ActionButtonWrapper flex={1}>
+              <Button
+                title="Voltar"
+                variant="outline"
+                size="small"
+                onPress={handlePrevStep}
+                accessibilityLabel="Voltar ao passo anterior"
+              />
+            </ActionButtonWrapper>
           )}
-        </ActionButtonWrapper>
+
+          <ActionButtonWrapper flex={currentStep === 0 ? 1 : 1.5}>
+            {currentStep < STEPS.length - 2 ? (
+              <Button
+                title="Próximo"
+                variant="primary"
+                size="small"
+                disabled={!canAdvance}
+                onPress={() => handleNextStep()}
+                accessibilityLabel="Avançar para o próximo passo"
+              />
+            ) : currentStep === STEPS.length - 2 ? (
+              <Button
+                title="Revisar/Ver Prévia"
+                variant="primary"
+                size="small"
+                disabled={!canAdvance}
+                onPress={() => handleNextStep()}
+                accessibilityLabel="Avançar para a tela de revisão e prévia"
+              />
+            ) : (
+              <Button
+                title={isSubmitting ? 'Submetendo...' : 'Concluir/Salvar'}
+                variant="primary"
+                size="small"
+                disabled={isSubmitting || !canAdvance}
+                onPress={handleSubmit}
+                accessibilityLabel="Finalizar e submeter o relatório diário de obra"
+              />
+            )}
+          </ActionButtonWrapper>
+        </ActionButtonsRow>
       </BottomActionBar>
 
       {/* Dialog de Erros de Validação de Pré-Submissão */}
