@@ -58,14 +58,23 @@ export const StepProgressBar = styled.View`
 
 export const StepScrollList = styled.ScrollView``;
 
-export const StepTab = styled(TouchableOpacity)<{ $active: boolean; $completed: boolean }>`
+export const StepTab = styled(TouchableOpacity)<{
+  $active: boolean;
+  $completed: boolean;
+  $disabled?: boolean;
+}>`
   flex-direction: row;
   align-items: center;
   padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
   border-radius: ${({ theme }) => theme.borderRadius.full}px;
   background-color: ${({ $active, theme }) =>
-    $active ? theme.colors.primary : 'transparent'};
+    $active
+      ? theme.name === 'dark'
+        ? theme.colors.secondary
+        : theme.colors.primary
+      : 'transparent'};
   margin-right: ${({ theme }) => theme.spacing.xs}px;
+  opacity: ${({ $disabled }) => ($disabled ? 0.45 : 1)};
   flex-shrink: 0;
 `;
 
@@ -77,9 +86,13 @@ export const StepCircle = styled.View<{ $active: boolean; $completed: boolean }>
   justify-content: center;
   background-color: ${({ $active, $completed, theme }) =>
     $active
-      ? theme.colors.secondary
+      ? theme.name === 'dark'
+        ? theme.colors.onSecondary
+        : theme.colors.secondary
       : $completed
       ? theme.colors.status.success.base
+      : theme.name === 'dark'
+      ? '#3A3A3C'
       : theme.colors.border};
   margin-right: ${({ theme }) => theme.spacing.xs}px;
 `;
@@ -87,18 +100,26 @@ export const StepCircle = styled.View<{ $active: boolean; $completed: boolean }>
 export const StepCircleText = styled.Text<{ $active: boolean }>`
   font-size: 11px;
   font-family: ${({ theme }) => theme.fonts.bold};
-  color: ${({ theme }) => theme.colors.text.inverse};
+  color: ${({ $active, theme }) =>
+    $active && theme.name === 'dark'
+      ? theme.colors.secondary
+      : theme.colors.text.inverse};
 `;
 
 export const StepTabText = styled.Text<{ $active: boolean; $completed?: boolean }>`
   font-family: ${({ $active, theme }) => ($active ? theme.fonts.bold : theme.fonts.medium)};
   font-size: 12px;
-  color: ${({ $active, theme }) => ($active ? theme.colors.text.inverse : theme.colors.text.secondary)};
+  color: ${({ $active, theme }) =>
+    $active
+      ? theme.name === 'dark'
+        ? theme.colors.onSecondary
+        : theme.colors.text.inverse
+      : theme.colors.text.secondary};
 `;
 
 export const StepCard = styled.View`
   background-color: ${({ theme }) => theme.colors.surface};
-  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
   border-width: 1px;
   border-color: ${({ theme }) => theme.colors.border};
   padding: ${({ theme }) => theme.spacing.lg}px;
@@ -107,6 +128,9 @@ export const StepCard = styled.View`
 
 export const StepHeader = styled.View`
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
+  padding-bottom: ${({ theme }) => theme.spacing.sm}px;
+  border-bottom-width: 1px;
+  border-bottom-color: ${({ theme }) => theme.colors.border};
 `;
 
 export const StepTitle = styled.Text`
@@ -121,26 +145,59 @@ export const StepSubtitle = styled.Text`
   font-size: 12px;
   line-height: 16px;
   color: ${({ theme }) => theme.colors.text.secondary};
-  margin-top: ${({ theme }) => theme.spacing.xxs}px;
+  margin-top: 2px;
+`;
+
+export const FormGroup = styled.View`
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;
 
 export const FormRow = styled.View`
   flex-direction: row;
   gap: ${({ theme }) => theme.spacing.sm}px;
-  align-items: center;
-  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+  align-items: flex-start;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;
 
 export const FormCol = styled.View<{ flex?: number }>`
   flex: ${({ flex }) => flex ?? 1};
 `;
 
-export const FieldLabel = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.medium};
-  font-size: 12px;
-  line-height: 16px;
+export const FieldLabel = styled.Text<{ $noMarginTop?: boolean }>`
+  font-family: ${({ theme }) => theme.fonts.semiBold};
+  font-size: 11px;
+  line-height: 15px;
   color: ${({ theme }) => theme.colors.text.secondary};
-  margin-bottom: ${({ theme }) => theme.spacing.xxs}px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: ${({ $noMarginTop, theme }) => ($noMarginTop ? 0 : theme.spacing.xs)}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
+`;
+
+export const SectionDivider = styled.View`
+  height: 1px;
+  background-color: ${({ theme }) => theme.colors.border};
+  margin-top: ${({ theme }) => theme.spacing.md}px;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+`;
+
+export const AddedItemsHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+export const AddedItemsTitle = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 13px;
+  line-height: 18px;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+export const AddItemButtonWrapper = styled.View`
+  margin-top: ${({ theme }) => theme.spacing.xs}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xs}px;
 `;
 
 // ============================================================================
@@ -150,8 +207,10 @@ export const FieldLabel = styled.Text`
 export const KpiBanner = styled.View`
   flex-direction: row;
   background-color: ${({ theme }) => theme.colors.surfaceVariant};
-  border-radius: ${({ theme }) => theme.borderRadius.md}px;
-  padding: ${({ theme }) => theme.spacing.md}px;
+  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.md}px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
   justify-content: space-around;
 `;
@@ -163,12 +222,13 @@ export const KpiItem = styled.View`
 export const KpiValue = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
   font-size: 18px;
-  color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) =>
+    theme.name === 'dark' ? theme.colors.tintText : theme.colors.primary};
 `;
 
 export const KpiLabel = styled.Text`
   font-family: ${({ theme }) => theme.fonts.medium};
-  font-size: 12px;
+  font-size: 11px;
   color: ${({ theme }) => theme.colors.text.secondary};
   margin-top: 2px;
 `;
@@ -180,10 +240,13 @@ export const KpiLabel = styled.Text`
 export const AddedItemCard = styled.View`
   background-color: ${({ theme }) => theme.colors.surfaceVariant};
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
-  padding: ${({ theme }) => theme.spacing.md}px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.md}px;
   margin-bottom: ${({ theme }) => theme.spacing.sm}px;
-  border-left-width: 4px;
-  border-left-color: ${({ theme }) => theme.colors.primary};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
+  border-left-width: 3px;
+  border-left-color: ${({ theme }) =>
+    theme.name === 'dark' ? theme.colors.secondary : theme.colors.primary};
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
@@ -209,7 +272,13 @@ export const AddedItemSubtitle = styled.Text`
 `;
 
 export const RemoveButton = styled.TouchableOpacity`
-  padding: ${({ theme }) => theme.spacing.xs}px;
+  width: ${({ theme }) => theme.touchTarget.minHeight}px;
+  height: ${({ theme }) => theme.touchTarget.minHeight}px;
+  align-items: center;
+  justify-content: center;
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  background-color: ${({ theme }) =>
+    theme.name === 'dark' ? 'rgba(239, 68, 68, 0.12)' : 'transparent'};
   margin-left: ${({ theme }) => theme.spacing.sm}px;
 `;
 
@@ -220,6 +289,8 @@ export const RemoveButton = styled.TouchableOpacity`
 export const ShiftBlock = styled.View`
   background-color: ${({ theme }) => theme.colors.surfaceVariant};
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.colors.border};
   padding: ${({ theme }) => theme.spacing.md}px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
 `;
@@ -248,21 +319,38 @@ export const ConditionButtonsRow = styled.View`
 export const ConditionChip = styled.TouchableOpacity<{ $selected: boolean }>`
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
-  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
+  min-height: 38px;
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
   background-color: ${({ $selected, theme }) =>
-    $selected ? theme.colors.primary : theme.colors.surface};
+    $selected
+      ? theme.name === 'dark'
+        ? theme.colors.secondary
+        : theme.colors.primary
+      : theme.name === 'dark'
+      ? theme.colors.surfaceVariant
+      : theme.colors.surface};
   border-width: 1px;
   border-color: ${({ $selected, theme }) =>
-    $selected ? theme.colors.primary : theme.colors.border};
+    $selected
+      ? theme.name === 'dark'
+        ? theme.colors.secondary
+        : theme.colors.primary
+      : theme.name === 'dark'
+      ? 'rgba(255, 255, 255, 0.2)'
+      : theme.colors.border};
 `;
 
 export const ConditionChipText = styled.Text<{ $selected: boolean }>`
   font-size: 11px;
   font-family: ${({ $selected, theme }) => ($selected ? theme.fonts.bold : theme.fonts.medium)};
   color: ${({ $selected, theme }) =>
-    $selected ? theme.colors.text.inverse : theme.colors.text.primary};
+    $selected
+      ? theme.name === 'dark'
+        ? theme.colors.onSecondary
+        : theme.colors.text.inverse
+      : theme.colors.text.primary};
 `;
 
 export const ToggleRow = styled.View`
@@ -270,7 +358,7 @@ export const ToggleRow = styled.View`
   justify-content: space-between;
   align-items: center;
   margin-top: ${({ theme }) => theme.spacing.sm}px;
-  gap: ${({ theme }) => theme.spacing.sm}px;
+  gap: ${({ theme }) => theme.spacing.md}px;
   flex-wrap: wrap;
 `;
 
@@ -347,11 +435,37 @@ export const BottomActionBar = styled.View`
   background-color: ${({ theme }) => theme.colors.surface};
   border-top-width: 1px;
   border-top-color: ${({ theme }) => theme.colors.border};
-  padding: ${({ theme }) => theme.spacing.md}px ${({ theme }) => theme.spacing.lg}px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.lg}px;
+  padding-bottom: ${({ theme }) => theme.spacing.md}px;
+  z-index: 10;
+`;
+
+export const StepValidationHint = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.xs}px;
+  background-color: ${({ theme }) =>
+    theme.name === 'dark' ? 'rgba(245, 158, 11, 0.18)' : theme.colors.status.warning.bg};
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  border-width: 1px;
+  border-color: ${({ theme }) =>
+    theme.name === 'dark' ? 'rgba(245, 158, 11, 0.45)' : theme.colors.status.warning.border};
+  padding: 6px 10px;
+  margin-bottom: 8px;
+`;
+
+export const StepValidationHintText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.medium};
+  font-size: 11px;
+  line-height: 15px;
+  color: ${({ theme }) => theme.colors.status.warning.text};
+  flex: 1;
+`;
+
+export const ActionButtonsRow = styled.View`
   flex-direction: row;
   gap: ${({ theme }) => theme.spacing.md}px;
   align-items: center;
-  z-index: 10;
 `;
 
 export const ActionButtonWrapper = styled.View<{ flex?: number }>`
@@ -368,7 +482,8 @@ export const ReviewSectionCard = styled.View`
   padding: ${({ theme }) => theme.spacing.md}px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
   border-left-width: 4px;
-  border-left-color: ${({ theme }) => theme.colors.primary};
+  border-left-color: ${({ theme }) =>
+    theme.name === 'dark' ? theme.colors.secondary : theme.colors.primary};
 `;
 
 export const ReviewSectionHeader = styled.View`
@@ -392,15 +507,18 @@ export const ReviewEditButton = styled.TouchableOpacity`
   gap: 4px;
   padding: 4px 8px;
   border-radius: ${({ theme }) => theme.borderRadius.sm}px;
-  background-color: ${({ theme }) => theme.colors.surface};
+  background-color: ${({ theme }) =>
+    theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : theme.colors.surface};
   border-width: 1px;
-  border-color: ${({ theme }) => theme.colors.border};
+  border-color: ${({ theme }) =>
+    theme.name === 'dark' ? 'rgba(255, 255, 255, 0.25)' : theme.colors.border};
 `;
 
 export const ReviewEditText = styled.Text`
   font-family: ${({ theme }) => theme.fonts.medium};
   font-size: 11px;
-  color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) =>
+    theme.name === 'dark' ? theme.colors.tintText : theme.colors.primary};
 `;
 
 export const ReviewInfoRow = styled.View`
@@ -473,7 +591,9 @@ export const ReviewBadge = styled.View<{ $variant?: 'primary' | 'secondary' | 'n
         ? theme.colors.border
         : $variant === 'error'
           ? theme.colors.status.error.base
-          : theme.colors.primary};
+          : theme.name === 'dark'
+            ? theme.colors.buttonPrimaryBg
+            : theme.colors.primary};
 `;
 
 export const ReviewBadgeText = styled.Text<{ $variant?: 'primary' | 'secondary' | 'neutral' | 'error' }>`

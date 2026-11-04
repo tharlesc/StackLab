@@ -234,8 +234,71 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
 
     expect(hookValue!.currentStep).toBe(0);
 
+    // Passo 0 (Clima) é válido inicialmente -> avança para o passo 1 (Efetivo)
+    await act(async () => {
+      const advanced = hookValue!.handleNextStep();
+      expect(advanced).toBe(true);
+    });
+    expect(hookValue!.currentStep).toBe(1);
+
+    // Passo 1 (Efetivo) está vazio -> não permite avançar
+    expect(hookValue!.canAdvance).toBe(false);
+    expect(hookValue!.stepError).toContain('Adicione ao menos 1 colaborador');
+    await act(async () => {
+      const advanced = hookValue!.handleNextStep();
+      expect(advanced).toBe(false);
+    });
+    expect(hookValue!.currentStep).toBe(1);
+
+    // Preenche o efetivo obrigatório do passo 1
+    await act(async () => {
+      hookValue!.addLaborEntry({
+        role: 'Pedreiro',
+        quantity: 2,
+        hours: 8,
+      });
+    });
+    expect(hookValue!.canAdvance).toBe(true);
+    expect(hookValue!.stepError).toBeNull();
+
+    // Avança para o passo 2 (Máquinas)
+    await act(async () => {
+      const advanced = hookValue!.handleNextStep();
+      expect(advanced).toBe(true);
+    });
+    expect(hookValue!.currentStep).toBe(2);
+
+    // Passo 2 (Máquinas) é opcional -> avança para o passo 3 (Atividades)
+    expect(hookValue!.canAdvance).toBe(true);
+    await act(async () => {
+      const advanced = hookValue!.handleNextStep();
+      expect(advanced).toBe(true);
+    });
+    expect(hookValue!.currentStep).toBe(3);
+
+    // Passo 3 (Atividades) está vazio -> não permite avançar
+    expect(hookValue!.canAdvance).toBe(false);
+    expect(hookValue!.stepError).toContain('Cadastre ao menos 1 atividade');
+    await act(async () => {
+      const advanced = hookValue!.handleNextStep();
+      expect(advanced).toBe(false);
+    });
+    expect(hookValue!.currentStep).toBe(3);
+
+    // Preenche atividade obrigatória
+    await act(async () => {
+      hookValue!.addActivityEntry({
+        description: 'Concretagem de vigas',
+        location: '2º Pavimento',
+        unit: 'm³',
+        quantity: 15,
+        progress: 50,
+      });
+    });
+    expect(hookValue!.canAdvance).toBe(true);
+
     // Avança passo a passo até o passo 6 (Revisão & Prévia)
-    for (let i = 0; i < 6; i++) {
+    for (let i = 3; i < 6; i++) {
       await act(async () => {
         hookValue!.handleNextStep();
       });
@@ -254,6 +317,39 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
       hookValue!.goToStep(1);
     });
     expect(hookValue!.currentStep).toBe(1);
+  });
+
+  it('blocks jumping to future steps when previous steps are incomplete', async () => {
+    await act(async () => {
+      hookValue!.handleSelectWork(MOCK_ACTIVE_WORKS[0]!);
+    });
+    await act(async () => {
+      await hookValue!.handleConfirmStart();
+    });
+
+    // Passo 0 (Clima) -> avança para 1
+    await act(async () => {
+      hookValue!.handleNextStep();
+    });
+    expect(hookValue!.currentStep).toBe(1);
+
+    // Sem efetivo preenchido, tentar saltar diretamente para passo 4 ou 6 deve ser bloqueado
+    expect(hookValue!.canJumpToStep(4)).toBe(false);
+    expect(hookValue!.canJumpToStep(6)).toBe(false);
+
+    await act(async () => {
+      const jumped = hookValue!.goToStep(4);
+      expect(jumped).toBe(false);
+    });
+    expect(hookValue!.currentStep).toBe(1);
+
+    // Saltar para trás (passo 0) é sempre permitido
+    expect(hookValue!.canJumpToStep(0)).toBe(true);
+    await act(async () => {
+      const jumped = hookValue!.goToStep(0);
+      expect(jumped).toBe(true);
+    });
+    expect(hookValue!.currentStep).toBe(0);
   });
 
   it('defines 7 sequential steps in STEPS to support complete progress indicator without truncation', () => {

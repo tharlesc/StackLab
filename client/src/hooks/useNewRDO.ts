@@ -154,15 +154,175 @@ export const useNewRDO = () => {
     checkExistingDrafts();
   }, [activeDraft, saveDraft, checkExistingDrafts]);
 
-  // Navegação entre passos
-  const handleNextStep = useCallback(() => {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep((prev) => prev + 1);
-      if (activeDraft && activeDraft.workId) {
-        saveDraft(activeDraft.workId, activeDraft).catch(console.warn);
+  // ============================================================================
+  // Validação por Etapas (Step-by-Step Validation)
+  // ============================================================================
+
+  const validateStep = useCallback(
+    (stepIndex: number, draft: RDO | null = activeDraft): { isValid: boolean; error: string | null } => {
+      if (!draft) {
+        return { isValid: false, error: 'Rascunho não inicializado.' };
       }
-    }
-  }, [currentStep, activeDraft, saveDraft]);
+
+      switch (stepIndex) {
+        case 0: {
+          // 1. Identificação & Clima
+          if (!draft.date || draft.date.trim().length < 8) {
+            return {
+              isValid: false,
+              error: 'Preencha a data do relatório (DD/MM/AAAA) para avançar.',
+            };
+          }
+          const rainWithoutImpact = draft.weather?.find((w) => {
+            const isRain = w.condition ? /chuva|chuvoso/i.test(w.condition) : false;
+            return isRain && (w.stoppageHours ?? 0) > 0 && (!w.impact || w.impact.trim().length < 3);
+          });
+          if (rainWithoutImpact) {
+            return {
+              isValid: false,
+              error: `Informe a justificativa do impacto da chuva no turno ${rainWithoutImpact.shift} (mín. 3 caracteres).`,
+            };
+          }
+          return { isValid: true, error: null };
+        }
+
+        case 1: {
+          // 2. Efetivo & Mão de Obra
+          if (!draft.labor || draft.labor.length === 0) {
+            return {
+              isValid: false,
+              error: 'Adicione ao menos 1 colaborador à equipe para avançar.',
+            };
+          }
+          const invalidLabor = draft.labor.find(
+            (l) =>
+              typeof l.quantity !== 'number' ||
+              l.quantity < 1 ||
+              !Number.isInteger(l.quantity) ||
+              typeof l.hours !== 'number' ||
+              l.hours < 0 ||
+              l.hours > 24,
+          );
+          if (invalidLabor) {
+            return {
+              isValid: false,
+              error: 'Verifique a quantidade e a jornada dos colaboradores adicionados.',
+            };
+          }
+          return { isValid: true, error: null };
+        }
+
+        case 2: {
+          // 3. Equipamentos & Maquinário
+          if (!draft.equipment || draft.equipment.length === 0) {
+            return { isValid: true, error: null };
+          }
+          const invalidEquip = draft.equipment.find(
+            (eq) =>
+              (eq.idleHours ?? 0) > 0 &&
+              (!eq.idleJustification || eq.idleJustification.trim().length < 5),
+          );
+          if (invalidEquip) {
+            return {
+              isValid: false,
+              error: `Informe a justificativa de ociosidade do equipamento "${invalidEquip.name}" (mín. 5 caracteres).`,
+            };
+          }
+          return { isValid: true, error: null };
+        }
+
+        case 3: {
+          // 4. Atividades Executadas
+          if (!draft.activities || draft.activities.length === 0) {
+            return {
+              isValid: false,
+              error: 'Cadastre ao menos 1 atividade executada para avançar.',
+            };
+          }
+          const invalidAct = draft.activities.find(
+            (a) => !a.description || a.description.trim().length < 3,
+          );
+          if (invalidAct) {
+            return {
+              isValid: false,
+              error: 'A descrição da atividade deve possuir no mínimo 3 caracteres.',
+            };
+          }
+          return { isValid: true, error: null };
+        }
+
+        case 4: {
+          // 5. Ocorrências & DDS (opcional)
+          return { isValid: true, error: null };
+        }
+
+        case 5: {
+          // 6. Fotos na Obra (opcional)
+          return { isValid: true, error: null };
+        }
+
+        case 6: {
+          // 7. Revisão & Prévia
+          return { isValid: true, error: null };
+        }
+
+        default:
+          return { isValid: true, error: null };
+      }
+    },
+    [activeDraft],
+  );
+
+  const isStepValid = useCallback(
+    (stepIndex: number = currentStep): boolean => {
+      return validateStep(stepIndex, activeDraft).isValid;
+    },
+    [validateStep, activeDraft, currentStep],
+  );
+
+  const getStepValidationError = useCallback(
+    (stepIndex: number = currentStep): string | null => {
+      return validateStep(stepIndex, activeDraft).error;
+    },
+    [validateStep, activeDraft, currentStep],
+  );
+
+  const canAdvance = useMemo(() => {
+    return isStepValid(currentStep);
+  }, [isStepValid, currentStep]);
+
+  const stepError = useMemo(() => {
+    return getStepValidationError(currentStep);
+  }, [getStepValidationError, currentStep]);
+
+  const canJumpToStep = useCallback(
+    (targetStep: number): boolean => {
+      if (targetStep <= currentStep) return true;
+      for (let i = 0; i < targetStep; i++) {
+        if (!validateStep(i, activeDraft).isValid) return false;
+      }
+      return true;
+    },
+    [currentStep, validateStep, activeDraft],
+  );
+
+  // Navegação entre passos com validação de etapa
+  const handleNextStep = useCallback(
+    (options?: { force?: boolean }) => {
+      if (!options?.force && !isStepValid(currentStep)) {
+        return false;
+      }
+      if (currentStep < STEPS.length - 1) {
+        setCurrentStep((prev) => prev + 1);
+        if (activeDraft && activeDraft.workId) {
+          saveDraft(activeDraft.workId, activeDraft).catch(console.warn);
+        }
+        return true;
+      }
+      return false;
+    },
+    [currentStep, isStepValid, activeDraft, saveDraft],
+  );
 
   const handlePrevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -170,9 +330,16 @@ export const useNewRDO = () => {
     }
   }, [currentStep]);
 
-  const goToStep = useCallback((stepIndex: number) => {
-    setCurrentStep(stepIndex);
-  }, []);
+  const goToStep = useCallback(
+    (stepIndex: number, options?: { force?: boolean }) => {
+      if (!options?.force && !canJumpToStep(stepIndex)) {
+        return false;
+      }
+      setCurrentStep(stepIndex);
+      return true;
+    },
+    [canJumpToStep],
+  );
 
   // ============================================================================
   // Atualizações do RDO (Turnos, Equipe, Equipamento, Atividades, Insumos, Fotos)
@@ -387,6 +554,12 @@ export const useNewRDO = () => {
     handleNextStep,
     handlePrevStep,
     goToStep,
+    validateStep,
+    isStepValid,
+    getStepValidationError,
+    canAdvance,
+    stepError,
+    canJumpToStep,
     updateDate,
     updateWeatherShift,
     addLaborEntry,
