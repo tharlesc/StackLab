@@ -57,7 +57,7 @@ export function SegmentedControl<T extends string>({
 
 const Container = styled.View<{ $tone: 'light' | 'dark' }>`
   flex-direction: row;
-  padding: ${({ theme }) => theme.spacing.xs}px;
+  padding: 3px;
   border-radius: ${({ theme }) => theme.borderRadius.lg}px;
   background-color: ${({ theme, $tone }) =>
     $tone === 'dark' ? theme.colors.tag.timeFilterBg : theme.colors.surfaceVariant};
@@ -67,9 +67,9 @@ const Container = styled.View<{ $tone: 'light' | 'dark' }>`
 
 const Segment = styled(TouchableOpacity)<{ $active: boolean }>`
   flex: 1;
-  min-width: 50px;
+  min-width: 52px;
   min-height: ${({ theme }) => theme.touchTarget.minHeight}px;
-  padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
+  padding: 4px 8px;
   justify-content: center;
   align-items: center;
   border-radius: ${({ theme }) => theme.borderRadius.md}px;

@@ -23,10 +23,9 @@ export const STEPS = [
   { id: 1, label: 'Efetivo', title: '2. Mão de Obra' },
   { id: 2, label: 'Máquinas', title: '3. Equipamentos' },
   { id: 3, label: 'Atividades', title: '4. Atividades Executadas' },
-  { id: 4, label: 'Insumos', title: '5. Materiais Recebidos' },
-  { id: 5, label: 'Fatos', title: '6. Ocorrências & DDS' },
-  { id: 6, label: 'Fotos', title: '7. Fotos na Obra' },
-  { id: 7, label: 'Revisão', title: '8. Revisão & Prévia' },
+  { id: 4, label: 'Fatos', title: '5. Ocorrências & DDS' },
+  { id: 5, label: 'Fotos', title: '6. Fotos na Obra' },
+  { id: 6, label: 'Revisão', title: '7. Revisão & Prévia' },
 ] as const;
 
 export const useNewRDO = () => {
@@ -330,8 +329,13 @@ export const useNewRDO = () => {
   const handleSubmit = useCallback(async () => {
     if (!activeDraft) return;
 
+    const payload: RDO = {
+      ...activeDraft,
+      materials: activeDraft.materials || [],
+    };
+
     // 1. Validação de pré-submissão
-    const validation = validateDraftForSubmission(activeDraft);
+    const validation = validateDraftForSubmission(payload);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       setIsValidationDialogOpen(true);
@@ -340,7 +344,7 @@ export const useNewRDO = () => {
 
     setIsSubmitting(true);
     try {
-      await submitDraft(activeDraft, currentUser);
+      await submitDraft(payload, currentUser);
       setIsSuccessDialogOpen(true);
     } catch (err: any) {
       setValidationErrors([err.message || 'Ocorreu um erro ao submeter o RDO.']);

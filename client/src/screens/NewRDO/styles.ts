@@ -1,4 +1,5 @@
 import styled from 'styled-components/native';
+import { TouchableOpacity } from 'react-native';
 import { TouchableCard } from '@/components/common/Card';
 
 export const WorkSelectCard = styled(TouchableCard)`
@@ -57,7 +58,7 @@ export const StepProgressBar = styled.View`
 
 export const StepScrollList = styled.ScrollView``;
 
-export const StepTab = styled.View<{ $active: boolean; $completed: boolean }>`
+export const StepTab = styled(TouchableOpacity)<{ $active: boolean; $completed: boolean }>`
   flex-direction: row;
   align-items: center;
   padding: ${({ theme }) => theme.spacing.xs}px ${({ theme }) => theme.spacing.sm}px;
@@ -89,7 +90,7 @@ export const StepCircleText = styled.Text<{ $active: boolean }>`
   color: ${({ theme }) => theme.colors.text.inverse};
 `;
 
-export const StepTabText = styled.Text<{ $active: boolean }>`
+export const StepTabText = styled.Text<{ $active: boolean; $completed?: boolean }>`
   font-family: ${({ $active, theme }) => ($active ? theme.fonts.bold : theme.fonts.medium)};
   font-size: 12px;
   color: ${({ $active, theme }) => ($active ? theme.colors.text.inverse : theme.colors.text.secondary)};
@@ -268,22 +269,22 @@ export const ToggleRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-top: ${({ theme }) => theme.spacing.xs}px;
+  margin-top: ${({ theme }) => theme.spacing.sm}px;
   gap: ${({ theme }) => theme.spacing.sm}px;
   flex-wrap: wrap;
 `;
 
 export const ToggleLabel = styled.Text`
   font-family: ${({ theme }) => theme.fonts.medium};
-  font-size: 12px;
-  line-height: 17px;
+  font-size: 13px;
+  line-height: 18px;
   color: ${({ theme }) => theme.colors.text.primary};
   flex: 1;
   min-width: 140px;
 `;
 
 export const ToggleControlWrapper = styled.View`
-  min-width: 120px;
+  min-width: 130px;
   flex-shrink: 0;
 `;
 
@@ -462,7 +463,7 @@ export const ReviewItemSubtitle = styled.Text`
   margin-top: 2px;
 `;
 
-export const ReviewBadge = styled.View<{ $variant?: 'primary' | 'secondary' | 'neutral' }>`
+export const ReviewBadge = styled.View<{ $variant?: 'primary' | 'secondary' | 'neutral' | 'error' }>`
   padding: 2px 6px;
   border-radius: 4px;
   background-color: ${({ theme, $variant }) =>
@@ -470,10 +471,12 @@ export const ReviewBadge = styled.View<{ $variant?: 'primary' | 'secondary' | 'n
       ? theme.colors.secondary
       : $variant === 'neutral'
         ? theme.colors.border
-        : theme.colors.primary};
+        : $variant === 'error'
+          ? theme.colors.status.error.base
+          : theme.colors.primary};
 `;
 
-export const ReviewBadgeText = styled.Text<{ $variant?: 'primary' | 'secondary' | 'neutral' }>`
+export const ReviewBadgeText = styled.Text<{ $variant?: 'primary' | 'secondary' | 'neutral' | 'error' }>`
   font-size: 10px;
   font-family: ${({ theme }) => theme.fonts.bold};
   color: ${({ theme, $variant }) =>

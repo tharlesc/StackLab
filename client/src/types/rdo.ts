@@ -37,6 +37,9 @@ export interface LaborEntry {
   quantity: number;
   hours: number;
   isContractor?: boolean;
+  name?: string;
+  horaInicio?: string;
+  horaFim?: string;
 }
 
 export interface EquipmentEntry {
@@ -47,7 +50,14 @@ export interface EquipmentEntry {
   /** Obrigatório quando idleHours > 0. */
   idleJustification?: string;
   isRented?: boolean;
+  brand?: string;
+  code?: string;
+  observations?: string;
+  horaInicio?: string;
+  horaFim?: string;
 }
+
+export type ActivityStatus = 'Iniciado' | 'Em andamento' | 'Concluído' | 'Paralisado';
 
 export interface ActivityEntry {
   description: string;
@@ -55,6 +65,7 @@ export interface ActivityEntry {
   unit: string;
   quantity: number;
   progress?: number; // Percentual de avanço físico (0 a 100%)
+  status?: ActivityStatus;
 }
 
 export interface MaterialEntry {
@@ -76,6 +87,8 @@ export type OccurrenceType =
 export interface OccurrenceEntry {
   type: OccurrenceType;
   description: string;
+  horaInicio?: string;
+  horaFim?: string;
 }
 
 export interface PhotoMetadata {

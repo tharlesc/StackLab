@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Image, ScrollView, useWindowDimensions } from 'react-native';
+import { View, useWindowDimensions, LayoutChangeEvent } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import {
   Building2,
@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Camera,
   Trash2,
-  Plus,
   Sun,
   Cloud,
   CloudRain,
@@ -19,7 +18,6 @@ import {
   HardHat,
   Briefcase,
   Layers,
-  FileSpreadsheet,
   Edit3,
 } from 'lucide-react-native';
 
@@ -95,12 +93,79 @@ import { InteractiveCard } from '@/components/common/InteractiveCard';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { DynamicDropdown } from '@/components/common/DynamicDropdown';
+import { QuantityStepper } from '@/components/common/QuantityStepper';
+import { TimeIntervalAccordion } from '@/components/common/TimeIntervalAccordion';
 import { strings } from '@/constants/strings';
-import type { Shift, OccurrenceType } from '@/types';
+import type { Shift, OccurrenceType, ActivityStatus } from '@/types';
 
 interface NewRDOViewProps {
   onWizardActiveChange?: (isActive: boolean) => void;
 }
+
+const DEFAULT_LABOR_ROLES = [
+  'Ajudante',
+  'Almoxarife',
+  'Apontador',
+  'Armador',
+  'Azulejista',
+  'Bombeiro Hidráulico',
+  'Carpinteiro',
+  'Motorista',
+  'Operador de Máquinas',
+  'Pedreiro',
+  'Pintor',
+  'Serralheiro',
+  'Servente',
+  'Soldador',
+];
+
+const DEFAULT_EQUIPMENT_NAMES = [
+  'Betoneira',
+  'Retroescavadeira',
+  'Caminhão Basculante',
+  'Grua',
+  'Gerador',
+  'Compactador de Solo',
+  'Furadeira',
+  'Serra Circular',
+];
+
+const ACTIVITY_STATUS_OPTIONS: ActivityStatus[] = [
+  'Iniciado',
+  'Em andamento',
+  'Concluído',
+  'Paralisado',
+];
+
+const OCCURRENCE_TYPE_OPTIONS = [
+  'DDS',
+  'Acidente',
+  'Paralisação',
+  'Interferência',
+  'Pendência',
+];
+
+const mapLabelToOccType = (label: string): OccurrenceType => {
+  const norm = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (norm === 'dds') return 'dds';
+  if (norm.includes('acidente')) return 'acidente';
+  if (norm.includes('paralisacao')) return 'paralisacao';
+  if (norm.includes('interferencia')) return 'interferencia';
+  if (norm.includes('pendencia')) return 'pendencia';
+  return 'outro';
+};
+
+const calculateHoursFromInterval = (start: string, end: string): number | null => {
+  if (!start || !end || !start.includes(':') || !end.includes(':')) return null;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return null;
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+  const diffMin = endMin >= startMin ? endMin - startMin : 24 * 60 - startMin + endMin;
+  return Math.round((diffMin / 60) * 10) / 10;
+};
 
 export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const theme = useTheme();
@@ -137,8 +202,6 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
     removeEquipmentEntry,
     addActivityEntry,
     removeActivityEntry,
-    addMaterialEntry,
-    removeMaterialEntry,
     addOccurrenceEntry,
     removeOccurrenceEntry,
     handleCapturePhoto,
@@ -167,7 +230,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         const targetX = Math.max(0, layout.x - (screenWidth - layout.width) / 2);
         stepScrollRef.current.scrollTo({ x: targetX, animated: true });
       } else if (stepScrollRef.current) {
-        const approxX = Math.max(0, stepIndex * 105 - screenWidth / 2 + 50);
+        const approxX = Math.max(0, stepIndex * 115 - screenWidth / 2 + 50);
         stepScrollRef.current.scrollTo({ x: approxX, animated: true });
       }
     },
@@ -181,16 +244,24 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   // Estados locais para os formulários de adição de itens
   // Mão de Obra
   const [laborRole, setLaborRole] = useState('Pedreiro');
-  const [laborQty, setLaborQty] = useState('2');
+  const [laborName, setLaborName] = useState('');
+  const [laborQty, setLaborQty] = useState(2);
   const [laborHours, setLaborHours] = useState('8');
+  const [laborHoraInicio, setLaborHoraInicio] = useState('');
+  const [laborHoraFim, setLaborHoraFim] = useState('');
   const [laborContractor, setLaborContractor] = useState<'proprio' | 'terceirizado'>('proprio');
 
   // Equipamento
-  const [equipName, setEquipName] = useState('Betoneira 400L');
-  const [equipQty, setEquipQty] = useState('1');
+  const [equipName, setEquipName] = useState('Betoneira');
+  const [equipBrand, setEquipBrand] = useState('');
+  const [equipCode, setEquipCode] = useState('');
+  const [equipQty, setEquipQty] = useState(1);
   const [equipActiveHours, setEquipActiveHours] = useState('8');
   const [equipIdleHours, setEquipIdleHours] = useState('0');
   const [equipJustification, setEquipJustification] = useState('');
+  const [equipHoraInicio, setEquipHoraInicio] = useState('');
+  const [equipHoraFim, setEquipHoraFim] = useState('');
+  const [equipObservations, setEquipObservations] = useState('');
   const [equipRented, setEquipRented] = useState<'proprio' | 'locado'>('proprio');
 
   // Atividade
@@ -199,16 +270,12 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const [actUnit, setActUnit] = useState('m²');
   const [actQty, setActQty] = useState('10');
   const [actProgress, setActProgress] = useState('25');
-
-  // Material
-  const [matName, setMatName] = useState('');
-  const [matSupplier, setMatSupplier] = useState('');
-  const [matInvoice, setMatInvoice] = useState('');
-  const [matQty, setMatQty] = useState('');
-  const [matUnit, setMatUnit] = useState('un');
+  const [actStatus, setActStatus] = useState<ActivityStatus>('Em andamento');
 
   // Ocorrência / DDS
-  const [occType, setOccType] = useState<OccurrenceType>('dds');
+  const [occTypeLabel, setOccTypeLabel] = useState('DDS');
+  const [occHoraInicio, setOccHoraInicio] = useState('');
+  const [occHoraFim, setOccHoraFim] = useState('');
   const [occDesc, setOccDesc] = useState('');
 
   // --------------------------------------------------------------------------
@@ -221,14 +288,16 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
 
         <ScrollContent showsVerticalScrollIndicator={false}>
           {existingDraftWork && existingDraftData && (
-            <InteractiveCard
-              title="Rascunho Local Disponível"
-              supportingText={`Você possui 1 diário em rascunho salvo offline aguardando preenchimento para "${existingDraftWork.name}".`}
-              actions={[
-                { label: 'Descartar', onPress: handleDiscardExistingDraft, destructive: true },
-                { label: 'Continuar', onPress: handleContinueExistingDraft, primary: true },
-              ]}
-            />
+            <View style={{ marginBottom: theme.spacing.lg }}>
+              <InteractiveCard
+                title="Rascunho Local Disponível"
+                supportingText={`Você possui 1 diário em rascunho salvo offline aguardando preenchimento para "${existingDraftWork.name}".`}
+                actions={[
+                  { label: 'Descartar', onPress: handleDiscardExistingDraft, destructive: true },
+                  { label: 'Continuar', onPress: handleContinueExistingDraft, primary: true },
+                ]}
+              />
+            </View>
           )}
 
           <StepTitle style={{ marginBottom: theme.spacing.sm, marginTop: theme.spacing.xs }}>
@@ -289,10 +358,11 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   }
 
   // --------------------------------------------------------------------------
-  // RENDER: Assistente de 7 Passos do RDO (Wizard Ativo)
+  // RENDER: Assistente do RDO (Wizard ativo com passos 0 a 6)
   // --------------------------------------------------------------------------
   return (
     <WizardContainer>
+      {/* Top Header com Ações do Rascunho */}
       <Header
         title={`RDO: ${activeDraft.workName}`}
         leftContent={
@@ -305,7 +375,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               />
             }
             onPress={handleExitWizard}
-            accessibilityLabel="Voltar e salvar rascunho"
+            accessibilityLabel="Voltar ao início e salvar rascunho"
           />
         }
         rightContent={
@@ -323,20 +393,32 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         }
       />
 
-      {/* Barra de Progresso / Indicador Visual dos Passos (Apenas Leitura, Sem Toque) */}
-      <StepProgressBar
-        pointerEvents="none"
-        accessibilityRole="progressbar"
-        accessibilityLabel={`Etapa ${currentStep + 1} de ${STEPS.length}: ${STEPS[currentStep]?.label}`}
-      >
+      {savedFeedback && (
+        <View
+          style={{
+            backgroundColor: theme.colors.status.success.bg,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <CheckCircle2 size={16} color={theme.colors.status.success.text} />
+          <FieldLabel style={{ color: theme.colors.status.success.text, margin: 0 }}>
+            {savedFeedback}
+          </FieldLabel>
+        </View>
+      )}
+
+      {/* Barra de Progresso Superior com Rolagem Horizontal Suave */}
+      <StepProgressBar>
         <StepScrollList
           ref={stepScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: theme.spacing.md,
-            alignItems: 'center',
-          }}
+          contentContainerStyle={{ paddingHorizontal: theme.spacing.md, alignItems: 'center' }}
         >
           {STEPS.map((step) => {
             const isActive = currentStep === step.id;
@@ -346,39 +428,36 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 key={step.id}
                 $active={isActive}
                 $completed={isCompleted}
-                onLayout={(e) => {
-                  stepLayouts.current[step.id] = e.nativeEvent.layout;
-                  if (step.id === currentStep) {
-                    scrollToActiveStep(currentStep);
-                  }
+                onPress={() => goToStep(step.id)}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`Passo ${step.id + 1}: ${step.label}`}
+                onLayout={(e: LayoutChangeEvent) => {
+                  const { x, width } = e.nativeEvent.layout;
+                  stepLayouts.current[step.id] = { x, width };
                 }}
-                accessibilityRole="none"
-                accessibilityLabel={`${step.id + 1}. ${step.label}${
-                  isActive ? ' (atual)' : isCompleted ? ' (concluído)' : ''
-                }`}
               >
                 <StepCircle $active={isActive} $completed={isCompleted}>
-                  <StepCircleText $active={isActive}>{step.id + 1}</StepCircleText>
+                  {isCompleted ? (
+                    <CheckCircle2 size={14} color="#ffffff" />
+                  ) : (
+                    <StepCircleText $active={isActive}>{step.id + 1}</StepCircleText>
+                  )}
                 </StepCircle>
-                <StepTabText $active={isActive}>{step.label}</StepTabText>
+                <StepTabText $active={isActive} $completed={isCompleted} numberOfLines={1}>
+                  {step.label}
+                </StepTabText>
               </StepTab>
             );
           })}
         </StepScrollList>
       </StepProgressBar>
 
-      {/* Conteúdo Dinâmico do Passo Atual */}
-      <ScrollContent showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-        {savedFeedback && (
-          <InteractiveCard
-            title="Rascunho Salvo"
-            supportingText={savedFeedback}
-            actions={[]}
-          />
-        )}
-
+      {/* Conteúdo com rolagem do Passo Ativo */}
+      <ScrollContent showsVerticalScrollIndicator={false}>
         {/* ================================================================== */}
-        {/* PASSO 0: IDENTIFICAÇÃO E CLIMA POR TURNO                          */}
+        {/* PASSO 0: IDENTIFICAÇÃO E CLIMA POR TURNO                           */}
         {/* ================================================================== */}
         {currentStep === 0 && (
           <StepCard>
@@ -387,22 +466,24 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               <StepSubtitle>Defina a data do diário e as condições climáticas de cada turno.</StepSubtitle>
             </StepHeader>
 
+            <FieldLabel>Data do Relatório:</FieldLabel>
             <Input
-              accessibilityLabel="Data do Registro"
-              label="Data do Registro (DD/MM/AAAA ou AAAA-MM-DD)"
+              accessibilityLabel="Data do diário de obra"
               value={activeDraft.date}
               onChangeText={updateDate}
-              placeholder="Ex: 2026-10-31"
+              placeholder="DD/MM/AAAA"
             />
 
-            <FieldLabel style={{ marginTop: theme.spacing.md }}>Condições do Tempo por Turno:</FieldLabel>
+            <FieldLabel style={{ marginTop: theme.spacing.md }}>Condições do Clima por Turno:</FieldLabel>
 
             {(['manha', 'tarde', 'noite'] as Shift[]).map((shift) => {
-              const weatherEntry = activeDraft.weather.find((w) => w.shift === shift) || {
-                shift,
-                condition: 'Ensolarado',
-                practical: true,
-              };
+              const weatherEntry =
+                activeDraft.weather.find((w) => w.shift === shift) || {
+                  shift,
+                  condition: 'Ensolarado',
+                  practical: true,
+                };
+
               const isRain = /chuva|chuvoso/i.test(weatherEntry.condition);
 
               return (
@@ -428,6 +509,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                         key={cond}
                         $selected={weatherEntry.condition === cond}
                         onPress={() => updateWeatherShift(shift, { condition: cond })}
+                        activeOpacity={0.7}
                       >
                         {icon}
                         <ConditionChipText $selected={weatherEntry.condition === cond}>
@@ -501,35 +583,63 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             </KpiBanner>
 
             <FieldLabel>Adicionar Equipe / Função:</FieldLabel>
-            <FormRow>
-              <FormCol flex={2}>
+
+            {/* Dropdown Dinâmico com Inserção Manual para Função/Cargo */}
+            <DynamicDropdown
+              label="Função / Cargo"
+              placeholder="Selecione a função..."
+              manualPlaceholder="Digite o cargo..."
+              options={DEFAULT_LABOR_ROLES}
+              value={laborRole}
+              onChange={setLaborRole}
+              accessibilityLabel="Função ou cargo do colaborador"
+            />
+
+            {/* Campo Opcional de Nome */}
+            <Input
+              accessibilityLabel="Nome do colaborador (opcional)"
+              label="Nome (opcional)"
+              value={laborName}
+              onChangeText={setLaborName}
+              placeholder="Ex: João da Silva"
+            />
+
+            {/* Stepper de Quantidade */}
+            <QuantityStepper
+              label="Quantidade de Trabalhadores"
+              value={laborQty}
+              onChange={setLaborQty}
+              min={1}
+              accessibilityLabel="Quantidade de trabalhadores"
+            />
+
+            {/* Accordion Expansível para Horários */}
+            <TimeIntervalAccordion
+              title="Registrar horário (opcional)"
+              horaInicio={laborHoraInicio}
+              horaFim={laborHoraFim}
+              onChangeHoraInicio={(val) => {
+                setLaborHoraInicio(val);
+                const diff = calculateHoursFromInterval(val, laborHoraFim);
+                if (diff !== null) setLaborHours(String(diff));
+              }}
+              onChangeHoraFim={(val) => {
+                setLaborHoraFim(val);
+                const diff = calculateHoursFromInterval(laborHoraInicio, val);
+                if (diff !== null) setLaborHours(String(diff));
+              }}
+            >
+              <View style={{ marginTop: theme.spacing.sm }}>
                 <Input
-                  accessibilityLabel="Cargo ou função"
-                  label="Função / Cargo"
-                  value={laborRole}
-                  onChangeText={setLaborRole}
-                  placeholder="Ex: Pedreiro, Carpinteiro"
-                />
-              </FormCol>
-              <FormCol flex={1}>
-                <Input
-                  accessibilityLabel="Quantidade de trabalhadores"
-                  label="Qtd."
-                  value={laborQty}
-                  keyboardType="numeric"
-                  onChangeText={setLaborQty}
-                />
-              </FormCol>
-              <FormCol flex={1}>
-                <Input
-                  accessibilityLabel="Jornada em horas"
-                  label="Horas"
+                  accessibilityLabel="Jornada diária em horas calculada"
+                  label="Jornada Diária (Horas/trabalhador)"
                   value={laborHours}
                   keyboardType="numeric"
                   onChangeText={setLaborHours}
+                  placeholder="8"
                 />
-              </FormCol>
-            </FormRow>
+              </View>
+            </TimeIntervalAccordion>
 
             <FieldLabel>Vínculo:</FieldLabel>
             <SegmentedControl
@@ -547,13 +657,17 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               size="small"
               onPress={() => {
                 if (!laborRole.trim()) return;
+                const hoursVal = parseFloat(laborHours) || 8;
                 addLaborEntry({
                   role: laborRole.trim(),
-                  quantity: parseInt(laborQty, 10) || 1,
-                  hours: parseFloat(laborHours) || 8,
+                  name: laborName.trim() || undefined,
+                  quantity: laborQty || 1,
+                  hours: hoursVal,
                   isContractor: laborContractor === 'terceirizado',
+                  horaInicio: laborHoraInicio || undefined,
+                  horaFim: laborHoraFim || undefined,
                 });
-                setLaborRole('');
+                setLaborName('');
               }}
               style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.lg }}
             />
@@ -566,10 +680,11 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 <AddedItemCard key={idx}>
                   <AddedItemInfo>
                     <AddedItemTitle>
-                      {l.role} ({l.isContractor ? 'Terceirizado' : 'Próprio'})
+                      {l.name ? `${l.name} — ` : ''}{l.role} ({l.isContractor ? 'Terceirizado' : 'Próprio'})
                     </AddedItemTitle>
                     <AddedItemSubtitle>
                       {l.quantity} profissionais • Jornada: {l.hours}h ({l.quantity * l.hours} Hh total)
+                      {l.horaInicio && l.horaFim ? ` • Horário: ${l.horaInicio} às ${l.horaFim}` : ''}
                     </AddedItemSubtitle>
                   </AddedItemInfo>
                   <RemoveButton onPress={() => removeLaborEntry(idx)}>
@@ -592,57 +707,108 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             </StepHeader>
 
             <FieldLabel>Adicionar Equipamento:</FieldLabel>
+
+            {/* Dropdown Dinâmico com Inserção Manual para Nome da Máquina */}
+            <DynamicDropdown
+              label="Nome da Máquina"
+              placeholder="Selecione o equipamento..."
+              manualPlaceholder="Digite o nome da máquina..."
+              options={DEFAULT_EQUIPMENT_NAMES}
+              value={equipName}
+              onChange={setEquipName}
+              accessibilityLabel="Nome do equipamento ou máquina"
+            />
+
+            {/* Marca e Código lado a lado */}
             <FormRow>
-              <FormCol flex={2}>
+              <FormCol flex={1}>
                 <Input
-                  accessibilityLabel="Nome do equipamento"
-                  label="Nome da Máquina"
-                  value={equipName}
-                  onChangeText={setEquipName}
-                  placeholder="Ex: Retroescavadeira, Betoneira"
+                  accessibilityLabel="Marca da máquina (opcional)"
+                  label="Marca (opcional)"
+                  value={equipBrand}
+                  onChangeText={setEquipBrand}
+                  placeholder="Ex: Caterpillar, Valtra"
                 />
               </FormCol>
               <FormCol flex={1}>
                 <Input
-                  accessibilityLabel="Quantidade de máquinas"
-                  label="Qtd."
-                  value={equipQty}
-                  keyboardType="numeric"
-                  onChangeText={setEquipQty}
+                  accessibilityLabel="Código da máquina (opcional)"
+                  label="Código (opcional)"
+                  value={equipCode}
+                  onChangeText={setEquipCode}
+                  placeholder="Ex: EQ-042"
                 />
               </FormCol>
             </FormRow>
 
-            <FormRow>
-              <FormCol flex={1}>
-                <Input
-                  accessibilityLabel="Horas ativas"
-                  label="Horas Produtivas"
-                  value={equipActiveHours}
-                  keyboardType="numeric"
-                  onChangeText={setEquipActiveHours}
-                />
-              </FormCol>
-              <FormCol flex={1}>
-                <Input
-                  accessibilityLabel="Horas ociosas"
-                  label="Horas Ociosas"
-                  value={equipIdleHours}
-                  keyboardType="numeric"
-                  onChangeText={setEquipIdleHours}
-                />
-              </FormCol>
-            </FormRow>
+            {/* Stepper de Quantidade */}
+            <QuantityStepper
+              label="Quantidade de Máquinas"
+              value={equipQty}
+              onChange={setEquipQty}
+              min={1}
+              accessibilityLabel="Quantidade de máquinas"
+            />
 
-            {parseFloat(equipIdleHours) > 0 && (
-              <Input
-                accessibilityLabel="Justificativa da ociosidade"
-                label="Justificativa da Inatividade (Obrigatória):"
-                value={equipJustification}
-                onChangeText={setEquipJustification}
-                placeholder="Ex: Aguardando liberação de caçamba (mín. 5 chars)"
-              />
-            )}
+            {/* Accordion Expansível para Horários Produtivas/Ociosas */}
+            <TimeIntervalAccordion
+              title="Registrar horário (opcional)"
+              horaInicio={equipHoraInicio}
+              horaFim={equipHoraFim}
+              onChangeHoraInicio={(val) => {
+                setEquipHoraInicio(val);
+                const diff = calculateHoursFromInterval(val, equipHoraFim);
+                if (diff !== null) setEquipActiveHours(String(diff));
+              }}
+              onChangeHoraFim={(val) => {
+                setEquipHoraFim(val);
+                const diff = calculateHoursFromInterval(equipHoraInicio, val);
+                if (diff !== null) setEquipActiveHours(String(diff));
+              }}
+            >
+              <FormRow style={{ marginTop: theme.spacing.sm }}>
+                <FormCol flex={1}>
+                  <Input
+                    accessibilityLabel="Horas ativas produtivas"
+                    label="Horas Produtivas"
+                    value={equipActiveHours}
+                    keyboardType="numeric"
+                    onChangeText={setEquipActiveHours}
+                  />
+                </FormCol>
+                <FormCol flex={1}>
+                  <Input
+                    accessibilityLabel="Horas inativas ociosas"
+                    label="Horas Ociosas"
+                    value={equipIdleHours}
+                    keyboardType="numeric"
+                    onChangeText={setEquipIdleHours}
+                  />
+                </FormCol>
+              </FormRow>
+
+              {parseFloat(equipIdleHours) > 0 && (
+                <Input
+                  accessibilityLabel="Justificativa da inatividade"
+                  label="Justificativa da Ociosidade (Obrigatória):"
+                  value={equipJustification}
+                  onChangeText={setEquipJustification}
+                  placeholder="Ex: Aguardando liberação de caçamba (mín. 5 chars)"
+                />
+              )}
+            </TimeIntervalAccordion>
+
+            {/* TextArea Observações Opcionais com Limite de 200 caracteres */}
+            <Input
+              accessibilityLabel="Observações do equipamento"
+              label={`Observações (opcional) — ${equipObservations.length}/200`}
+              value={equipObservations}
+              onChangeText={(txt) => setEquipObservations(txt.slice(0, 200))}
+              multiline
+              numberOfLines={3}
+              placeholder="Ex: Manutenção preventiva agendada para sexta-feira."
+              maxLength={200}
+            />
 
             <FieldLabel style={{ marginTop: theme.spacing.xs }}>Vínculo da Máquina:</FieldLabel>
             <SegmentedControl
@@ -663,13 +829,20 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 const idle = parseFloat(equipIdleHours) || 0;
                 addEquipmentEntry({
                   name: equipName.trim(),
-                  quantity: parseInt(equipQty, 10) || 1,
+                  brand: equipBrand.trim() || undefined,
+                  code: equipCode.trim() || undefined,
+                  quantity: equipQty || 1,
                   activeHours: parseFloat(equipActiveHours) || 0,
                   idleHours: idle,
                   idleJustification: idle > 0 ? equipJustification.trim() : undefined,
+                  horaInicio: equipHoraInicio || undefined,
+                  horaFim: equipHoraFim || undefined,
+                  observations: equipObservations.trim() || undefined,
                   isRented: equipRented === 'locado',
                 });
-                setEquipName('');
+                setEquipBrand('');
+                setEquipCode('');
+                setEquipObservations('');
                 setEquipJustification('');
               }}
               style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.lg }}
@@ -683,11 +856,13 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 <AddedItemCard key={idx}>
                   <AddedItemInfo>
                     <AddedItemTitle>
-                      {e.name} ({e.isRented ? 'Locado' : 'Próprio'}) • Qtd: {e.quantity ?? 1}
+                      {e.name} {e.brand ? `• ${e.brand}` : ''} {e.code ? `[${e.code}]` : ''} ({e.isRented ? 'Locado' : 'Próprio'}) • Qtd: {e.quantity ?? 1}
                     </AddedItemTitle>
                     <AddedItemSubtitle>
                       Produtivas: {e.activeHours}h | Ociosas: {e.idleHours}h
-                      {e.idleJustification ? `\nMotivo: ${e.idleJustification}` : ''}
+                      {e.horaInicio && e.horaFim ? ` • Horário: ${e.horaInicio} às ${e.horaFim}` : ''}
+                      {e.idleJustification ? `\nMotivo ociosidade: ${e.idleJustification}` : ''}
+                      {e.observations ? `\nObs: ${e.observations}` : ''}
                     </AddedItemSubtitle>
                   </AddedItemInfo>
                   <RemoveButton onPress={() => removeEquipmentEntry(idx)}>
@@ -710,12 +885,25 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             </StepHeader>
 
             <FieldLabel>Adicionar Frente de Serviço:</FieldLabel>
+
+            {/* Descrição em TextArea aberto */}
             <Input
               accessibilityLabel="Descrição da atividade executada"
               label="Descrição da Atividade (mín. 3 caracteres)"
               value={actDesc}
               onChangeText={setActDesc}
-              placeholder="Ex: Concretagem dos pilares do 2º pavimento"
+              multiline
+              numberOfLines={3}
+              placeholder="Ex: Concretagem dos pilares do 2º pavimento e montagem de fôrmas."
+            />
+
+            {/* Dropdown de Status da Atividade */}
+            <DynamicDropdown
+              label="Status da Atividade"
+              options={ACTIVITY_STATUS_OPTIONS}
+              value={actStatus}
+              onChange={(val) => setActStatus(val as ActivityStatus)}
+              accessibilityLabel="Status da atividade executada"
             />
 
             <FormRow>
@@ -742,20 +930,22 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             <FormRow>
               <FormCol flex={1}>
                 <Input
-                  accessibilityLabel="Quantidade executada"
-                  label="Quantidade"
+                  accessibilityLabel="Quantidade executada (opcional)"
+                  label="Quantidade (opcional)"
                   value={actQty}
                   keyboardType="numeric"
                   onChangeText={setActQty}
+                  placeholder="Ex: 10"
                 />
               </FormCol>
               <FormCol flex={1}>
                 <Input
-                  accessibilityLabel="Avanço físico em porcentagem"
-                  label="Avanço (%)"
+                  accessibilityLabel="Avanço físico em porcentagem (opcional)"
+                  label="Avanço (%) (opcional)"
                   value={actProgress}
                   keyboardType="numeric"
                   onChangeText={setActProgress}
+                  placeholder="Ex: 25"
                 />
               </FormCol>
             </FormRow>
@@ -772,6 +962,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                   unit: actUnit.trim() || 'un',
                   quantity: parseFloat(actQty) || 1,
                   progress: parseFloat(actProgress) || 0,
+                  status: actStatus,
                 });
                 setActDesc('');
               }}
@@ -787,7 +978,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                   <AddedItemInfo>
                     <AddedItemTitle>{a.description}</AddedItemTitle>
                     <AddedItemSubtitle>
-                      Local: {a.location} • Quantidade: {a.quantity} {a.unit} • Avanço: {a.progress ?? 0}%
+                      Status: {a.status ?? 'Em andamento'} • Local: {a.location} • Quantidade: {a.quantity} {a.unit} • Avanço: {a.progress ?? 0}%
                     </AddedItemSubtitle>
                   </AddedItemInfo>
                   <RemoveButton onPress={() => removeActivityEntry(idx)}>
@@ -800,131 +991,35 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         )}
 
         {/* ================================================================== */}
-        {/* PASSO 4: MATERIAIS RECEBIDOS (INSUMOS)                             */}
+        {/* PASSO 4: OCORRÊNCIAS & DDS (Pula de Atividades diretamente p/ Fatos)*/}
         {/* ================================================================== */}
         {currentStep === 4 && (
           <StepCard>
             <StepHeader>
-              <StepTitle>5. Materiais Recebidos</StepTitle>
-              <StepSubtitle>Insumos e notas fiscais entregues no canteiro hoje.</StepSubtitle>
-            </StepHeader>
-
-            <FieldLabel>Registrar Entrega de Material:</FieldLabel>
-            <Input
-              accessibilityLabel="Nome do material recebido"
-              label="Nome do Insumo / Material"
-              value={matName}
-              onChangeText={setMatName}
-              placeholder="Ex: Cimento CP-II 50kg, Aço CA-50 10mm"
-            />
-
-            <FormRow>
-              <FormCol flex={2}>
-                <Input
-                  accessibilityLabel="Fornecedor do material"
-                  label="Fornecedor"
-                  value={matSupplier}
-                  onChangeText={setMatSupplier}
-                  placeholder="Ex: Votoran, Gerdau"
-                />
-              </FormCol>
-              <FormCol flex={1}>
-                <Input
-                  accessibilityLabel="Número da nota fiscal"
-                  label="Nota Fiscal"
-                  value={matInvoice}
-                  onChangeText={setMatInvoice}
-                  placeholder="Ex: NF-10928"
-                />
-              </FormCol>
-            </FormRow>
-
-            <FormRow>
-              <FormCol flex={1}>
-                <Input
-                  accessibilityLabel="Quantidade recebida"
-                  label="Quantidade"
-                  value={matQty}
-                  keyboardType="numeric"
-                  onChangeText={setMatQty}
-                  placeholder="Ex: 50"
-                />
-              </FormCol>
-              <FormCol flex={1}>
-                <Input
-                  accessibilityLabel="Unidade do insumo"
-                  label="Unidade"
-                  value={matUnit}
-                  onChangeText={setMatUnit}
-                  placeholder="sacos, barras, m³"
-                />
-              </FormCol>
-            </FormRow>
-
-            <Button
-              title="Adicionar à Lista de Materiais"
-              variant="outline"
-              size="small"
-              onPress={() => {
-                if (!matName.trim() || !matSupplier.trim() || !matInvoice.trim()) return;
-                addMaterialEntry({
-                  name: matName.trim(),
-                  supplier: matSupplier.trim(),
-                  invoice: matInvoice.trim(),
-                  quantity: parseFloat(matQty) || undefined,
-                  unit: matUnit.trim() || undefined,
-                });
-                setMatName('');
-                setMatInvoice('');
-              }}
-              style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.lg }}
-            />
-
-            <FieldLabel>Insumos Recebidos ({activeDraft.materials.length}):</FieldLabel>
-            {activeDraft.materials.length === 0 ? (
-              <StepSubtitle>Nenhum material registrado para hoje (opcional).</StepSubtitle>
-            ) : (
-              activeDraft.materials.map((m, idx) => (
-                <AddedItemCard key={idx}>
-                  <AddedItemInfo>
-                    <AddedItemTitle>{m.name}</AddedItemTitle>
-                    <AddedItemSubtitle>
-                      Fornecedor: {m.supplier} • {m.invoice}
-                      {m.quantity ? ` • Qtd: ${m.quantity} ${m.unit ?? ''}` : ''}
-                    </AddedItemSubtitle>
-                  </AddedItemInfo>
-                  <RemoveButton onPress={() => removeMaterialEntry(idx)}>
-                    <Trash2 size={18} color={theme.colors.status.error.base} />
-                  </RemoveButton>
-                </AddedItemCard>
-              ))
-            )}
-          </StepCard>
-        )}
-
-        {/* ================================================================== */}
-        {/* PASSO 5: OCORRÊNCIAS & DDS                                         */}
-        {/* ================================================================== */}
-        {currentStep === 5 && (
-          <StepCard>
-            <StepHeader>
-              <StepTitle>6. Ocorrências & DDS</StepTitle>
+              <StepTitle>5. Ocorrências & DDS</StepTitle>
               <StepSubtitle>Fatos relevantes, diálogos diários de segurança e paralisações.</StepSubtitle>
             </StepHeader>
 
             <FieldLabel>Tipo de Registro:</FieldLabel>
-            <SegmentedControl
-              options={[
-                { label: 'DDS', value: 'dds' },
-                { label: 'Acidente', value: 'acidente' },
-                { label: 'Paralisação', value: 'paralisacao' },
-                { label: 'Interferência', value: 'interferencia' },
-                { label: 'Pendência', value: 'pendencia' },
-              ]}
-              value={occType}
-              onChange={setOccType}
+
+            {/* Dropdown Dinâmico para Tipo de Registro sem cortar palavras */}
+            <DynamicDropdown
+              options={OCCURRENCE_TYPE_OPTIONS}
+              value={occTypeLabel}
+              onChange={setOccTypeLabel}
+              accessibilityLabel="Tipo de ocorrência ou registro"
             />
 
+            {/* Accordion Expansível para Horários */}
+            <TimeIntervalAccordion
+              title="Registrar horário (opcional)"
+              horaInicio={occHoraInicio}
+              horaFim={occHoraFim}
+              onChangeHoraInicio={setOccHoraInicio}
+              onChangeHoraFim={setOccHoraFim}
+            />
+
+            {/* Detalhamento como TextArea Limpo */}
             <View style={{ marginTop: theme.spacing.sm }}>
               <Input
                 accessibilityLabel="Detalhamento da ocorrência ou tema do DDS"
@@ -932,24 +1027,29 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 value={occDesc}
                 onChangeText={setOccDesc}
                 multiline
-                numberOfLines={3}
-                placeholder="Ex: Diálogo sobre uso correto de cinto de segurança tipo paraquedista."
+                numberOfLines={4}
+                placeholder="Ex: Diálogo diário sobre segurança nas escavações e uso de EPIs adequados."
               />
             </View>
 
+            {/* Botão Adicionar com Fundo Sólido Primário */}
             <Button
               title="Adicionar à Lista de Ocorrências"
-              variant="outline"
+              variant="primary"
               size="small"
               onPress={() => {
                 if (!occDesc.trim() || occDesc.trim().length < 5) return;
                 addOccurrenceEntry({
-                  type: occType,
+                  type: mapLabelToOccType(occTypeLabel),
                   description: occDesc.trim(),
+                  horaInicio: occHoraInicio || undefined,
+                  horaFim: occHoraFim || undefined,
                 });
                 setOccDesc('');
+                setOccHoraInicio('');
+                setOccHoraFim('');
               }}
-              style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.lg }}
+              style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.lg }}
             />
 
             <FieldLabel>Ocorrências Cadastradas ({activeDraft.occurrences.length}):</FieldLabel>
@@ -960,7 +1060,10 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 <AddedItemCard key={idx}>
                   <AddedItemInfo>
                     <AddedItemTitle>[{o.type.toUpperCase()}]</AddedItemTitle>
-                    <AddedItemSubtitle>{o.description}</AddedItemSubtitle>
+                    <AddedItemSubtitle>
+                      {o.description}
+                      {o.horaInicio && o.horaFim ? `\nHorário: ${o.horaInicio} às ${o.horaFim}` : ''}
+                    </AddedItemSubtitle>
                   </AddedItemInfo>
                   <RemoveButton onPress={() => removeOccurrenceEntry(idx)}>
                     <Trash2 size={18} color={theme.colors.status.error.base} />
@@ -972,12 +1075,12 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         )}
 
         {/* ================================================================== */}
-        {/* PASSO 6: FOTOS NA OBRA COM MARCA D'ÁGUA DE SEGURANÇA               */}
+        {/* PASSO 5: FOTOS NA OBRA COM MARCA D'ÁGUA DE SEGURANÇA               */}
         {/* ================================================================== */}
-        {currentStep === 6 && (
+        {currentStep === 5 && (
           <StepCard>
             <StepHeader>
-              <StepTitle>7. Fotos na Obra</StepTitle>
+              <StepTitle>6. Fotos na Obra</StepTitle>
               <StepSubtitle>
                 Captura com gravação automática de marca d&apos;água de segurança (GPS, Obra e Data).
               </StepSubtitle>
@@ -1025,12 +1128,12 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         )}
 
         {/* ================================================================== */}
-        {/* PASSO 7: REVISÃO & PRÉVIA CONSOLIDADA (READ-ONLY)                 */}
+        {/* PASSO 6: REVISÃO & PRÉVIA CONSOLIDADA (READ-ONLY)                  */}
         {/* ================================================================== */}
-        {currentStep === 7 && (
+        {currentStep === 6 && (
           <StepCard>
             <StepHeader>
-              <StepTitle>8. Revisão & Prévia</StepTitle>
+              <StepTitle>7. Revisão & Prévia Consolidada</StepTitle>
               <StepSubtitle>
                 Confira o consolidado de todas as informações antes de finalizar o envio.
               </StepSubtitle>
@@ -1049,15 +1152,19 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 <ReviewLabel>Data do Registro:</ReviewLabel>
                 <ReviewValue>{activeDraft.date}</ReviewValue>
               </ReviewInfoRow>
-              {(['manha', 'tarde', 'noite'] as Shift[]).map((shift) => {
-                const w = activeDraft.weather.find((entry) => entry.shift === shift) || {
-                  shift,
-                  condition: 'Ensolarado',
-                  practical: true,
-                };
-                const shiftName = shift === 'manha' ? 'Manhã' : shift === 'tarde' ? 'Tarde' : 'Noite';
+              <ReviewInfoRow>
+                <ReviewLabel>Obra Vinculada:</ReviewLabel>
+                <ReviewValue>{activeDraft.workName}</ReviewValue>
+              </ReviewInfoRow>
+              <ReviewInfoRow>
+                <ReviewLabel>Responsável:</ReviewLabel>
+                <ReviewValue>{activeDraft.authorName}</ReviewValue>
+              </ReviewInfoRow>
+
+              {activeDraft.weather.map((w) => {
+                const shiftName = w.shift === 'manha' ? 'Manhã' : w.shift === 'tarde' ? 'Tarde' : 'Noite';
                 return (
-                  <ReviewItemBox key={shift}>
+                  <ReviewItemBox key={w.shift}>
                     <ReviewItemHeader>
                       <ReviewItemTitle>Turno {shiftName}</ReviewItemTitle>
                       <ReviewBadge $variant={w.practical ? 'primary' : 'secondary'}>
@@ -1080,37 +1187,38 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             {/* 2. Mão de Obra */}
             <ReviewSectionCard>
               <ReviewSectionHeader>
-                <ReviewSectionTitle>2. Mão de Obra ({activeDraft.labor.length})</ReviewSectionTitle>
-                <ReviewEditButton onPress={() => goToStep(1)} accessibilityLabel="Editar mão de obra">
+                <ReviewSectionTitle>2. Mão de Obra & Efetivo ({activeDraft.labor.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(1)} accessibilityLabel="Editar efetivo">
                   <Edit3 size={12} color={theme.colors.primary} />
                   <ReviewEditText>Editar</ReviewEditText>
                 </ReviewEditButton>
               </ReviewSectionHeader>
-              <KpiBanner>
-                <KpiItem>
-                  <KpiValue>{headcount}</KpiValue>
-                  <KpiLabel>Efetivo Total</KpiLabel>
-                </KpiItem>
-                <KpiItem>
-                  <KpiValue>{manHours}h</KpiValue>
-                  <KpiLabel>Horas Homem (Hh)</KpiLabel>
-                </KpiItem>
-              </KpiBanner>
+              <ReviewInfoRow>
+                <ReviewLabel>Total de Operários:</ReviewLabel>
+                <ReviewValue>{headcount} profissionais</ReviewValue>
+              </ReviewInfoRow>
+              <ReviewInfoRow>
+                <ReviewLabel>Total Homem-Hora (Hh):</ReviewLabel>
+                <ReviewValue>{manHours} horas</ReviewValue>
+              </ReviewInfoRow>
               {activeDraft.labor.length === 0 ? (
-                <ReviewEmptyText>Nenhum efetivo adicionado.</ReviewEmptyText>
+                <ReviewEmptyText>Nenhum colaborador adicionado ao diário.</ReviewEmptyText>
               ) : (
                 activeDraft.labor.map((l, idx) => (
                   <ReviewItemBox key={idx}>
                     <ReviewItemHeader>
-                      <ReviewItemTitle>{l.role}</ReviewItemTitle>
-                      <ReviewBadge $variant={l.isContractor ? 'secondary' : 'neutral'}>
-                        <ReviewBadgeText $variant={l.isContractor ? 'secondary' : 'neutral'}>
+                      <ReviewItemTitle>
+                        {l.name ? `${l.name} — ` : ''}{l.role}
+                      </ReviewItemTitle>
+                      <ReviewBadge $variant={l.isContractor ? 'secondary' : 'primary'}>
+                        <ReviewBadgeText $variant={l.isContractor ? 'secondary' : 'primary'}>
                           {l.isContractor ? 'Terceirizado' : 'Próprio'}
                         </ReviewBadgeText>
                       </ReviewBadge>
                     </ReviewItemHeader>
                     <ReviewItemSubtitle>
-                      Qtd: {l.quantity} colaborador(es) • Jornada: {l.hours}h ({l.quantity * l.hours} Hh)
+                      Quantidade: {l.quantity} • Jornada: {l.hours}h ({l.quantity * l.hours} Hh)
+                      {l.horaInicio && l.horaFim ? ` • Horário: ${l.horaInicio} às ${l.horaFim}` : ''}
                     </ReviewItemSubtitle>
                   </ReviewItemBox>
                 ))
@@ -1120,31 +1228,33 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             {/* 3. Equipamentos */}
             <ReviewSectionCard>
               <ReviewSectionHeader>
-                <ReviewSectionTitle>3. Equipamentos ({activeDraft.equipment.length})</ReviewSectionTitle>
+                <ReviewSectionTitle>3. Equipamentos Presentes ({activeDraft.equipment.length})</ReviewSectionTitle>
                 <ReviewEditButton onPress={() => goToStep(2)} accessibilityLabel="Editar equipamentos">
                   <Edit3 size={12} color={theme.colors.primary} />
                   <ReviewEditText>Editar</ReviewEditText>
                 </ReviewEditButton>
               </ReviewSectionHeader>
               {activeDraft.equipment.length === 0 ? (
-                <ReviewEmptyText>Nenhum equipamento registrado.</ReviewEmptyText>
+                <ReviewEmptyText>Nenhum equipamento registrado no dia.</ReviewEmptyText>
               ) : (
-                activeDraft.equipment.map((eq, idx) => (
+                activeDraft.equipment.map((e, idx) => (
                   <ReviewItemBox key={idx}>
                     <ReviewItemHeader>
-                      <ReviewItemTitle>{eq.name}</ReviewItemTitle>
-                      <ReviewBadge $variant={eq.isRented ? 'secondary' : 'neutral'}>
-                        <ReviewBadgeText $variant={eq.isRented ? 'secondary' : 'neutral'}>
-                          {eq.isRented ? 'Locado' : 'Próprio'}
+                      <ReviewItemTitle>
+                        {e.name} {e.brand ? `• ${e.brand}` : ''} {e.code ? `[${e.code}]` : ''}
+                      </ReviewItemTitle>
+                      <ReviewBadge $variant={e.isRented ? 'secondary' : 'primary'}>
+                        <ReviewBadgeText $variant={e.isRented ? 'secondary' : 'primary'}>
+                          {e.isRented ? 'Locado' : 'Próprio'}
                         </ReviewBadgeText>
                       </ReviewBadge>
                     </ReviewItemHeader>
                     <ReviewItemSubtitle>
-                      Qtd: {eq.quantity ?? 1} • Horas Ativas: {eq.activeHours}h • Horas Ociosas: {eq.idleHours}h
+                      Qtd: {e.quantity ?? 1} • Horas Produtivas: {e.activeHours}h | Ociosas: {e.idleHours}h
+                      {e.horaInicio && e.horaFim ? ` • Horário: ${e.horaInicio} às ${e.horaFim}` : ''}
+                      {e.idleJustification ? `\nMotivo da Inatividade: ${e.idleJustification}` : ''}
+                      {e.observations ? `\nObservações: ${e.observations}` : ''}
                     </ReviewItemSubtitle>
-                    {eq.idleHours > 0 && eq.idleJustification && (
-                      <ReviewItemSubtitle>Motivo Ociosidade: {eq.idleJustification}</ReviewItemSubtitle>
-                    )}
                   </ReviewItemBox>
                 ))
               )}
@@ -1167,73 +1277,53 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                     <ReviewItemHeader>
                       <ReviewItemTitle>{act.description}</ReviewItemTitle>
                       <ReviewBadge $variant="primary">
-                        <ReviewBadgeText>{act.progress ?? 0}% Concluído</ReviewBadgeText>
+                        <ReviewBadgeText>{act.status ?? 'Em andamento'}</ReviewBadgeText>
                       </ReviewBadge>
                     </ReviewItemHeader>
                     <ReviewItemSubtitle>
-                      Local: {act.location} • Produção: {act.quantity} {act.unit}
+                      Local: {act.location} • Produção: {act.quantity} {act.unit} • Avanço: {act.progress ?? 0}%
                     </ReviewItemSubtitle>
                   </ReviewItemBox>
                 ))
               )}
             </ReviewSectionCard>
 
-            {/* 5. Insumos */}
+            {/* 5. Ocorrências & DDS */}
             <ReviewSectionCard>
               <ReviewSectionHeader>
-                <ReviewSectionTitle>5. Materiais Recebidos ({activeDraft.materials.length})</ReviewSectionTitle>
-                <ReviewEditButton onPress={() => goToStep(4)} accessibilityLabel="Editar materiais">
-                  <Edit3 size={12} color={theme.colors.primary} />
-                  <ReviewEditText>Editar</ReviewEditText>
-                </ReviewEditButton>
-              </ReviewSectionHeader>
-              {activeDraft.materials.length === 0 ? (
-                <ReviewEmptyText>Nenhum material recebido no dia.</ReviewEmptyText>
-              ) : (
-                activeDraft.materials.map((mat, idx) => (
-                  <ReviewItemBox key={idx}>
-                    <ReviewItemHeader>
-                      <ReviewItemTitle>{mat.name}</ReviewItemTitle>
-                      <ReviewBadge $variant="neutral">
-                        <ReviewBadgeText $variant="neutral">NF: {mat.invoice}</ReviewBadgeText>
-                      </ReviewBadge>
-                    </ReviewItemHeader>
-                    <ReviewItemSubtitle>
-                      Fornecedor: {mat.supplier} • Quantidade: {mat.quantity ?? 1} {mat.unit ?? 'un'}
-                    </ReviewItemSubtitle>
-                  </ReviewItemBox>
-                ))
-              )}
-            </ReviewSectionCard>
-
-            {/* 6. Ocorrências & DDS */}
-            <ReviewSectionCard>
-              <ReviewSectionHeader>
-                <ReviewSectionTitle>6. Ocorrências & DDS ({activeDraft.occurrences.length})</ReviewSectionTitle>
-                <ReviewEditButton onPress={() => goToStep(5)} accessibilityLabel="Editar ocorrências">
+                <ReviewSectionTitle>5. Ocorrências & DDS ({activeDraft.occurrences.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(4)} accessibilityLabel="Editar ocorrências">
                   <Edit3 size={12} color={theme.colors.primary} />
                   <ReviewEditText>Editar</ReviewEditText>
                 </ReviewEditButton>
               </ReviewSectionHeader>
               {activeDraft.occurrences.length === 0 ? (
-                <ReviewEmptyText>Nenhuma ocorrência ou DDS registrado.</ReviewEmptyText>
+                <ReviewEmptyText>Nenhum fato relevante anotado.</ReviewEmptyText>
               ) : (
-                activeDraft.occurrences.map((occ, idx) => (
+                activeDraft.occurrences.map((o, idx) => (
                   <ReviewItemBox key={idx}>
                     <ReviewItemHeader>
-                      <ReviewItemTitle>{occ.type.toUpperCase()}</ReviewItemTitle>
+                      <ReviewItemTitle>[{o.type.toUpperCase()}]</ReviewItemTitle>
+                      <ReviewBadge $variant={o.type === 'acidente' ? 'error' : 'neutral'}>
+                        <ReviewBadgeText $variant={o.type === 'acidente' ? 'error' : 'neutral'}>
+                          {o.type}
+                        </ReviewBadgeText>
+                      </ReviewBadge>
                     </ReviewItemHeader>
-                    <ReviewItemSubtitle>{occ.description}</ReviewItemSubtitle>
+                    <ReviewItemSubtitle>
+                      {o.description}
+                      {o.horaInicio && o.horaFim ? ` • Horário: ${o.horaInicio} às ${o.horaFim}` : ''}
+                    </ReviewItemSubtitle>
                   </ReviewItemBox>
                 ))
               )}
             </ReviewSectionCard>
 
-            {/* 7. Fotos */}
+            {/* 6. Fotos */}
             <ReviewSectionCard>
               <ReviewSectionHeader>
-                <ReviewSectionTitle>7. Fotos na Obra ({activeDraft.photos.length})</ReviewSectionTitle>
-                <ReviewEditButton onPress={() => goToStep(6)} accessibilityLabel="Editar fotos">
+                <ReviewSectionTitle>6. Fotos na Obra ({activeDraft.photos.length})</ReviewSectionTitle>
+                <ReviewEditButton onPress={() => goToStep(5)} accessibilityLabel="Editar fotos">
                   <Edit3 size={12} color={theme.colors.primary} />
                   <ReviewEditText>Editar</ReviewEditText>
                 </ReviewEditButton>
@@ -1260,23 +1350,24 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         )}
       </ScrollContent>
 
-      {/* Barra de Ações Inferior (Fixa) */}
+      {/* Navegação Inferior (Sticky Footer) */}
       <BottomActionBar>
-        <ActionButtonWrapper flex={1}>
-          <Button
-            title="Voltar"
-            variant="outline"
-            size="small"
-            disabled={currentStep === 0}
-            onPress={handlePrevStep}
-            accessibilityLabel="Voltar ao passo anterior"
-          />
-        </ActionButtonWrapper>
+        {currentStep > 0 && (
+          <ActionButtonWrapper flex={1}>
+            <Button
+              title="Voltar"
+              variant="outline"
+              size="small"
+              onPress={handlePrevStep}
+              accessibilityLabel="Voltar ao passo anterior"
+            />
+          </ActionButtonWrapper>
+        )}
 
-        <ActionButtonWrapper flex={1.5}>
+        <ActionButtonWrapper flex={currentStep === 0 ? 1 : 1.5}>
           {currentStep < STEPS.length - 2 ? (
             <Button
-              title="Próximo Passo"
+              title="Próximo"
               variant="primary"
               size="small"
               onPress={handleNextStep}
@@ -1284,7 +1375,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             />
           ) : currentStep === STEPS.length - 2 ? (
             <Button
-              title="Ver Prévia"
+              title="Revisar/Ver Prévia"
               variant="primary"
               size="small"
               onPress={handleNextStep}
@@ -1292,7 +1383,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             />
           ) : (
             <Button
-              title={isSubmitting ? 'Submetendo...' : 'Concluir e Salvar'}
+              title={isSubmitting ? 'Submetendo...' : 'Concluir/Salvar'}
               variant="primary"
               size="small"
               disabled={isSubmitting}
