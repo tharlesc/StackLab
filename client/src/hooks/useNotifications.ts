@@ -1,12 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import { MOCK_NOTIFICATIONS, type AppNotification } from '@/mocks';
+import type { AppNotification } from '@/types';
 
 export type NotificationFilter = 'todas' | 'nao_lidas' | 'rdos';
 
 export const useNotifications = () => {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<AppNotification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [filter, setFilter] = useState<NotificationFilter>('todas');
 
   const unreadCount = useMemo(

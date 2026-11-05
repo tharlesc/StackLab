@@ -39,9 +39,9 @@ export const AuditTrailView = () => {
   const params = useLocalSearchParams<{ rdoId?: string }>();
   const { getAuditTrail, getRdo } = useRDOs();
 
-  const rdoId = params.rdoId || 'rdo-185';
-  const rdo = getRdo(rdoId);
-  const logs = getAuditTrail(rdoId);
+  const rdoId = params.rdoId || '';
+  const rdo = rdoId ? getRdo(rdoId) : undefined;
+  const logs = rdoId ? getAuditTrail(rdoId) : [];
 
   return (
     <Screen>

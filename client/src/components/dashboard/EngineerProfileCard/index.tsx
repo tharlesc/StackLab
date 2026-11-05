@@ -40,7 +40,7 @@ export const EngineerProfileCard = ({
   activeTimeFilter,
   onTimeFilterChange,
   timeFilters = ['Hoje', '7 dias', '15 dias', '1 mês'],
-  lastSync = '100% Sincronizado - 09:41',
+  lastSync = 'Sincronizado',
 }: EngineerProfileCardProps) => {
   const theme = useTheme();
 
