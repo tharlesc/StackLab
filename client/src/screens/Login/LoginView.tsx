@@ -21,7 +21,6 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  ChevronRight,
 } from 'lucide-react-native';
 
 import { useLogin } from '@/hooks';
@@ -44,21 +43,9 @@ import {
   SubmitButton,
   SubmitButtonText,
   SubmitButtonIcon,
-  QuickAccessHeader,
-  DividerLine,
-  QuickAccessTitle,
-  UserList,
-  UserCardItem,
-  UserInfo,
-  UserName,
-  UserRole,
-  ChipWrapper,
-  CardChevronWrapper,
 } from './styles';
 
 import { Input } from '@/components/common/Input';
-import { Avatar } from '@/components/common/Avatar';
-import { Chip } from '@/components/common/Chip';
 import { darkTheme } from '@/constants/theme';
 import { R } from '@/constants/R';
 
@@ -89,9 +76,7 @@ export const LoginView = () => {
     showPassword,
     toggleShowPassword,
     loading,
-    mockUsers,
     handleLogin,
-    handleQuickLogin,
   } = useLogin();
 
   const [emailFocused, setEmailFocused] = useState(false);
@@ -364,63 +349,6 @@ export const LoginView = () => {
                   )}
                 </SubmitButton>
               </FormContainer>
-
-              <QuickAccessHeader>
-                <DividerLine />
-                <QuickAccessTitle>{R.strings.login.quickAccess}</QuickAccessTitle>
-                <DividerLine />
-              </QuickAccessHeader>
-
-              <UserList>
-                {mockUsers.map((u) => {
-                  const isMasterUser = u.profile === 'master';
-                  return (
-                    <UserCardItem
-                      key={u.id}
-                      activeOpacity={0.75}
-                      onPress={() => handleQuickLogin(u)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Selecionar usuário de teste: ${u.name}, ${u.role}`}
-                    >
-                      <Avatar
-                        name={u.name}
-                        size={46}
-                        highlighted={isMasterUser}
-                      />
-                      <UserInfo>
-                        <UserName numberOfLines={1}>{u.name}</UserName>
-                        <UserRole numberOfLines={1}>{u.role}</UserRole>
-                        <ChipWrapper>
-                          <Chip
-                            label={
-                              isMasterUser
-                                ? R.strings.common.master
-                                : 'OPERACIONAL'
-                            }
-                            variant={isMasterUser ? 'accent' : 'dark'}
-                            style={{
-                              paddingVertical: 3,
-                              paddingHorizontal: 10,
-                              borderRadius: 6,
-                              borderWidth: 1,
-                              borderColor: isMasterUser
-                                ? 'rgba(249, 115, 22, 0.3)'
-                                : 'rgba(255, 255, 255, 0.08)',
-                            }}
-                          />
-                        </ChipWrapper>
-                      </UserInfo>
-                      <CardChevronWrapper>
-                        <ChevronRight
-                          size={18}
-                          color="#8E9BAE"
-                          strokeWidth={2}
-                        />
-                      </CardChevronWrapper>
-                    </UserCardItem>
-                  );
-                })}
-              </UserList>
             </ContentContainer>
           </LoginScrollContent>
         </KeyboardAvoidingView>

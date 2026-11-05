@@ -14,10 +14,6 @@ import {
   Cloud,
   CloudRain,
   CloudLightning,
-  Users,
-  HardHat,
-  Briefcase,
-  Layers,
   Edit3,
 } from 'lucide-react-native';
 
@@ -98,6 +94,7 @@ import { ScrollContent } from '@/components/common/Layout';
 import { Dialog } from '@/components/common/Dialog';
 import { Chip } from '@/components/common/Chip';
 import { InteractiveCard } from '@/components/common/InteractiveCard';
+import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
@@ -315,35 +312,43 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             Selecione a Obra:
           </StepTitle>
 
-          {works.map((work) => (
-            <WorkSelectCard
-              key={work.id}
-              activeOpacity={0.7}
-              onPress={() => handleSelectWork(work)}
-              accessibilityRole="button"
-              accessibilityLabel={`Selecionar obra: ${work.name}, ${work.subtitle}`}
-            >
-              <WorkIconContainer>
-                <Building2
-                  color={theme.name === 'dark' ? theme.colors.tintText : theme.colors.primary}
-                  size={theme.icon.size.lg}
+          {works.length === 0 ? (
+            <EmptyState
+              icon={<Building2 size={40} color={theme.colors.text.secondary} />}
+              title="Nenhuma obra disponível"
+              message="Não há obras cadastradas no momento. Cadastre uma obra no painel de administração."
+            />
+          ) : (
+            works.map((work) => (
+              <WorkSelectCard
+                key={work.id}
+                activeOpacity={0.7}
+                onPress={() => handleSelectWork(work)}
+                accessibilityRole="button"
+                accessibilityLabel={`Selecionar obra: ${work.name}, ${work.subtitle}`}
+              >
+                <WorkIconContainer>
+                  <Building2
+                    color={theme.name === 'dark' ? theme.colors.tintText : theme.colors.primary}
+                    size={theme.icon.size.lg}
+                    strokeWidth={theme.icon.strokeWidth}
+                  />
+                </WorkIconContainer>
+                <WorkInfo>
+                  <WorkName>{work.name}</WorkName>
+                  <WorkChipsRow>
+                    <Chip label={work.subtitle} variant="dark" />
+                    <Chip label="Em Andamento" variant="surface" />
+                  </WorkChipsRow>
+                </WorkInfo>
+                <ChevronRight
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.md}
                   strokeWidth={theme.icon.strokeWidth}
                 />
-              </WorkIconContainer>
-              <WorkInfo>
-                <WorkName>{work.name}</WorkName>
-                <WorkChipsRow>
-                  <Chip label={work.subtitle} variant="dark" />
-                  <Chip label="Em Andamento" variant="surface" />
-                </WorkChipsRow>
-              </WorkInfo>
-              <ChevronRight
-                color={theme.colors.text.secondary}
-                size={theme.icon.size.md}
-                strokeWidth={theme.icon.strokeWidth}
-              />
-            </WorkSelectCard>
-          ))}
+              </WorkSelectCard>
+            ))
+          )}
         </ScrollContent>
 
         <Dialog

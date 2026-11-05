@@ -1,17 +1,26 @@
-import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { AuditLogEntry, RDO, RDOSectionKey, User } from '@/types';
-import { MOCK_RDOS } from '@/mocks';
+import type { ActiveWork, AuditLogEntry, RDO, RDOSectionKey, User } from '@/types';
 import * as workflow from '@/services/modules/rdoWorkflow';
+import { supabase, isSupabaseConfigured, supabaseDataService } from '@/services';
 
 /**
- * 📄 RDOContext — estado em memória dos RDOs + trilha de auditoria.
- * As regras de negócio vivem em `services/modules/rdoWorkflow` (puras);
- * este contexto apenas aplica as transições. Trocar por API/offline-store no futuro.
+ * 📄 RDOContext — estado dos RDOs e Obras (integrado ao Supabase com fallback local).
  */
 interface RDOContextData {
   rdos: RDO[];
+  works: ActiveWork[];
+  loading: boolean;
   auditLogs: AuditLogEntry[];
+  refreshData: () => Promise<void>;
   getRdo: (id: string) => RDO | undefined;
   getAuditTrail: (rdoId: string) => AuditLogEntry[];
   submitRdo: (id: string, actor: User) => RDO;
@@ -34,9 +43,70 @@ const RDOContext = createContext<RDOContextData>({} as RDOContextData);
 /** Device/IP — MOCK. Em produção usar expo-device / expo-application e IP vindo do backend. */
 const getDeviceInfo = () => ({ ip: '177.12.40.8', deviceId: 'device-mock-001' });
 
-export const RDOProvider = ({ children }: { children: ReactNode }) => {
-  const [rdos, setRdos] = useState<RDO[]>(MOCK_RDOS);
+export interface RDOProviderProps {
+  children: ReactNode;
+  initialWorks?: ActiveWork[];
+  initialRdos?: RDO[];
+}
+
+export const RDOProvider = ({
+  children,
+  initialWorks = [],
+  initialRdos = [],
+}: RDOProviderProps) => {
+  const [rdos, setRdos] = useState<RDO[]>(initialRdos);
+  const [works, setWorks] = useState<ActiveWork[]>(initialWorks);
+  const [loading, setLoading] = useState<boolean>(false);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+
+  // Carrega Obras e RDOs reais do Supabase
+  const refreshData = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+
+    setLoading(true);
+    try {
+      const [fetchedWorks, fetchedRdos] = await Promise.all([
+        supabaseDataService.fetchObrasFromSupabase(),
+        supabaseDataService.fetchRdosFromSupabase(),
+      ]);
+
+      setWorks(fetchedWorks || []);
+      setRdos(fetchedRdos || []);
+    } catch (err) {
+      console.warn('Erro ao sincronizar dados com o Supabase:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshData();
+
+    if (!isSupabaseConfigured) return;
+
+    // Escuta atualizações em tempo real no Supabase
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rdos' },
+        () => {
+          refreshData();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'obras' },
+        () => {
+          refreshData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshData]);
 
   const getRdo = useCallback((id: string) => rdos.find((r) => r.id === id), [rdos]);
 
@@ -106,6 +176,12 @@ export const RDOProvider = ({ children }: { children: ReactNode }) => {
       });
       setAuditLogs((prev) => [...prev, log]);
 
+      if (isSupabaseConfigured) {
+        supabaseDataService.saveRdoToSupabase(submitted).catch((err) => {
+          console.warn('Falha ao persistir RDO no Supabase:', err);
+        });
+      }
+
       if (submitted.workId) {
         try {
           await discardDraft(submitted.workId);
@@ -122,6 +198,9 @@ export const RDOProvider = ({ children }: { children: ReactNode }) => {
   const value = useMemo<RDOContextData>(
     () => ({
       rdos,
+      works,
+      loading,
+      refreshData,
       auditLogs,
       getRdo,
       getAuditTrail,
@@ -136,8 +215,17 @@ export const RDOProvider = ({ children }: { children: ReactNode }) => {
       },
       returnRdo: (id, actor, reason) => {
         commit(id, (r) => workflow.returnRdo(r, actor, reason));
+        if (isSupabaseConfigured) {
+          supabaseDataService.updateRdoStatusInSupabase(id, 'rejeitado', reason);
+        }
       },
-      approveRdo: (id, actor) => commit(id, (r) => workflow.approveRdo(r, actor, getDeviceInfo())),
+      approveRdo: (id, actor) => {
+        const approved = commit(id, (r) => workflow.approveRdo(r, actor, getDeviceInfo()));
+        if (isSupabaseConfigured) {
+          supabaseDataService.updateRdoStatusInSupabase(id, 'aprovado');
+        }
+        return approved;
+      },
       addComment: (id, actor, section, text) => {
         commit(id, (r) => workflow.addComment(r, actor, section, text));
       },
@@ -160,6 +248,9 @@ export const RDOProvider = ({ children }: { children: ReactNode }) => {
     }),
     [
       rdos,
+      works,
+      loading,
+      refreshData,
       auditLogs,
       getRdo,
       getAuditTrail,
@@ -182,3 +273,4 @@ export const useRDOs = () => {
 };
 
 export const useRDO = useRDOs;
+

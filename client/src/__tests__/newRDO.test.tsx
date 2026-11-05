@@ -56,7 +56,7 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
     await act(async () => {
       root!.render(
         <AuthProvider>
-          <RDOProvider>
+          <RDOProvider initialWorks={MOCK_ACTIVE_WORKS}>
             <TestConsumer />
           </RDOProvider>
         </AuthProvider>,

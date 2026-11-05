@@ -89,7 +89,7 @@ export const SettingsView = () => {
         <SectionTitle>Armazenamento & Diagnóstico</SectionTitle>
         <InteractiveCard
           title="Armazenamento Offline e Cache"
-          supportingText="Existem 12 fotos compactadas e dados de 2 obras armazenados no dispositivo. Você pode sincronizar ou liberar espaço."
+          supportingText="Gerenciamento de cache e dados armazenados localmente no dispositivo para operação offline. Você pode sincronizar ou liberar espaço."
           actions={[
             { label: 'Limpar Cache', onPress: () => {} },
             { label: 'Sincronizar', onPress: () => {}, primary: true },

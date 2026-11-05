@@ -2,9 +2,8 @@ import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { MOCK_USERS } from '@/mocks';
 import { strings } from '@/constants/strings';
-import type { User } from '@/types';
+import { authService, isSupabaseConfigured } from '@/services';
 
 export const useLogin = () => {
   const router = useRouter();
@@ -18,30 +17,44 @@ export const useLogin = () => {
     setShowPassword((prev) => !prev);
   }, []);
 
-  const handleLogin = useCallback(() => {
-    if (!email.trim()) {
+  const handleLogin = useCallback(async () => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
       Alert.alert('Atenção', 'Por favor, informe seu e-mail.');
       return;
     }
 
+    if (!password.trim()) {
+      Alert.alert('Atenção', 'Por favor, informe sua senha.');
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      Alert.alert(
+        'Supabase não configurado',
+        'Configure as credenciais do Supabase no arquivo client/.env para autenticação real.',
+      );
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      const u = MOCK_USERS.find((user) => user.email.toLowerCase() === email.toLowerCase());
-      setLoading(false);
 
-      if (u) {
-        signIn(u);
-        router.replace('/');
-      } else {
-        Alert.alert(strings.login.loginErrorTitle, strings.login.loginErrorMessage);
+    try {
+      const { user: authUser, error } = await authService.loginWithEmail(cleanEmail, password);
+
+      if (error || !authUser) {
+        Alert.alert(strings.login.loginErrorTitle, error || strings.login.loginErrorMessage);
+        return;
       }
-    }, 400);
-  }, [email, signIn, router]);
 
-  const handleQuickLogin = useCallback((user: User) => {
-    setEmail(user.email);
-    setPassword('123456');
-  }, []);
+      signIn(authUser);
+      router.replace('/');
+    } catch (err: any) {
+      Alert.alert(strings.login.loginErrorTitle, err?.message || strings.login.loginErrorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [email, password, signIn, router]);
 
   return {
     email,
@@ -52,9 +65,7 @@ export const useLogin = () => {
     setShowPassword,
     toggleShowPassword,
     loading,
-    mockUsers: MOCK_USERS,
     handleLogin,
-    handleQuickLogin,
   };
 };
 

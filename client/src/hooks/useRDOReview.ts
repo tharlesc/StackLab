@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
 import { calcManHours, calcHeadcount, isOverdue } from '@/utils/rdo';
 import { getAvailableActions, applySectionFieldEdit } from '@/services/modules/rdoWorkflow';
-import { MOCK_MASTER_PIN } from '@/mocks';
 import type { RDOSectionKey } from '@/types';
 
 export const useRDOReview = () => {
@@ -14,8 +13,8 @@ export const useRDOReview = () => {
   const { user } = useAuth();
   const { getRdo, returnRdo, approveRdo, addComment, auditedEdit, rectifyRdo } = useRDOs();
 
-  const rdoId = params.id || 'rdo-185';
-  const rdo = getRdo(rdoId);
+  const rdoId = params.id || '';
+  const rdo = rdoId ? getRdo(rdoId) : undefined;
 
   // Modais de ações
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
@@ -74,8 +73,8 @@ export const useRDOReview = () => {
 
   const handleConfirmApprove = useCallback(() => {
     if (!rdo || !user) return;
-    if (signPin !== MOCK_MASTER_PIN) {
-      setPinError('PIN de assinatura incorreto. Verifique sua chave de 2 fatores.');
+    if (!signPin || signPin.trim().length < 4) {
+      setPinError('Informe um PIN de assinatura válido (mínimo 4 dígitos).');
       return;
     }
     const updated = approveRdo(rdo.id, user);

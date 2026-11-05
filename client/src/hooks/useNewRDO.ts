@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import { MOCK_ACTIVE_WORKS, MOCK_USERS } from '@/mocks';
 import { useRDO } from '@/contexts/RDOContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { calcHeadcount, calcManHours } from '@/utils/rdo';
@@ -31,18 +30,24 @@ export const STEPS = [
 export const useNewRDO = () => {
   const router = useRouter();
   const { user } = useAuth();
-  const { createDraft, saveDraft, loadDraft, discardDraft, submitDraft } = useRDO();
+  const { createDraft, saveDraft, loadDraft, discardDraft, submitDraft, works: contextWorks } = useRDO();
 
-  const currentUser = user || MOCK_USERS[1] || {
-    id: 'usr-default',
-    name: 'Operário Responsável',
-    email: 'operario@stacklab.com',
-    role: 'Encarregado',
-    profile: 'common',
-    assignedWorkIds: [],
-  };
+  const currentUser = useMemo(
+    () =>
+      user || {
+        id: 'usr-default',
+        name: 'Operário Responsável',
+        email: '',
+        role: 'Encarregado',
+        profile: 'common',
+        assignedWorkIds: [],
+      },
+    [user],
+  );
 
-  const [works] = useState<ActiveWork[]>(MOCK_ACTIVE_WORKS);
+  const works = useMemo(() => {
+    return contextWorks || [];
+  }, [contextWorks]);
   const [selectedWork, setSelectedWork] = useState<ActiveWork | null>(null);
   const [activeDraft, setActiveDraft] = useState<RDO | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(0);

@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { useTheme } from 'styled-components/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
-import { MOCK_ACTIVE_WORKS } from '@/mocks';
 import { strings } from '@/constants/strings';
 import { isOverdue, rdoMatchesQuery } from '@/utils/rdo';
 import { getTotalPages, paginateItems } from '@/utils/pagination';
@@ -17,7 +16,7 @@ export const useDashboardHome = () => {
   const router = useRouter();
   const theme = useTheme();
   const { user, isMaster } = useAuth();
-  const { rdos } = useRDOs();
+  const { rdos, works } = useRDOs();
 
   const [activeTimeFilter, setActiveTimeFilter] = useState('7 dias');
   const [activeTab, setActiveTab] = useState<DashboardTab>('Obras');
@@ -29,9 +28,10 @@ export const useDashboardHome = () => {
   // - Master: visão global de todas as obras
   const userWorks: ActiveWork[] = useMemo(() => {
     if (!user) return [];
-    if (isMaster) return MOCK_ACTIVE_WORKS;
-    return MOCK_ACTIVE_WORKS.filter((w) => user.assignedWorkIds?.includes(w.id));
-  }, [user, isMaster]);
+    const sourceWorks = works || [];
+    if (isMaster) return sourceWorks;
+    return sourceWorks.filter((w) => user.assignedWorkIds?.includes(w.id));
+  }, [user, isMaster, works]);
 
   // Paginação das obras (3 por página)
   const totalPages = useMemo(
