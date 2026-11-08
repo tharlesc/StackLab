@@ -5,6 +5,7 @@ export * from './Notifications';
 export * from './Profile';
 export * from './Settings';
 export * from './SyncQueue';
+export * from './WorkFeed';
 export { InboxView } from './master/Inbox';
 export { RDOReviewView } from './master/RDOReview';
 export { AdminView } from './master/Admin';

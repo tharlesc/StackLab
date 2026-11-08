@@ -85,6 +85,7 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
     toggleUserActive,
     toggleAssignment,
     goBack,
+    navigateToWorkFeed,
   } = useAdminScreen();
 
   const renderContent = () => {
@@ -111,7 +112,10 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
             </ListHeaderWrapper>
           }
           renderItem={({ item }) => (
-            <AdminCard>
+            <AdminCard
+              onPress={() => navigateToWorkFeed(item.id)}
+              accessibilityLabel={`Obra ${item.name}. Toque para abrir o feed da obra`}
+            >
               <CardHeader>
                 <HeaderMainInfo>
                   <ItemTitle>{item.name}</ItemTitle>
@@ -200,7 +204,7 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
         renderItem={({ item: user }) => (
           <AdminCard>
             <ItemTitle>{user.name}</ItemTitle>
-            <ItemSubtitle>{user.role} — Toque para vincular ou desvincular obras:</ItemSubtitle>
+            <ItemSubtitle>{user.role} · Toque para vincular ou desvincular obras:</ItemSubtitle>
             <MatrixWorkList>
               {works.map((work) => {
                 const assigned = user.assignedWorkIds.includes(work.id);

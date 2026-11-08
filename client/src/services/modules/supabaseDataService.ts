@@ -318,6 +318,32 @@ export async function createWorkInSupabase(
 }
 
 /**
+ * Atualiza os dados de uma obra no Supabase
+ */
+export async function updateWorkInSupabase(
+  workId: string,
+  data: Partial<Omit<Work, 'id'>>,
+): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+
+  const payload: Record<string, any> = {};
+  if (data.name !== undefined) payload.nome = data.name;
+  if (data.subtitle !== undefined) payload.descricao = data.subtitle;
+  if (data.client !== undefined) payload.cliente = data.client;
+  if (data.address !== undefined) payload.endereco = data.address;
+  if (data.active !== undefined) payload.ativa = data.active;
+
+  const { error } = await supabase.from('obras').update(payload).eq('id', workId);
+
+  if (error) {
+    console.error('Erro ao atualizar obra no Supabase:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Ativa ou inativa uma obra no Supabase
  */
 export async function toggleWorkActiveInSupabase(

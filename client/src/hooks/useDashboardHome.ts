@@ -132,6 +132,16 @@ export const useDashboardHome = () => {
     [router],
   );
 
+  const navigateToWorkFeed = useCallback(
+    (workId: string) => {
+      router.push({
+        pathname: '/work-feed',
+        params: { id: workId },
+      });
+    },
+    [router],
+  );
+
   return {
     user,
     isMaster,
@@ -151,6 +161,7 @@ export const useDashboardHome = () => {
     setCurrentPage: handlePageChange,
     pageSize: WORKS_PER_PAGE,
     pendingCount: pendingRdos.length,
+    approvedCount,
     overdueCount,
     returnedCount,
     navigateToNotifications,
@@ -158,6 +169,7 @@ export const useDashboardHome = () => {
     navigateToInbox,
     navigateToAdmin,
     navigateToReview,
+    navigateToWorkFeed,
   };
 };
 

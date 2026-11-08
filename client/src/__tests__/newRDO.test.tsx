@@ -27,6 +27,7 @@ jest.mock('expo-router', () => ({
     push: jest.fn(),
     back: jest.fn(),
   }),
+  useLocalSearchParams: () => ({}),
 }));
 
 import React, { act } from 'react';

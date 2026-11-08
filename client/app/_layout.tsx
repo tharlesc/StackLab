@@ -42,6 +42,7 @@ function RootLayoutNav() {
       <Stack.Screen name="rdo-review" options={{ presentation: 'card' }} />
       <Stack.Screen name="admin" options={{ presentation: 'card' }} />
       <Stack.Screen name="audit-trail" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="work-feed" options={{ presentation: 'card' }} />
     </Stack>
   );
 }

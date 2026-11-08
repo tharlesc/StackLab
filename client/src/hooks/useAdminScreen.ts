@@ -99,6 +99,16 @@ export const useAdminScreen = () => {
     router.back();
   }, [router]);
 
+  const navigateToWorkFeed = useCallback(
+    (workId: string) => {
+      router.push({
+        pathname: '/work-feed',
+        params: { id: workId },
+      });
+    },
+    [router],
+  );
+
   return {
     activeTab,
     setActiveTab,
@@ -136,6 +146,7 @@ export const useAdminScreen = () => {
     toggleUserActive,
     toggleAssignment,
     goBack,
+    navigateToWorkFeed,
   };
 };
 
