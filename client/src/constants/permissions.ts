@@ -65,17 +65,25 @@ const MASTER_PERMISSIONS: Permission[] = [
   PERMISSIONS.EXPORT_PHOTOS,
 ];
 
+const CLIENT_PERMISSIONS: Permission[] = [
+  PERMISSIONS.WORKS_VIEW_ASSIGNED,
+  PERMISSIONS.EXPORT_PDF,
+];
+
 export const ROLE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
   common: COMMON_PERMISSIONS,
   master: MASTER_PERMISSIONS,
+  client: CLIENT_PERMISSIONS,
 };
 
 export const PROFILE_LABELS: Record<UserProfile, string> = {
   common: 'Operacional',
   master: 'Master',
+  client: 'Cliente',
 };
 
 export const hasPermission = (user: User | null | undefined, permission: Permission): boolean =>
-  !!user && ROLE_PERMISSIONS[user.profile].includes(permission);
+  !!user && (ROLE_PERMISSIONS[user.profile]?.includes(permission) ?? false);
 
 export const isMaster = (user: User | null | undefined): boolean => user?.profile === 'master';
+export const isClient = (user: User | null | undefined): boolean => user?.profile === 'client';

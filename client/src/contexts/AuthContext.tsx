@@ -8,16 +8,23 @@ import React, {
   useEffect,
 } from 'react';
 import type { User } from '@/types';
-import { hasPermission, isMaster as checkIsMaster, type Permission } from '@/constants/permissions';
+import {
+  hasPermission,
+  isMaster as checkIsMaster,
+  isClient as checkIsClient,
+  type Permission,
+} from '@/constants/permissions';
 import { authService } from '@/services';
 
 interface AuthContextData {
   user: User | null;
   isMaster: boolean;
+  isClient: boolean;
   loading: boolean;
   can: (permission: Permission) => boolean;
   signIn: (user: User) => void;
   signOut: () => Promise<void>;
+  completeFirstAccess: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -48,7 +55,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signIn = useCallback((selectedUser: User) => {
-    setUser(selectedUser);
+    setUser({
+      ...selectedUser,
+      isOnline: true,
+      lastSyncAt: new Date().toISOString(),
+    });
   }, []);
 
   const signOut = useCallback(async () => {
@@ -60,11 +71,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const completeFirstAccess = useCallback(async (_newPassword: string) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        isFirstAccess: false,
+        tempPassword: undefined,
+      };
+    });
+  }, []);
+
   const can = useCallback((permission: Permission) => hasPermission(user, permission), [user]);
 
   const value = useMemo(
-    () => ({ user, isMaster: checkIsMaster(user), loading, can, signIn, signOut }),
-    [user, loading, can, signIn, signOut],
+    () => ({
+      user,
+      isMaster: checkIsMaster(user),
+      isClient: checkIsClient(user),
+      loading,
+      can,
+      signIn,
+      signOut,
+      completeFirstAccess,
+    }),
+    [user, loading, can, signIn, signOut, completeFirstAccess],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

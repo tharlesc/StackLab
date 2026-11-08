@@ -15,6 +15,15 @@ import { MOCK_WORKS, MOCK_USERS } from '@/mocks';
  * 🛠️ AdminContext — Cadastros (obras, usuários) e matriz de acessos (usuário ↔ obra).
  * Exclusivo do perfil Master. Integrado com as tabelas reais do Supabase (obras, profiles, obra_operadores).
  */
+export interface AddUserData {
+  name: string;
+  email: string;
+  role: string;
+  profile: UserProfile;
+  crea?: string;
+  assignedWorkIds?: string[];
+}
+
 interface AdminContextData {
   works: Work[];
   users: User[];
@@ -23,9 +32,11 @@ interface AdminContextData {
   addWork: (data: Omit<Work, 'id' | 'active'>) => Promise<void>;
   updateWork: (workId: string, data: Partial<Omit<Work, 'id'>>) => Promise<void>;
   toggleWorkActive: (workId: string) => Promise<void>;
-  addUser: (data: { name: string; email: string; role: string; profile: UserProfile }) => Promise<void>;
+  addUser: (data: AddUserData) => Promise<User>;
   toggleUserActive: (userId: string) => Promise<void>;
   toggleAssignment: (userId: string, workId: string) => Promise<void>;
+  completeUserFirstAccess: (userId: string) => void;
+  resetUserPassword: (userId: string) => Promise<string>;
 }
 
 export interface AdminProviderProps {
@@ -41,8 +52,8 @@ export const AdminProvider = ({
   initialWorks = MOCK_WORKS,
   initialUsers = MOCK_USERS,
 }: AdminProviderProps) => {
-  const [works, setWorks] = useState<Work[]>(initialWorks);
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [works, setWorks] = useState<Work[]>(isSupabaseConfigured ? [] : initialWorks);
+  const [users, setUsers] = useState<User[]>(isSupabaseConfigured ? [] : initialUsers);
   const [loading, setLoading] = useState(false);
 
   const refreshAdminData = useCallback(async () => {
@@ -55,10 +66,10 @@ export const AdminProvider = ({
         supabaseDataService.fetchAdminUsersFromSupabase(),
       ]);
 
-      if (fetchedWorks && fetchedWorks.length > 0) {
+      if (fetchedWorks) {
         setWorks(fetchedWorks);
       }
-      if (fetchedUsers && fetchedUsers.length > 0) {
+      if (fetchedUsers) {
         setUsers(fetchedUsers);
       }
     } catch (err) {
@@ -78,10 +89,10 @@ export const AdminProvider = ({
           supabaseDataService.fetchAdminUsersFromSupabase(),
         ]);
         if (isMounted) {
-          if (fetchedWorks && fetchedWorks.length > 0) {
+          if (fetchedWorks) {
             setWorks(fetchedWorks);
           }
-          if (fetchedUsers && fetchedUsers.length > 0) {
+          if (fetchedUsers) {
             setUsers(fetchedUsers);
           }
         }
@@ -138,21 +149,58 @@ export const AdminProvider = ({
   );
 
   const addUser = useCallback(
-    async (data: { name: string; email: string; role: string; profile: UserProfile }) => {
-      // Criação local imediata para refletir na lista
-      const newUser: User = {
+    async (data: AddUserData): Promise<User> => {
+      // Gera senha fácil aleatória de 6 dígitos numéricos
+      const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
+
+      let createdUser: User = {
         id: `u${Date.now()}`,
         name: data.name,
         email: data.email,
         role: data.role,
+        crea: data.crea,
         profile: data.profile,
-        assignedWorkIds: [],
+        assignedWorkIds: data.assignedWorkIds || [],
         active: true,
+        isOnline: false,
+        lastSyncAt: new Date().toISOString(),
+        tempPassword: randomPassword,
+        isFirstAccess: true,
       };
-      setUsers((prev) => [...prev, newUser]);
+
+      if (isSupabaseConfigured) {
+        const remote = await supabaseDataService.createUserInSupabase(data, randomPassword);
+        if (remote) {
+          createdUser = remote;
+        }
+      }
+
+      setUsers((prev) => [createdUser, ...prev]);
+      return createdUser;
     },
     [],
   );
+
+  const completeUserFirstAccess = useCallback((userId: string) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, isFirstAccess: false, tempPassword: undefined } : u)),
+    );
+  }, []);
+
+  const resetUserPassword = useCallback(async (userId: string): Promise<string> => {
+    const newPassword = Math.floor(100000 + Math.random() * 900000).toString();
+    if (isSupabaseConfigured) {
+      await supabaseDataService.resetUserPasswordInSupabase(userId, newPassword);
+    }
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, tempPassword: newPassword, isFirstAccess: true }
+          : u,
+      ),
+    );
+    return newPassword;
+  }, []);
 
   const toggleUserActive = useCallback(
     async (userId: string) => {
@@ -207,6 +255,8 @@ export const AdminProvider = ({
       addUser,
       toggleUserActive,
       toggleAssignment,
+      completeUserFirstAccess,
+      resetUserPassword,
     }),
     [
       works,
@@ -219,6 +269,8 @@ export const AdminProvider = ({
       addUser,
       toggleUserActive,
       toggleAssignment,
+      completeUserFirstAccess,
+      resetUserPassword,
     ],
   );
 

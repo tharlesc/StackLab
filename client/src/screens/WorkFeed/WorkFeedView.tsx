@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, TouchableOpacity, Alert } from 'react-native';
+import { View, TouchableOpacity, Alert, Text } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -20,6 +20,8 @@ import {
   BarChart3,
   CheckCircle2,
   CloudRain,
+  UserPlus,
+  KeyRound,
 } from 'lucide-react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +37,7 @@ import { Dialog } from '@/components/common/Dialog';
 import { Input } from '@/components/common/Input';
 import { formatDate } from '@/utils/date';
 import { calcHeadcount, calcManHours } from '@/utils/rdo';
-import type { RDO, StatusVariant, Work } from '@/types';
+import type { RDO, StatusVariant, Work, User } from '@/types';
 
 import { WorkCalendar } from './WorkCalendar';
 import {
@@ -56,8 +58,19 @@ import {
   ObraInfoColTexts,
   ObraInfoColLabel,
   ObraInfoColValue,
+  ObraActionsGroup,
+  ObraPrimaryActionButton,
+  ObraPrimaryActionText,
+  MasterActionsStack,
+  MasterActionButton,
+  MasterActionText,
+  ObraSecondaryButtonsRow,
+  ObraSecondaryActionButton,
+  ObraSecondaryActionText,
   EditObraButton,
   EditObraButtonText,
+  CreateClientButton,
+  CreateClientButtonText,
   ActionButtonRow,
   ObraDashboardCard,
   DashboardHeaderRow,
@@ -114,10 +127,10 @@ const STATUS_LABELS: Record<string, string> = {
 export const WorkFeedView = () => {
   const theme = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string }>();
-  const { user, isMaster } = useAuth();
+  const params = useLocalSearchParams<{ id?: string; workId?: string }>();
+  const { user, isMaster, isClient } = useAuth();
   const { works: rdoWorks, rdos } = useRDOs();
-  const { works: adminWorks, updateWork } = useAdmin();
+  const { works: adminWorks, users: adminUsers, updateWork, addUser, resetUserPassword } = useAdmin();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isDashboardExpanded, setIsDashboardExpanded] = useState(false);
@@ -129,13 +142,21 @@ export const WorkFeedView = () => {
   const [editClient, setEditClient] = useState('');
   const [editAddress, setEditAddress] = useState('');
 
+  // Estados para criação e reset de Usuário Cliente (Master)
+  const [isCreateClientDialogOpen, setIsCreateClientDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
+  const [clientFirstName, setClientFirstName] = useState('');
+  const [clientLastName, setClientLastName] = useState('');
+  const [clientRandomSuffix, setClientRandomSuffix] = useState('');
+  const [createdClientData, setCreatedClientData] = useState<User | null>(null);
+
   // Encontra a obra ativa ou cadastrada
   const currentWork: Work = useMemo(() => {
-    const id = params.id;
-    if (id) {
-      const foundInAdmin = adminWorks.find((w) => w.id === id);
+    const targetId = params.id || params.workId;
+    if (targetId) {
+      const foundInAdmin = adminWorks.find((w) => w.id === targetId);
       if (foundInAdmin) return foundInAdmin;
-      const foundInRdo = rdoWorks.find((w) => w.id === id);
+      const foundInRdo = rdoWorks.find((w) => w.id === targetId);
       if (foundInRdo) {
         return {
           id: foundInRdo.id,
@@ -158,7 +179,16 @@ export const WorkFeedView = () => {
       address: 'Endereço da Obra',
       active: true,
     };
-  }, [params.id, adminWorks, rdoWorks]);
+  }, [params.id, params.workId, adminWorks, rdoWorks]);
+
+  // Encontra usuário cliente já existente vinculado a esta obra
+  const existingClientUser = useMemo(() => {
+    return (adminUsers || []).find(
+      (u) =>
+        (u.profile === 'client' || (u.role && u.role.toLowerCase().includes('cliente'))) &&
+        u.assignedWorkIds?.includes(currentWork.id),
+    );
+  }, [adminUsers, currentWork.id]);
 
   // RDOs específicos desta obra:
   // Regra: O Master NUNCA visualiza rascunhos de operadores (apenas submetidos, aprovados ou devolvidos)
@@ -227,10 +257,29 @@ export const WorkFeedView = () => {
     [obraRdos],
   );
 
+  const [isConfirmStartDialogOpen, setIsConfirmStartDialogOpen] = useState(false);
+
+  // Validação de acesso à obra (curadoria para operadores)
+  const hasAccessToWork = useMemo(() => {
+    if (isMaster) return true;
+    if (!user) return false;
+    // Se o usuário não tiver atribuições definidas ou se tiver, verifica inclusão
+    return (
+      !user.assignedWorkIds ||
+      user.assignedWorkIds.length === 0 ||
+      user.assignedWorkIds.includes(currentWork.id)
+    );
+  }, [isMaster, user, currentWork.id]);
+
   const handleCreateNewRDO = useCallback(() => {
+    setIsConfirmStartDialogOpen(true);
+  }, []);
+
+  const handleConfirmStartRDO = useCallback(() => {
+    setIsConfirmStartDialogOpen(false);
     router.push({
       pathname: '/new-rdo',
-      params: { workId: currentWork.id },
+      params: { workId: currentWork.id, autoStart: 'true' },
     });
   }, [router, currentWork.id]);
 
@@ -279,6 +328,71 @@ export const WorkFeedView = () => {
       Alert.alert('Erro', 'Não foi possível atualizar as informações da obra.');
     }
   }, [editName, editSubtitle, editClient, editAddress, currentWork.id, updateWork]);
+
+  const handleOpenCreateClientDialog = useCallback(() => {
+    if (existingClientUser) {
+      Alert.alert('Atenção', 'Esta obra já possui um usuário cliente cadastrado.');
+      return;
+    }
+    setClientFirstName('');
+    setClientLastName('');
+    const randomSuffix = Math.random().toString(36).substring(2, 6);
+    setClientRandomSuffix(randomSuffix);
+    setIsCreateClientDialogOpen(true);
+  }, [existingClientUser]);
+
+  const handleOpenResetPasswordDialog = useCallback(() => {
+    setIsResetPasswordDialogOpen(true);
+  }, []);
+
+  const handleConfirmResetPassword = useCallback(async () => {
+    if (!existingClientUser) return;
+    setIsResetPasswordDialogOpen(false);
+    try {
+      const newPassword = await resetUserPassword(existingClientUser.id);
+      setCreatedClientData({
+        ...existingClientUser,
+        tempPassword: newPassword,
+        isFirstAccess: true,
+      });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível resetar a senha do cliente.');
+    }
+  }, [existingClientUser, resetUserPassword]);
+
+  const generatedClientLogin = useMemo(() => {
+    const f = clientFirstName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const l = clientLastName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!f && !l) return `cliente@${clientRandomSuffix || 'obra'}`;
+    return `${f || 'cliente'}.${l || 'acesso'}@${clientRandomSuffix || 'obra'}`;
+  }, [clientFirstName, clientLastName, clientRandomSuffix]);
+
+  const handleConfirmCreateClient = useCallback(async () => {
+    if (existingClientUser) {
+      Alert.alert('Atenção', 'Esta obra já possui um usuário cliente cadastrado.');
+      return;
+    }
+    if (!clientFirstName.trim() || !clientLastName.trim()) {
+      Alert.alert('Atenção', 'Informe o nome e o sobrenome do cliente.');
+      return;
+    }
+
+    try {
+      const fullName = `${clientFirstName.trim()} ${clientLastName.trim()}`;
+      const newUser = await addUser({
+        name: fullName,
+        email: generatedClientLogin,
+        role: 'Cliente / Contratante',
+        profile: 'client',
+        assignedWorkIds: [currentWork.id],
+      });
+
+      setIsCreateClientDialogOpen(false);
+      setCreatedClientData(newUser);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível cadastrar o usuário cliente.');
+    }
+  }, [existingClientUser, clientFirstName, clientLastName, generatedClientLogin, currentWork.id, addUser]);
 
   return (
     <Screen>
@@ -387,29 +501,52 @@ export const WorkFeedView = () => {
             </ObraInfoCol>
           </ObraInfoColumnsRow>
 
-          {/* Bottom Button: Editar Informações da Obra (Master) ou Novo RDO (Operador) */}
+          {/* Cluster de Botões da Obra com design-taste integrado */}
           {isMaster ? (
-            <EditObraButton
-              onPress={handleOpenEditDialog}
-              accessibilityRole="button"
-              accessibilityLabel="Editar informações da obra"
-            >
-              <Edit3 size={16} color="#FB923C" />
-              <EditObraButtonText>Editar Informações da Obra</EditObraButtonText>
-            </EditObraButton>
-          ) : (
-            <EditObraButton
-              onPress={handleCreateNewRDO}
-              accessibilityRole="button"
-              accessibilityLabel="Novo RDO para esta obra"
-              style={{ backgroundColor: theme.colors.primary }}
-            >
-              <Plus size={16} color={theme.colors.text.inverse} />
-              <EditObraButtonText style={{ color: theme.colors.text.inverse }}>
-                Novo RDO para esta Obra
-              </EditObraButtonText>
-            </EditObraButton>
-          )}
+            <ObraActionsGroup>
+              <MasterActionsStack>
+                <MasterActionButton
+                  onPress={handleOpenEditDialog}
+                  accessibilityLabel="Editar informações cadastrais da obra"
+                >
+                  <Edit3 size={16} color="#ffffff" />
+                  <MasterActionText>Editar Informações da Obra</MasterActionText>
+                </MasterActionButton>
+
+                {existingClientUser ? (
+                  <MasterActionButton
+                    $variant="amber"
+                    onPress={handleOpenResetPasswordDialog}
+                    accessibilityLabel={`Resetar senha do cliente ${existingClientUser.name}`}
+                  >
+                    <KeyRound size={16} color="#FBBF24" />
+                    <MasterActionText $variant="amber">
+                      Resetar Senha do Cliente ({existingClientUser.name.split(' ')[0]})
+                    </MasterActionText>
+                  </MasterActionButton>
+                ) : (
+                  <MasterActionButton
+                    $variant="blue"
+                    onPress={handleOpenCreateClientDialog}
+                    accessibilityLabel="Criar Usuário Cliente"
+                  >
+                    <UserPlus size={16} color="#60A5FA" />
+                    <MasterActionText $variant="blue">Criar Usuário Cliente</MasterActionText>
+                  </MasterActionButton>
+                )}
+              </MasterActionsStack>
+            </ObraActionsGroup>
+          ) : !isClient ? (
+            <ObraActionsGroup>
+              <ObraPrimaryActionButton
+                onPress={handleCreateNewRDO}
+                accessibilityLabel="Novo RDO para esta obra"
+              >
+                <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
+                <ObraPrimaryActionText>Novo RDO para esta Obra</ObraPrimaryActionText>
+              </ObraPrimaryActionButton>
+            </ObraActionsGroup>
+          ) : null}
         </ObraOverviewCard>
 
         {/* 2. Dashboard da Obra — minimizado por padrão */}
@@ -661,6 +798,156 @@ export const WorkFeedView = () => {
           accessibilityLabel="Subtítulo ou Descrição"
         />
       </Dialog>
+      {/* Diálogo para Criação de Usuário Cliente (Exclusivo Master) */}
+      <Dialog
+        visible={isCreateClientDialogOpen}
+        title="Criar Usuário Cliente"
+        description="Cadastre o acesso de acompanhamento do cliente para esta obra:"
+        primaryAction={{ label: 'Criar Acesso', onPress: handleConfirmCreateClient }}
+        secondaryAction={{
+          label: 'Cancelar',
+          onPress: () => setIsCreateClientDialogOpen(false),
+        }}
+        onClose={() => setIsCreateClientDialogOpen(false)}
+      >
+        <Input
+          placeholder="Nome do Cliente (ex: Carlos)"
+          value={clientFirstName}
+          onChangeText={setClientFirstName}
+          accessibilityLabel="Nome do Cliente"
+        />
+        <Input
+          placeholder="Sobrenome (ex: Mendes)"
+          value={clientLastName}
+          onChangeText={setClientLastName}
+          accessibilityLabel="Sobrenome do Cliente"
+        />
+
+        <View
+          style={{
+            padding: 10,
+            borderRadius: 8,
+            backgroundColor: theme.colors.surfaceVariant,
+            marginTop: 6,
+          }}
+        >
+          <Text style={{ fontSize: 11, color: theme.colors.text.secondary }}>
+            Login sugerido do cliente:
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: 'bold',
+              color: theme.colors.tintText,
+              marginTop: 2,
+            }}
+          >
+            {generatedClientLogin}
+          </Text>
+        </View>
+      </Dialog>
+
+      {/* Diálogo de Confirmação para Reset de Senha do Cliente */}
+      <Dialog
+        visible={isResetPasswordDialogOpen}
+        title="Resetar Senha do Cliente"
+        description={`Deseja gerar uma nova senha aleatória de 6 dígitos para ${existingClientUser?.name || 'o cliente'}? Ao entrar novamente, ele será solicitado a cadastrar uma nova senha definitiva.`}
+        primaryAction={{
+          label: 'Gerar Nova Senha',
+          onPress: handleConfirmResetPassword,
+        }}
+        secondaryAction={{
+          label: 'Cancelar',
+          onPress: () => setIsResetPasswordDialogOpen(false),
+        }}
+        onClose={() => setIsResetPasswordDialogOpen(false)}
+      />
+
+      {/* Diálogo de Sucesso com as Credenciais Provisórias do Cliente */}
+      <Dialog
+        visible={!!createdClientData}
+        title="Credenciais de Acesso do Cliente"
+        description="Acesso vinculado a esta obra. Forneça os dados de acesso abaixo ao cliente:"
+        primaryAction={{
+          label: 'Concluir',
+          onPress: () => setCreatedClientData(null),
+        }}
+        onClose={() => setCreatedClientData(null)}
+      >
+        {createdClientData && (
+          <View style={{ gap: 8, paddingVertical: 4 }}>
+            <Text style={{ fontSize: 13, color: theme.colors.text.primary }}>
+              <Text style={{ fontWeight: 'bold' }}>Cliente: </Text>
+              {createdClientData.name}
+            </Text>
+            <Text style={{ fontSize: 13, color: theme.colors.text.primary }}>
+              <Text style={{ fontWeight: 'bold' }}>Login de Acesso: </Text>
+              {createdClientData.email}
+            </Text>
+            <Text style={{ fontSize: 13, color: theme.colors.text.primary }}>
+              <Text style={{ fontWeight: 'bold' }}>Obra Vinculada: </Text>
+              {currentWork.name}
+            </Text>
+
+            <View
+              style={{
+                marginTop: 8,
+                padding: 10,
+                borderRadius: 10,
+                backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                borderWidth: 1,
+                borderColor: 'rgba(245, 158, 11, 0.35)',
+              }}
+            >
+              <Text style={{ fontSize: 11, color: '#D97706', fontWeight: 'bold' }}>
+                Senha Temporária de 1º Acesso:
+              </Text>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: 'bold',
+                  letterSpacing: 2,
+                  color: '#B45309',
+                  marginTop: 4,
+                }}
+              >
+                {createdClientData.tempPassword}
+              </Text>
+              <Text style={{ fontSize: 10, color: '#92400E', marginTop: 4 }}>
+                Ao efetuar o primeiro acesso, o cliente será solicitado a definir sua senha definitiva.
+              </Text>
+            </View>
+          </View>
+        )}
+      </Dialog>
+
+      {/* Dialog de Confirmação para Iniciar Preenchimento do RDO */}
+      <Dialog
+        visible={isConfirmStartDialogOpen}
+        title="Iniciar Diário de Obra"
+        description={`Deseja iniciar o preenchimento do RDO para a obra "${currentWork.name}"? As informações de clima, data e equipe serão pré-carregadas automaticamente.`}
+        primaryAction={{
+          label: 'Iniciar Preenchimento',
+          onPress: handleConfirmStartRDO,
+        }}
+        secondaryAction={{
+          label: 'Cancelar',
+          onPress: () => setIsConfirmStartDialogOpen(false),
+        }}
+        onClose={() => setIsConfirmStartDialogOpen(false)}
+      />
+
+      {/* Dialog de Curadoria: Acesso Não Permitido */}
+      <Dialog
+        visible={!hasAccessToWork && !isMaster}
+        title="Acesso Não Permitido"
+        description="Você não possui vínculo ativo com esta obra. As permissões de acesso foram atualizadas pelo gestor Master."
+        primaryAction={{
+          label: 'Voltar para Minhas Obras',
+          onPress: () => router.back(),
+        }}
+        onClose={() => router.back()}
+      />
     </Screen>
   );
 };

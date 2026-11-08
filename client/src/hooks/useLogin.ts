@@ -31,8 +31,8 @@ export const useLogin = () => {
 
     if (!isSupabaseConfigured) {
       Alert.alert(
-        'Supabase não configurado',
-        'Configure as credenciais do Supabase no arquivo client/.env para autenticação real.',
+        'Supabase Não Configurado',
+        'Configure a URL e a Anon Key do Supabase no arquivo client/.env para realizar login no banco real.',
       );
       return;
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, useWindowDimensions, LayoutChangeEvent } from 'react-native';
+import { View, useWindowDimensions, LayoutChangeEvent, ActivityIndicator, Text } from 'react-native';
 import { useTheme } from 'styled-components/native';
+import { useRouter } from 'expo-router';
 import {
   Building2,
   ChevronRight,
@@ -174,11 +175,13 @@ const calculateHoursFromInterval = (start: string, end: string): number | null =
 
 export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const theme = useTheme();
+  const router = useRouter();
   const {
     works,
     selectedWork,
     activeDraft,
     currentStep,
+    isInitializing,
     isStartDialogOpen,
     isValidationDialogOpen,
     validationErrors,
@@ -287,6 +290,46 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const [occDesc, setOccDesc] = useState('');
 
   // --------------------------------------------------------------------------
+  // RENDER: Carregamento do Rascunho (evita piscar a tela antiga de seleção)
+  // --------------------------------------------------------------------------
+  if (isInitializing) {
+    return (
+      <WizardContainer style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <Header
+          title="Diário de Obra"
+          leftContent={
+            <HeaderAction
+              icon={
+                <ChevronLeft
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.lg}
+                  strokeWidth={theme.icon.strokeWidth}
+                />
+              }
+              onPress={() => router.back()}
+              accessibilityLabel="Voltar ao início"
+            />
+          }
+        />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text
+            style={{
+              marginTop: 16,
+              fontSize: 14,
+              fontFamily: theme.fonts.medium,
+              color: theme.colors.text.secondary,
+              textAlign: 'center',
+            }}
+          >
+            Iniciando preenchimento do diário de obra...
+          </Text>
+        </View>
+      </WizardContainer>
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // RENDER: Seleção de Obra (se não houver rascunho ativo)
   // --------------------------------------------------------------------------
   if (!activeDraft) {
@@ -323,9 +366,14 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               <WorkSelectCard
                 key={work.id}
                 activeOpacity={0.7}
-                onPress={() => handleSelectWork(work)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/work-feed',
+                    params: { id: work.id, workId: work.id },
+                  })
+                }
                 accessibilityRole="button"
-                accessibilityLabel={`Selecionar obra: ${work.name}, ${work.subtitle}`}
+                accessibilityLabel={`Acessar feed da obra: ${work.name}, ${work.subtitle}`}
               >
                 <WorkIconContainer>
                   <Building2

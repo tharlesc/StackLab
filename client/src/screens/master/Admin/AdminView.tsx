@@ -1,10 +1,13 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import {
   ChevronLeft,
   Plus,
   Check,
+  Radio,
+  Lock,
+  Copy,
 } from 'lucide-react-native';
 
 import { useAdminScreen, AdminTab } from '@/hooks';
@@ -22,6 +25,20 @@ import {
   MatrixWorkList,
   MatrixWorkItem,
   MatrixWorkName,
+  OnlineBanner,
+  OnlineBannerText,
+  UserSyncMetaRow,
+  OnlineDot,
+  OnlineLabel,
+  SyncTimeText,
+  TempPasswordCard,
+  TempPasswordTitle,
+  TempPasswordCode,
+  CreaSectionBox,
+  CreaFieldRow,
+  StateSelectorScroll,
+  StateChipButton,
+  StateChipText,
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
@@ -34,6 +51,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Dialog } from '@/components/common/Dialog';
 import { Input } from '@/components/common/Input';
 import { Chip } from '@/components/common/Chip';
+import { BRAZILIAN_STATES, isCreaExempt, formatRelative } from '@/utils';
 import { strings } from '@/constants/strings';
 import type { Work, User } from '@/types';
 
@@ -56,7 +74,9 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
     setSearchQuery,
     works,
     filteredWorks,
+    users,
     filteredUsers,
+    onlineUsersCount,
     workDialogOpen,
     setWorkDialogOpen,
     newWorkName,
@@ -77,6 +97,12 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
     setNewUserRole,
     newUserProfile,
     setNewUserProfile,
+    newUserCreaNumber,
+    setNewUserCreaNumber,
+    newUserCreaUf,
+    setNewUserCreaUf,
+    createdUserSuccess,
+    setCreatedUserSuccess,
     handleOpenAddWork,
     handleConfirmAddWork,
     handleOpenAddUser,
@@ -84,6 +110,10 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
     toggleWorkActive,
     toggleUserActive,
     toggleAssignment,
+    handleToggleAssignment,
+    handleSaveAssignments,
+    isSavingAssignments,
+    hasUnsavedAssignments,
     goBack,
     navigateToWorkFeed,
   } = useAdminScreen();
@@ -151,6 +181,7 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <ListHeaderWrapper>
+
               <Button
                 title="Novo Usuário"
                 variant="primary"
@@ -163,6 +194,14 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
                 }
                 onPress={handleOpenAddUser}
               />
+              
+              <OnlineBanner>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Radio size={16} color="#10B981" />
+                  <OnlineBannerText>Usuários Conectados</OnlineBannerText>
+                </View>
+                <Chip label={`${onlineUsersCount} online`} variant="accent" />
+              </OnlineBanner>
             </ListHeaderWrapper>
           }
           renderItem={({ item }) => (
@@ -171,14 +210,42 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
                 <HeaderMainInfo>
                   <ItemTitle>{item.name}</ItemTitle>
                   <ItemSubtitle>
-                    {item.email} • {item.role}
+                    {item.email} • {item.role} {item.crea ? `• ${item.crea}` : ''}
                   </ItemSubtitle>
+                  <UserSyncMetaRow>
+                    <OnlineDot $online={item.isOnline} />
+                    <OnlineLabel $online={item.isOnline}>
+                      {item.isOnline ? 'Online no momento' : 'Offline'}
+                    </OnlineLabel>
+                    <SyncTimeText>
+                      {item.lastSyncAt ? `• Sincronizado ${formatRelative(item.lastSyncAt)}` : ''}
+                    </SyncTimeText>
+                  </UserSyncMetaRow>
                 </HeaderMainInfo>
                 <Chip
-                  label={item.profile === 'master' ? strings.common.master : 'OPERACIONAL'}
-                  variant={item.profile === 'master' ? 'accent' : 'dark'}
+                  label={
+                    item.profile === 'master'
+                      ? strings.common.master
+                      : item.profile === 'client'
+                        ? 'CLIENTE'
+                        : 'OPERACIONAL'
+                  }
+                  variant={item.profile === 'master' ? 'accent' : item.profile === 'client' ? 'surface' : 'dark'}
                 />
               </CardHeader>
+
+              {item.isFirstAccess && item.tempPassword && (
+                <TempPasswordCard>
+                  <View style={{ flex: 1 }}>
+                    <TempPasswordTitle>Senha de 1º Acesso (Pendente de Login):</TempPasswordTitle>
+                    <Text style={{ fontSize: 10, color: '#92400E' }}>
+                      Visível para o Master até a troca pelo usuário
+                    </Text>
+                  </View>
+                  <TempPasswordCode>{item.tempPassword}</TempPasswordCode>
+                </TempPasswordCard>
+              )}
+
               <UserFooterRow>
                 <ItemSubtitle>{item.assignedWorkIds.length} obra(s) vinculada(s)</ItemSubtitle>
                 <Button
@@ -212,7 +279,7 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
                   <MatrixWorkItem
                     key={work.id}
                     $assigned={assigned}
-                    onPress={() => toggleAssignment(user.id, work.id)}
+                    onPress={() => handleToggleAssignment(user.id, work.id)}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: assigned }}
                     accessibilityLabel={`${work.name}, ${assigned ? 'vinculada' : 'não vinculada'}`}
@@ -229,6 +296,15 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
                 );
               })}
             </MatrixWorkList>
+            <CardActionsRow style={{ marginTop: 12 }}>
+              <Button
+                title={isSavingAssignments ? 'Salvando...' : 'Salvar Vínculos de Obras'}
+                variant="primary"
+                size="small"
+                onPress={handleSaveAssignments}
+                loading={isSavingAssignments}
+              />
+            </CardActionsRow>
           </AdminCard>
         )}
       />
@@ -255,6 +331,21 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
               accessibilityLabel={strings.accessibility.backButton}
             />
           )
+        }
+        rightContent={
+          activeTab === 'matriz' ? (
+            <HeaderAction
+              icon={
+                <Check
+                  color={hasUnsavedAssignments ? theme.colors.primary : theme.colors.text.secondary}
+                  size={theme.icon.size.md}
+                  strokeWidth={2.5}
+                />
+              }
+              onPress={handleSaveAssignments}
+              accessibilityLabel="Salvar alterações de vínculos da matriz"
+            />
+          ) : undefined
         }
       />
 
@@ -329,11 +420,45 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
           accessibilityLabel="E-mail profissional"
         />
         <Input
-          placeholder="Cargo (ex: Estagiário de Obras)"
+          placeholder="Cargo (ex: Engenheiro Residente)"
           value={newUserRole}
           onChangeText={setNewUserRole}
           accessibilityLabel="Cargo"
         />
+
+        {/* Seletor Estrito de CREA por Estado do Brasil */}
+        {!isCreaExempt(newUserRole, newUserProfile) || newUserProfile === 'master' ? (
+          <CreaSectionBox>
+            <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.text.primary, marginTop: 4 }}>
+              Estado do CREA (UF): {newUserCreaUf}
+            </Text>
+            <StateSelectorScroll>
+              {BRAZILIAN_STATES.map((st) => (
+                <StateChipButton
+                  key={st.uf}
+                  $selected={newUserCreaUf === st.uf}
+                  onPress={() => setNewUserCreaUf(st.uf)}
+                >
+                  <StateChipText $selected={newUserCreaUf === st.uf}>
+                    {st.uf}
+                  </StateChipText>
+                </StateChipButton>
+              ))}
+            </StateSelectorScroll>
+            <Input
+              placeholder={`Número do CREA-${newUserCreaUf} (apenas números)`}
+              value={newUserCreaNumber}
+              onChangeText={setNewUserCreaNumber}
+              keyboardType="numeric"
+              accessibilityLabel="Número de registro no CREA"
+            />
+          </CreaSectionBox>
+        ) : (
+          <Text style={{ fontSize: 11, color: theme.colors.text.secondary, marginVertical: 4 }}>
+            ℹ️ Registro de CREA isento para estagiários e operacionais.
+          </Text>
+        )}
+
         <ProfileToggleRow>
           <Button
             title="Perfil Operacional"
@@ -348,6 +473,47 @@ export const AdminView = ({ isTab = false }: AdminViewProps) => {
             onPress={() => setNewUserProfile('master')}
           />
         </ProfileToggleRow>
+      </Dialog>
+
+      {/* Dialog: Sucesso do Cadastro com Senha de 1º Acesso */}
+      <Dialog
+        visible={!!createdUserSuccess}
+        title="Usuário Criado com Sucesso!"
+        description="Uma senha provisória de 6 dígitos foi gerada automaticamente para o primeiro acesso:"
+        primaryAction={{
+          label: 'Concluir',
+          onPress: () => setCreatedUserSuccess(null),
+        }}
+        onClose={() => setCreatedUserSuccess(null)}
+      >
+        {createdUserSuccess && (
+          <View style={{ gap: 8, paddingVertical: 4 }}>
+            <Text style={{ fontSize: 13, color: theme.colors.text.primary }}>
+              <Text style={{ fontWeight: 'bold' }}>Nome: </Text>
+              {createdUserSuccess.name}
+            </Text>
+            <Text style={{ fontSize: 13, color: theme.colors.text.primary }}>
+              <Text style={{ fontWeight: 'bold' }}>Login: </Text>
+              {createdUserSuccess.email}
+            </Text>
+            {createdUserSuccess.crea ? (
+              <Text style={{ fontSize: 13, color: theme.colors.text.primary }}>
+                <Text style={{ fontWeight: 'bold' }}>Registro: </Text>
+                {createdUserSuccess.crea}
+              </Text>
+            ) : null}
+
+            <TempPasswordCard style={{ marginTop: 8 }}>
+              <View style={{ flex: 1 }}>
+                <TempPasswordTitle>Senha Fácil de 1º Acesso:</TempPasswordTitle>
+                <Text style={{ fontSize: 10, color: '#92400E' }}>
+                  A aplicação pedirá uma nova senha no 1º login
+                </Text>
+              </View>
+              <TempPasswordCode>{createdUserSuccess.tempPassword}</TempPasswordCode>
+            </TempPasswordCard>
+          </View>
+        )}
       </Dialog>
     </ContainerWrapper>
   );

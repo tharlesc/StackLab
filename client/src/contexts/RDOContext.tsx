@@ -55,8 +55,8 @@ export const RDOProvider = ({
   initialWorks = MOCK_ACTIVE_WORKS,
   initialRdos = MOCK_RDOS,
 }: RDOProviderProps) => {
-  const [rdos, setRdos] = useState<RDO[]>(initialRdos);
-  const [works, setWorks] = useState<ActiveWork[]>(initialWorks);
+  const [rdos, setRdos] = useState<RDO[]>(isSupabaseConfigured ? [] : initialRdos);
+  const [works, setWorks] = useState<ActiveWork[]>(isSupabaseConfigured ? [] : initialWorks);
   const [loading, setLoading] = useState<boolean>(false);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
@@ -71,10 +71,10 @@ export const RDOProvider = ({
         supabaseDataService.fetchRdosFromSupabase(),
       ]);
 
-      if (fetchedWorks && fetchedWorks.length > 0) {
+      if (fetchedWorks) {
         setWorks(fetchedWorks);
       }
-      if (fetchedRdos && fetchedRdos.length > 0) {
+      if (fetchedRdos) {
         setRdos(fetchedRdos);
       }
     } catch (err) {

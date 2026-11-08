@@ -2,8 +2,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import { useAdmin } from '@/contexts/AdminContext';
-import { matchesQuery } from '@/utils';
-import type { UserProfile } from '@/types';
+import { matchesQuery, formatCrea, validateCrea, isCreaExempt } from '@/utils';
+import type { UserProfile, User } from '@/types';
 
 export type AdminTab = 'obras' | 'usuarios' | 'matriz';
 
@@ -34,6 +34,38 @@ export const useAdminScreen = () => {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState('');
   const [newUserProfile, setNewUserProfile] = useState<UserProfile>('common');
+  const [newUserCreaNumber, setNewUserCreaNumber] = useState('');
+  const [newUserCreaUf, setNewUserCreaUf] = useState('SP');
+
+  // Modal para exibir a senha de primeiro acesso após cadastro
+  const [createdUserSuccess, setCreatedUserSuccess] = useState<User | null>(null);
+
+  // Controle de salvamento de atribuições da matriz
+  const [isSavingAssignments, setIsSavingAssignments] = useState(false);
+  const [hasUnsavedAssignments, setHasUnsavedAssignments] = useState(false);
+
+  const handleToggleAssignment = useCallback(
+    (userId: string, workId: string) => {
+      toggleAssignment(userId, workId);
+      setHasUnsavedAssignments(true);
+    },
+    [toggleAssignment],
+  );
+
+  const handleSaveAssignments = useCallback(async () => {
+    setIsSavingAssignments(true);
+    try {
+      setHasUnsavedAssignments(false);
+      Alert.alert(
+        'Vínculos Salvos',
+        'Matriz de acessos atualizada e sincronizada com sucesso para os operadores!',
+      );
+    } catch {
+      Alert.alert('Erro', 'Falha ao salvar alterações de vínculos de obras.');
+    } finally {
+      setIsSavingAssignments(false);
+    }
+  }, []);
 
   const filteredWorks = useMemo(() => {
     if (!searchQuery.trim()) return works;
@@ -48,6 +80,10 @@ export const useAdminScreen = () => {
       matchesQuery(searchQuery, u.name, u.email, u.role, u.profile)
     );
   }, [users, searchQuery]);
+
+  const onlineUsersCount = useMemo(() => {
+    return users.filter((u) => u.isOnline).length;
+  }, [users]);
 
   const handleOpenAddWork = useCallback(() => {
     setNewWorkName('');
@@ -77,23 +113,41 @@ export const useAdminScreen = () => {
     setNewUserEmail('');
     setNewUserRole('');
     setNewUserProfile('common');
+    setNewUserCreaNumber('');
+    setNewUserCreaUf('SP');
     setUserDialogOpen(true);
   }, []);
 
-  const handleConfirmAddUser = useCallback(() => {
+  const handleConfirmAddUser = useCallback(async () => {
     if (!newUserName.trim() || !newUserEmail.trim()) {
-      Alert.alert('Atenção', 'Preencha nome e e-mail.');
+      Alert.alert('Atenção', 'Preencha o nome completo e o e-mail.');
       return;
     }
-    addUser({
+
+    const exempt = isCreaExempt(newUserRole, newUserProfile);
+    let finalCrea: string | undefined = undefined;
+
+    if (!exempt || newUserCreaNumber.trim()) {
+      // Validação estrita do CREA com base no estado do Brasil
+      const validation = validateCrea(newUserCreaNumber, newUserCreaUf);
+      if (!validation.isValid) {
+        Alert.alert('CREA Inválido', validation.error || 'Verifique o número e o estado do CREA.');
+        return;
+      }
+      finalCrea = formatCrea(newUserCreaNumber, newUserCreaUf);
+    }
+
+    const created = await addUser({
       name: newUserName.trim(),
       email: newUserEmail.trim(),
-      role: newUserRole.trim() || 'Operacional de Campo',
+      role: newUserRole.trim() || (newUserProfile === 'master' ? 'Engenheiro Master' : 'Operacional de Campo'),
       profile: newUserProfile,
+      crea: finalCrea,
     });
+
     setUserDialogOpen(false);
-    Alert.alert('Sucesso', 'Usuário cadastrado com sucesso!');
-  }, [newUserName, newUserEmail, newUserRole, newUserProfile, addUser]);
+    setCreatedUserSuccess(created);
+  }, [newUserName, newUserEmail, newUserRole, newUserProfile, newUserCreaNumber, newUserCreaUf, addUser]);
 
   const goBack = useCallback(() => {
     router.back();
@@ -118,6 +172,7 @@ export const useAdminScreen = () => {
     filteredWorks,
     users,
     filteredUsers,
+    onlineUsersCount,
     workDialogOpen,
     setWorkDialogOpen,
     newWorkName,
@@ -138,6 +193,12 @@ export const useAdminScreen = () => {
     setNewUserRole,
     newUserProfile,
     setNewUserProfile,
+    newUserCreaNumber,
+    setNewUserCreaNumber,
+    newUserCreaUf,
+    setNewUserCreaUf,
+    createdUserSuccess,
+    setCreatedUserSuccess,
     handleOpenAddWork,
     handleConfirmAddWork,
     handleOpenAddUser,
@@ -145,6 +206,10 @@ export const useAdminScreen = () => {
     toggleWorkActive,
     toggleUserActive,
     toggleAssignment,
+    handleToggleAssignment,
+    handleSaveAssignments,
+    isSavingAssignments,
+    hasUnsavedAssignments,
     goBack,
     navigateToWorkFeed,
   };

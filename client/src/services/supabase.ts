@@ -20,12 +20,41 @@ if (!isSupabaseConfigured) {
   );
 }
 
+// Wrapper resiliente de storage com timeout para evitar deadlocks de AsyncStorage no mobile/web
+const safeStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    try {
+      return await Promise.race([
+        AsyncStorage.getItem(key),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+      ]);
+    } catch {
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      await Promise.race([
+        AsyncStorage.setItem(key, value),
+        new Promise<void>((resolve) => setTimeout(() => resolve(), 2500)),
+      ]);
+    } catch {}
+  },
+  removeItem: async (key: string): Promise<void> => {
+    try {
+      await Promise.race([
+        AsyncStorage.removeItem(key),
+        new Promise<void>((resolve) => setTimeout(() => resolve(), 2500)),
+      ]);
+    } catch {}
+  },
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
+    storage: safeStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
   },
 });
-

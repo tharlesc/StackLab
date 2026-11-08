@@ -147,3 +147,30 @@ export const ActionText = styled.Text`
   line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
   color: ${({ theme }) => theme.colors.tintText};
 `;
+
+export const SwipeContainer = styled.View`
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+  position: relative;
+  overflow: hidden;
+  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+`;
+
+export const DeleteUnderlay = styled(TouchableOpacity)`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 90px;
+  background-color: #EF4444;
+  border-radius: ${({ theme }) => theme.borderRadius.lg}px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+`;
+
+export const DeleteUnderlayText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 11px;
+  color: #FFFFFF;
+  letter-spacing: 0.3px;
+`;
