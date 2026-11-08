@@ -130,6 +130,9 @@ export async function loginWithEmail(
 
       if (rawMsg.includes('invalid login credentials') || rawMsg.includes('invalid credentials')) {
         friendlyError = 'E-mail ou senha incorretos no Supabase. Verifique suas credenciais.';
+      } else if (rawMsg.includes('database error querying schema')) {
+        friendlyError =
+          'Erro de compatibilidade no Supabase Auth (colunas com valor NULL). Execute o script da migration 20261108000002_create_client_user_rpc.sql no SQL Editor do Supabase para corrigir.';
       } else if (rawMsg.includes('email not confirmed')) {
         friendlyError =
           'E-mail cadastrado, mas ainda não confirmado no Supabase. Confirme no Supabase ou desative a exigência de confirmação no painel de Auth.';
