@@ -67,3 +67,5 @@ export const SearchResultSubtitle = styled.Text`
   color: ${({ theme }) => theme.colors.text.secondary};
   margin-top: ${({ theme }) => theme.spacing.xxs}px;
 `;
+
+

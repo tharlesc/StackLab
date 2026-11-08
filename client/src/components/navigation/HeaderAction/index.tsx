@@ -34,7 +34,7 @@ export const HeaderAction = ({
       disabled={disabled}
     >
       {icon}
-      {hasNotification && <NotificationDot />}
+      {hasNotification && badgeCount === 0 && <NotificationDot />}
       {badgeCount > 0 && (
         <Badge accessibilityLabel={badgeLabel}>
           <BadgeText>{badgeCount > 99 ? '99+' : badgeCount}</BadgeText>

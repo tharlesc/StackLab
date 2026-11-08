@@ -20,6 +20,7 @@ interface AdminContextData {
   loading: boolean;
   refreshAdminData: () => Promise<void>;
   addWork: (data: Omit<Work, 'id' | 'active'>) => Promise<void>;
+  updateWork: (workId: string, data: Partial<Omit<Work, 'id'>>) => Promise<void>;
   toggleWorkActive: (workId: string) => Promise<void>;
   addUser: (data: { name: string; email: string; role: string; profile: UserProfile }) => Promise<void>;
   toggleUserActive: (userId: string) => Promise<void>;
@@ -95,6 +96,18 @@ export const AdminProvider = ({
         }
       }
       setWorks((prev) => [...prev, { ...data, id: `w${Date.now()}`, active: true }]);
+    },
+    [],
+  );
+
+  const updateWork = useCallback(
+    async (workId: string, data: Partial<Omit<Work, 'id'>>) => {
+      if (isSupabaseConfigured) {
+        await supabaseDataService.updateWorkInSupabase(workId, data);
+      }
+      setWorks((prev) =>
+        prev.map((w) => (w.id === workId ? { ...w, ...data } : w)),
+      );
     },
     [],
   );
@@ -180,6 +193,7 @@ export const AdminProvider = ({
       loading,
       refreshAdminData,
       addWork,
+      updateWork,
       toggleWorkActive,
       addUser,
       toggleUserActive,
@@ -191,6 +205,7 @@ export const AdminProvider = ({
       loading,
       refreshAdminData,
       addWork,
+      updateWork,
       toggleWorkActive,
       addUser,
       toggleUserActive,

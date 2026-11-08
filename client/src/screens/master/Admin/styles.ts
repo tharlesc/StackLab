@@ -12,11 +12,22 @@ export const ListHeaderWrapper = styled.View`
   margin-bottom: ${({ theme }) => theme.spacing.mdl}px;
 `;
 
-export const AdminCard = styled(Card)`
+export const AdminCard = styled(TouchableOpacity).attrs({
+  activeOpacity: 0.85,
+  accessibilityRole: 'button',
+})`
+  background-color: ${({ theme }) => theme.colors.surface};
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
   padding: ${({ theme }) => theme.spacing.md}px;
   margin-bottom: ${({ theme }) => theme.spacing.md}px;
   border-width: 1px;
   border-color: ${({ theme }) => theme.colors.border};
+  shadow-color: ${({ theme }) => theme.shadows.card.shadowColor};
+  shadow-offset: ${({ theme }) =>
+    `${theme.shadows.card.shadowOffset.width}px ${theme.shadows.card.shadowOffset.height}px`};
+  shadow-opacity: ${({ theme }) => theme.shadows.card.shadowOpacity};
+  shadow-radius: ${({ theme }) => theme.shadows.card.shadowRadius}px;
+  elevation: ${({ theme }) => theme.shadows.card.elevation};
 `;
 
 export const CardHeader = styled.View`

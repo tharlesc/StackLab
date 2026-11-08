@@ -4,6 +4,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 /** ISO → "dd/mm/aaaa" */
 export const formatDate = (iso: string | Date): string => {
+  if (typeof iso === 'string') {
+    const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const [, y, m, d] = match;
+      return `${d}/${m}/${y}`;
+    }
+  }
   const d = typeof iso === 'string' ? new Date(iso) : iso;
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 };

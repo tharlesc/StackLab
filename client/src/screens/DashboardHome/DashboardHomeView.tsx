@@ -10,7 +10,7 @@ import {
   Building2,
 } from 'lucide-react-native';
 
-import { useDashboardHome } from '@/hooks';
+import { useDashboardHome, useNotifications, useSyncQueue } from '@/hooks';
 import {
   Section,
   SectionHeader,
@@ -49,6 +49,8 @@ import { AdminView } from '@/screens/master/Admin/AdminView';
 export const DashboardHomeView = () => {
   const theme = useTheme();
   const [isWizardActive, setIsWizardActive] = useState(false);
+  const { unreadCount } = useNotifications();
+  const { queue } = useSyncQueue();
   const {
     user,
     isMaster,
@@ -73,6 +75,7 @@ export const DashboardHomeView = () => {
     navigateToProfile,
     navigateToInbox,
     navigateToReview,
+    navigateToWorkFeed,
   } = useDashboardHome();
 
   const renderContent = () => {
@@ -105,8 +108,8 @@ export const DashboardHomeView = () => {
                       />
                     }
                     onPress={navigateToNotifications}
-                    hasNotification={isMaster ? pendingCount > 0 : returnedCount > 0}
-                    badgeCount={isMaster ? pendingCount : returnedCount}
+                    hasNotification={unreadCount > 0}
+                    badgeCount={unreadCount}
                     accessibilityLabel={strings.accessibility.notificationsButton}
                   />
                   <AvatarButton
@@ -163,7 +166,7 @@ export const DashboardHomeView = () => {
                                 accessibilityLabel={`RDO ${r.number}, obra ${r.workName}, status ${statusLabel}`}
                               >
                                 <SearchResultTitle>
-                                  RDO #{r.number} — {r.workName}
+                                  RDO #{r.number} · {r.workName}
                                 </SearchResultTitle>
                                 <SearchResultSubtitle>
                                   Por {r.authorName} em {r.date} • Status: {statusLabel}
@@ -210,20 +213,8 @@ export const DashboardHomeView = () => {
                       <ActiveWorkCard
                         key={work.id}
                         {...work}
-                        onPress={() => {
-                          if (isMaster) {
-                            navigateToInbox();
-                          } else {
-                            setActiveTab('Novo RDO');
-                          }
-                        }}
-                        onActionPress={() => {
-                          if (isMaster) {
-                            navigateToInbox();
-                          } else {
-                            setActiveTab('Novo RDO');
-                          }
-                        }}
+                        onPress={() => navigateToWorkFeed(work.id)}
+                        onActionPress={() => navigateToWorkFeed(work.id)}
                       />
                     ))}
 
@@ -355,7 +346,7 @@ export const DashboardHomeView = () => {
               label={strings.navigation.queue}
               active={activeTab === 'Fila'}
               onPress={() => setActiveTab('Fila')}
-              badgeCount={2}
+              badgeCount={queue.length > 0 ? queue.length : undefined}
               accessibilityLabel={strings.navigation.queue}
             />
           )}

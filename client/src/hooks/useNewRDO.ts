@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRDO } from '@/contexts/RDOContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { calcHeadcount, calcManHours } from '@/utils/rdo';
 import { validateDraftForSubmission } from '@/services/modules/rdoWorkflow';
 import type {
   ActiveWork,
+  User,
   RDO,
   WeatherEntry,
   LaborEntry,
@@ -29,17 +30,19 @@ export const STEPS = [
 
 export const useNewRDO = () => {
   const router = useRouter();
+  const rawParams = typeof useLocalSearchParams === 'function' ? useLocalSearchParams<{ workId?: string }>() : {};
+  const params = rawParams || {};
   const { user } = useAuth();
   const { createDraft, saveDraft, loadDraft, discardDraft, submitDraft, works: contextWorks } = useRDO();
 
-  const currentUser = useMemo(
+  const currentUser: User = useMemo(
     () =>
       user || {
         id: 'usr-default',
         name: 'Operário Responsável',
         email: '',
         role: 'Encarregado',
-        profile: 'common',
+        profile: 'common' as const,
         assignedWorkIds: [],
       },
     [user],
@@ -86,6 +89,17 @@ export const useNewRDO = () => {
   useEffect(() => {
     checkExistingDrafts();
   }, [checkExistingDrafts]);
+
+  // Pré-seleciona obra caso venha do feed de uma obra específica
+  useEffect(() => {
+    if (params.workId && works.length > 0 && !selectedWork && !activeDraft) {
+      const match = works.find((w) => w.id === params.workId);
+      if (match) {
+        setSelectedWork(match);
+        setIsStartDialogOpen(true);
+      }
+    }
+  }, [params.workId, works, selectedWork, activeDraft]);
 
   // Selecionar obra para novo RDO
   const handleSelectWork = useCallback((work: ActiveWork) => {
