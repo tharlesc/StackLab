@@ -39,3 +39,126 @@ export const formatRelative = (iso: string, now: Date = new Date()): string => {
 /** ISO de N horas atrás (útil para mocks e testes). */
 export const isoHoursAgo = (hours: number, now: Date = new Date()): string =>
   new Date(now.getTime() - hours * 36e5).toISOString();
+
+/**
+ * Converte strings em formato brasileiro (DD/MM/YYYY), ISO (YYYY-MM-DD ou completo) ou Date em um objeto Date seguro.
+ */
+export const parseFlexibleDate = (input?: string | Date | null): Date | null => {
+  if (!input) return null;
+  if (input instanceof Date) return isNaN(input.getTime()) ? null : input;
+
+  const str = String(input).trim();
+  if (!str) return null;
+
+  // Formato brasileiro: DD/MM/YYYY ou DD/MM/YYYY HH:mm...
+  const brMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (brMatch) {
+    const [, d, m, y] = brMatch;
+    const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
+    const hour = timeMatch ? Number(timeMatch[1]) : 12;
+    const min = timeMatch ? Number(timeMatch[2]) : 0;
+    return new Date(Number(y), Number(m) - 1, Number(d), hour, min, 0);
+  }
+
+  // Formato ISO simples: YYYY-MM-DD
+  const isoDateOnlyMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoDateOnlyMatch) {
+    const [, y, m, d] = isoDateOnlyMatch;
+    return new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+  }
+
+  // Formato ISO completo ou padrão Date
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/**
+ * Verifica se uma data recai dentro do período especificado pelo filtro do dashboard:
+ * 'Hoje', '7 Dias', '15 Dias', '1 Mês' (insensível a maiúsculas/minúsculas).
+ */
+export const isWithinTimeFilter = (
+  dateInput: string | Date | null | undefined,
+  filter: string,
+  referenceDate: Date = new Date(),
+): boolean => {
+  const d = parseFlexibleDate(dateInput);
+  if (!d) return false;
+
+  const normalized = filter.trim().toLowerCase();
+
+  // Início e fim do dia atual de referência
+  const startOfToday = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const endOfToday = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+
+  if (normalized === 'hoje') {
+    return d >= startOfToday && d <= endOfToday;
+  }
+
+  if (normalized.includes('7')) {
+    const start = new Date(
+      referenceDate.getFullYear(),
+      referenceDate.getMonth(),
+      referenceDate.getDate() - 7,
+      0,
+      0,
+      0,
+      0,
+    );
+    return d >= start && d <= endOfToday;
+  }
+
+  if (normalized.includes('15')) {
+    const start = new Date(
+      referenceDate.getFullYear(),
+      referenceDate.getMonth(),
+      referenceDate.getDate() - 15,
+      0,
+      0,
+      0,
+      0,
+    );
+    return d >= start && d <= endOfToday;
+  }
+
+  if (normalized.includes('mês') || normalized.includes('mes') || normalized.includes('30')) {
+    const start = new Date(
+      referenceDate.getFullYear(),
+      referenceDate.getMonth(),
+      referenceDate.getDate() - 30,
+      0,
+      0,
+      0,
+      0,
+    );
+    return d >= start && d <= endOfToday;
+  }
+
+  return true;
+};
+
+/**
+ * Avalia se um RDO (via submittedAt ou date) atende ao filtro de período selecionado.
+ */
+export const isRdoInTimeFilter = (
+  rdo: { date?: string; submittedAt?: string },
+  filter: string,
+  referenceDate?: Date,
+): boolean => {
+  return isWithinTimeFilter(rdo.submittedAt || rdo.date, filter, referenceDate);
+};

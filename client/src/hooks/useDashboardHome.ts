@@ -5,10 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
 import { strings } from '@/constants/strings';
 import { isOverdue, rdoMatchesQuery } from '@/utils/rdo';
+import { isRdoInTimeFilter } from '@/utils/date';
 import { getTotalPages, paginateItems } from '@/utils/pagination';
 import type { ChartData, IndicatorItem, ActiveWork, RDO } from '@/types';
 
 export const WORKS_PER_PAGE = 3;
+
+export const TIME_FILTERS = ['Hoje', '7 Dias', '15 Dias', '1 Mês'] as const;
+export type TimeFilter = (typeof TIME_FILTERS)[number] | '7 dias' | '15 dias' | '1 mês';
 
 export type DashboardTab = 'Obras' | 'Novo RDO' | 'Inbox' | 'Cadastros' | 'Fila' | 'Ajustes';
 
@@ -18,7 +22,7 @@ export const useDashboardHome = () => {
   const { user, isMaster } = useAuth();
   const { rdos, works } = useRDOs();
 
-  const [activeTimeFilter, setActiveTimeFilter] = useState('7 dias');
+  const [activeTimeFilter, setActiveTimeFilter] = useState<string>('7 Dias');
   const [activeTab, setActiveTab] = useState<DashboardTab>('Obras');
   const [globalSearch, setGlobalSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,11 +64,47 @@ export const useDashboardHome = () => {
     [userWorks, safeCurrentPage],
   );
 
-  // 2. Métricas do Master:
-  const pendingRdos = useMemo(() => rdos.filter((r) => r.status === 'submetido'), [rdos]);
-  const overdueCount = useMemo(() => pendingRdos.filter((r) => isOverdue(r)).length, [pendingRdos]);
-  const approvedCount = useMemo(() => rdos.filter((r) => r.status === 'aprovado').length, [rdos]);
-  const returnedCount = useMemo(() => rdos.filter((r) => r.status === 'devolvido').length, [rdos]);
+  // 2. Métricas do Dashboard filtradas pelo período ativo ('Hoje', '7 Dias', '15 Dias', '1 Mês')
+  const scopedPeriodRdos = useMemo(() => {
+    const baseList = isMaster
+      ? rdos
+      : rdos.filter((r) => user?.assignedWorkIds?.includes(r.workId) || r.authorId === user?.id);
+    return baseList.filter((r) => isRdoInTimeFilter(r, activeTimeFilter));
+  }, [rdos, isMaster, user, activeTimeFilter]);
+
+  const pendingRdos = useMemo(
+    () => scopedPeriodRdos.filter((r) => r.status === 'submetido'),
+    [scopedPeriodRdos],
+  );
+  const overdueCount = useMemo(
+    () => pendingRdos.filter((r) => isOverdue(r)).length,
+    [pendingRdos],
+  );
+  const approvedCount = useMemo(
+    () => scopedPeriodRdos.filter((r) => r.status === 'aprovado').length,
+    [scopedPeriodRdos],
+  );
+  const returnedCount = useMemo(
+    () => scopedPeriodRdos.filter((r) => r.status === 'devolvido').length,
+    [scopedPeriodRdos],
+  );
+
+  const timeFilterSubtitle = useMemo(() => {
+    const norm = (activeTimeFilter || '').trim().toLowerCase();
+    if (norm === 'hoje') {
+      return isMaster ? 'Consolidado de Hoje' : 'Meus RDOs de Hoje';
+    }
+    if (norm.includes('7')) {
+      return isMaster ? 'Consolidado dos últimos 7 dias' : strings.dashboard.last7Days;
+    }
+    if (norm.includes('15')) {
+      return isMaster ? 'Consolidado dos últimos 15 dias' : 'Últimos 15 dias';
+    }
+    if (norm.includes('mês') || norm.includes('mes') || norm.includes('30')) {
+      return isMaster ? 'Consolidado do último mês (30 dias)' : 'Último mês (30 dias)';
+    }
+    return `Período: ${activeTimeFilter}`;
+  }, [activeTimeFilter, isMaster]);
 
   // Donut chart e indicadores calculados com tokens semânticos de gráfico e glossário único
   const chartData: ChartData[] = useMemo(
@@ -147,6 +187,8 @@ export const useDashboardHome = () => {
     isMaster,
     activeTimeFilter,
     setActiveTimeFilter,
+    timeFilterSubtitle,
+    timeFilters: TIME_FILTERS,
     activeTab,
     setActiveTab,
     globalSearch,

@@ -326,6 +326,42 @@ export const MOCK_RDOS: RDO[] = [
     },
   }),
   buildRdo({ id: 'rdo-188', number: 188, workId: 'w1', authorId: '2', status: 'rascunho' }),
+  buildRdo({
+    id: 'rdo-181',
+    number: 181,
+    workId: 'w4',
+    authorId: '2',
+    status: 'aprovado',
+    submittedAt: isoHoursAgo(10 * 24),
+    locked: true,
+  }),
+  buildRdo({
+    id: 'rdo-180',
+    number: 180,
+    workId: 'w5',
+    authorId: '2',
+    status: 'aprovado',
+    submittedAt: isoHoursAgo(12 * 24),
+    locked: true,
+  }),
+  buildRdo({
+    id: 'rdo-179',
+    number: 179,
+    workId: 'w1',
+    authorId: '2',
+    status: 'aprovado',
+    submittedAt: isoHoursAgo(20 * 24),
+    locked: true,
+  }),
+  buildRdo({
+    id: 'rdo-178',
+    number: 178,
+    workId: 'w2',
+    authorId: '2',
+    status: 'devolvido',
+    submittedAt: isoHoursAgo(25 * 24),
+    returnReason: 'Falta anexo de comprovante de entrega de materiais.',
+  }),
 ];
 
 export const MOCK_NOTIFICATIONS: AppNotification[] = [

@@ -239,6 +239,37 @@ export const SignatureText = styled.Text`
   color: ${({ theme }) => theme.colors.status.success.text};
 `;
 
+export const StatusBannerBox = styled.View<{ $variant?: 'error' | 'warning' | 'info' }>`
+  background-color: ${({ theme, $variant = 'error' }) => theme.colors.status[$variant].bg};
+  border-width: 1px;
+  border-color: ${({ theme, $variant = 'error' }) => theme.colors.status[$variant].border};
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+`;
+
+export const StatusBannerTitleRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm}px;
+  margin-bottom: ${({ theme }) => theme.spacing.xsm}px;
+`;
+
+export const StatusBannerTitle = styled.Text<{ $variant?: 'error' | 'warning' | 'info' }>`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
+  color: ${({ theme, $variant = 'error' }) => theme.colors.status[$variant].text};
+  flex: 1;
+`;
+
+export const StatusBannerText = styled.Text<{ $variant?: 'error' | 'warning' | 'info' }>`
+  font-family: ${({ theme }) => theme.fonts.regular};
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
+  color: ${({ theme, $variant = 'error' }) => theme.colors.status[$variant].text};
+`;
+
 export const ExportOptionsGroup = styled.View`
   gap: ${({ theme }) => theme.spacing.sm}px;
   margin-top: ${({ theme }) => theme.spacing.xs}px;

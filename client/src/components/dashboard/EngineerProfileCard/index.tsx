@@ -27,7 +27,7 @@ export interface EngineerProfileCardProps {
   isOnline?: boolean;
   activeTimeFilter: string;
   onTimeFilterChange: (filter: string) => void;
-  timeFilters?: string[];
+  timeFilters?: readonly string[];
   lastSync?: string;
 }
 
@@ -39,7 +39,7 @@ export const EngineerProfileCard = ({
   isOnline = true,
   activeTimeFilter,
   onTimeFilterChange,
-  timeFilters = ['Hoje', '7 dias', '15 dias', '1 mês'],
+  timeFilters = ['Hoje', '7 Dias', '15 Dias', '1 Mês'],
   lastSync = 'Sincronizado',
 }: EngineerProfileCardProps) => {
   const theme = useTheme();

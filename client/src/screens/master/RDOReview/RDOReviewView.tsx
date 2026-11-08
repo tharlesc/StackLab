@@ -47,6 +47,10 @@ import {
   SignatureTitleRow,
   SignatureTitle,
   SignatureText,
+  StatusBannerBox,
+  StatusBannerTitleRow,
+  StatusBannerTitle,
+  StatusBannerText,
   ExportOptionsGroup,
 } from './styles';
 
@@ -142,6 +146,9 @@ export const RDOReviewView = () => {
   }
 
   const isApproved = rdo.status === 'aprovado';
+  const isSubmitted = rdo.status === 'submetido';
+  const isReturned = rdo.status === 'devolvido';
+  const isDraft = rdo.status === 'rascunho';
 
   return (
     <Screen>
@@ -189,6 +196,41 @@ export const RDOReviewView = () => {
       />
 
       <ScrollContent showsVerticalScrollIndicator={false}>
+        {/* Banner de RDO Devolvido para Correção */}
+        {isReturned && (
+          <StatusBannerBox $variant="error">
+            <StatusBannerTitleRow>
+              <Undo2
+                color={theme.colors.status.error.text}
+                size={theme.icon.size.md}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+              <StatusBannerTitle $variant="error">RDO Devolvido para Correção</StatusBannerTitle>
+            </StatusBannerTitleRow>
+            <StatusBannerText $variant="error">
+              Este relatório foi devolvido e aguarda correções da equipe em campo antes de ser submetido novamente.
+              {rdo.returnReason ? `\n\nMotivo da Devolução: "${rdo.returnReason}"` : ''}
+            </StatusBannerText>
+          </StatusBannerBox>
+        )}
+
+        {/* Banner de Rascunho */}
+        {isDraft && (
+          <StatusBannerBox $variant="info">
+            <StatusBannerTitleRow>
+              <FileText
+                color={theme.colors.status.info.text}
+                size={theme.icon.size.md}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+              <StatusBannerTitle $variant="info">Rascunho Não Submetido</StatusBannerTitle>
+            </StatusBannerTitleRow>
+            <StatusBannerText $variant="info">
+              Este relatório ainda está em edição pelo responsável e não foi submetido para homologação técnica.
+            </StatusBannerText>
+          </StatusBannerBox>
+        )}
+
         {/* Selo de Assinatura se Aprovado — com ícone em vez de emoji de texto (F4.8) */}
         {isApproved && rdo.signature && (
           <SignatureCertificateBox>
@@ -452,7 +494,7 @@ export const RDOReviewView = () => {
 
       {/* Barra de Ações Críticas do Master */}
       <ActionButtonBar>
-        {!isApproved ? (
+        {isSubmitted ? (
           <>
             <Button
               title={strings.rdoReview.approveAction}
@@ -500,7 +542,7 @@ export const RDOReviewView = () => {
               </View>
             </SecondaryActionsRow>
           </>
-        ) : (
+        ) : isApproved ? (
           <Button
             title={strings.rdoReview.rectifyAction}
             variant="secondary"
@@ -513,6 +555,20 @@ export const RDOReviewView = () => {
               />
             }
             onPress={handleOpenRectifyDialog}
+          />
+        ) : (
+          <Button
+            title="Comentar Geral"
+            variant="outline"
+            fullWidth
+            icon={
+              <MessageSquare
+                size={theme.icon.size.sm}
+                color={theme.colors.text.primary}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
+            onPress={() => handleOpenCommentDialog('ocorrencias')}
           />
         )}
       </ActionButtonBar>
