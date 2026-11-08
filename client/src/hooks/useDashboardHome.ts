@@ -14,12 +14,12 @@ export const WORKS_PER_PAGE = 3;
 export const TIME_FILTERS = ['Hoje', '7 Dias', '15 Dias', '1 Mês'] as const;
 export type TimeFilter = (typeof TIME_FILTERS)[number] | '7 dias' | '15 dias' | '1 mês';
 
-export type DashboardTab = 'Obras' | 'Novo RDO' | 'Inbox' | 'Cadastros' | 'Fila' | 'Ajustes';
+export type DashboardTab = 'Obras' | 'Novo RDO' | 'Inbox' | 'Cadastros' | 'Fila' | 'Ajustes' | 'Perfil';
 
 export const useDashboardHome = () => {
   const router = useRouter();
   const theme = useTheme();
-  const { user, isMaster } = useAuth();
+  const { user, isMaster, isClient } = useAuth();
   const { rdos, works } = useRDOs();
 
   const [activeTimeFilter, setActiveTimeFilter] = useState<string>('7 Dias');
@@ -185,6 +185,7 @@ export const useDashboardHome = () => {
   return {
     user,
     isMaster,
+    isClient,
     activeTimeFilter,
     setActiveTimeFilter,
     timeFilterSubtitle,

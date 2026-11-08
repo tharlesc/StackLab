@@ -15,6 +15,10 @@ export const useProfile = () => {
     router.push('/notifications');
   }, [router]);
 
+  const navigateToSettings = useCallback(() => {
+    router.push('/settings');
+  }, [router]);
+
   const handleEditPhoto = useCallback(() => {
     console.log('Editar foto de perfil selecionado');
   }, []);
@@ -36,6 +40,7 @@ export const useProfile = () => {
     user,
     goBack,
     navigateToNotifications,
+    navigateToSettings,
     handleEditPhoto,
     isSignOutDialogOpen,
     handleOpenSignOutDialog,

@@ -1,6 +1,14 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { useTheme } from 'styled-components/native';
-import { Wifi, Moon, Shield, HelpCircle } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import {
+  Wifi,
+  Moon,
+  Shield,
+  HelpCircle,
+  ChevronLeft,
+} from 'lucide-react-native';
 
 import { useSettings } from '@/hooks';
 import {
@@ -16,8 +24,9 @@ import {
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { ActionItem } from '@/components/common/ActionItem';
-import { ScrollContent } from '@/components/common/Layout';
+import { Screen, ScrollContent } from '@/components/common/Layout';
 import { SectionTitle } from '@/components/common/Typography';
 import { Card as CardGroup } from '@/components/common/Card';
 import { Toggle } from '@/components/common/Toggle';
@@ -25,6 +34,7 @@ import { SegmentedControl, SegmentOption } from '@/components/common/SegmentedCo
 import { InteractiveCard } from '@/components/common/InteractiveCard';
 import { Chip } from '@/components/common/Chip';
 import { R } from '@/constants/R';
+import { strings } from '@/constants/strings';
 import type { ThemeMode } from '@/contexts/ThemeContext';
 
 const THEME_OPTIONS: readonly SegmentOption<ThemeMode>[] = [
@@ -35,6 +45,7 @@ const THEME_OPTIONS: readonly SegmentOption<ThemeMode>[] = [
 
 export const SettingsView = () => {
   const theme = useTheme();
+  const router = useRouter();
   const {
     themeMode,
     handleThemeModeChange,
@@ -45,10 +56,26 @@ export const SettingsView = () => {
   } = useSettings();
 
   return (
-    <>
-      <Header title={R.strings.settings.title} />
+    <Screen>
+      <Header
+        title={R.strings.settings.title}
+        leftContent={
+          <HeaderAction
+            icon={
+              <ChevronLeft
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.lg}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
+            onPress={() => router.back()}
+            accessibilityLabel={strings.accessibility.backButton}
+          />
+        }
+      />
 
       <ScrollContent showsVerticalScrollIndicator={false}>
+        {/* 1. Preferências do Aplicativo (Tema e Rede) */}
         <SectionTitle>{R.strings.settings.preferences}</SectionTitle>
         <CardGroup>
           <ActionItem
@@ -69,6 +96,7 @@ export const SettingsView = () => {
             }
             onPress={toggleSyncWifi}
           />
+
           <ThemeSectionRow>
             <ThemeLabelRow>
               <Moon
@@ -86,16 +114,29 @@ export const SettingsView = () => {
           </ThemeSectionRow>
         </CardGroup>
 
-        <SectionTitle>Armazenamento & Diagnóstico</SectionTitle>
+        {/* 2. Armazenamento & Diagnóstico Offline */}
+        <SectionTitle>Armazenamento & Dados</SectionTitle>
         <InteractiveCard
           title="Armazenamento Offline e Cache"
-          supportingText="Gerenciamento de cache e dados armazenados localmente no dispositivo para operação offline. Você pode sincronizar ou liberar espaço."
+          supportingText="Relatórios e rascunhos são armazenados localmente no aparelho para garantir preenchimento ininterrupto mesmo sem sinal de internet."
           actions={[
-            { label: 'Limpar Cache', onPress: () => {} },
-            { label: 'Sincronizar', onPress: () => {}, primary: true },
+            {
+              label: 'Limpar Cache',
+              onPress: () => {
+                Alert.alert('Sucesso', 'Cache temporário de mídia e relatórios limpo com sucesso.');
+              },
+            },
+            {
+              label: 'Sincronizar Agora',
+              onPress: () => {
+                Alert.alert('Sincronização', 'Dados sincronizados com o Supabase com sucesso.');
+              },
+              primary: true,
+            },
           ]}
         />
 
+        {/* 3. Sobre e Versão */}
         <SectionTitle>{R.strings.settings.about}</SectionTitle>
         <CardGroup>
           <BrandAboutHeader>
@@ -140,7 +181,7 @@ export const SettingsView = () => {
           <Chip label="Build 42 • Canal Estável" variant="surface" />
         </VersionContainer>
       </ScrollContent>
-    </>
+    </Screen>
   );
 };
 

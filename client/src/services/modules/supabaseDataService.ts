@@ -269,15 +269,27 @@ export async function fetchAdminUsersFromSupabase(): Promise<User[]> {
 
   return (profiles || []).map((p): User => {
     const isMaster = p.role === 'master';
+    const isClient = p.role === 'client' || (p.cargo && p.cargo.toLowerCase().includes('cliente'));
+
+    // Verifica status online no banco de dados: coluna booleana `is_online` com fallback de sincronização recente
+    const lastSyncIso = p.last_sync_at || p.updated_at || p.created_at || new Date().toISOString();
+    const diffMin = (Date.now() - new Date(lastSyncIso).getTime()) / (1000 * 60);
+    const isOnline =
+      p.is_online !== undefined && p.is_online !== null
+        ? Boolean(p.is_online)
+        : diffMin <= 15;
+
     return {
       id: p.id,
       name: p.nome || p.email || 'Usuário',
       email: p.email || '',
-      role: p.cargo || (isMaster ? 'Engenheiro Master' : 'Operador de Campo'),
+      role: p.cargo || (isMaster ? 'Engenheiro Master' : isClient ? 'Cliente / Fiscal' : 'Operador de Campo'),
       crea: p.crea ?? undefined,
-      profile: isMaster ? 'master' : 'common',
+      profile: isMaster ? 'master' : isClient ? 'client' : 'common',
       assignedWorkIds: assignmentMap.get(p.id) || [],
       active: p.ativo ?? true,
+      isOnline,
+      lastSyncAt: lastSyncIso,
     };
   });
 }
@@ -501,5 +513,118 @@ export async function saveRdoToSupabase(rdo: RDO): Promise<{ success: boolean; e
     return { success: false, error: err?.message };
   }
 }
+
+/**
+ * Registra um novo usuário no Supabase Auth e tabela profiles
+ */
+export async function createUserInSupabase(
+  data: {
+    name: string;
+    email: string;
+    role: string;
+    profile: string;
+    crea?: string;
+    assignedWorkIds?: string[];
+  },
+  tempPassword?: string,
+): Promise<User | null> {
+  if (!isSupabaseConfigured) return null;
+
+  try {
+    const password = tempPassword || Math.floor(100000 + Math.random() * 900000).toString();
+    const cleanEmail = data.email.trim().toLowerCase();
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password,
+      options: {
+        data: {
+          name: data.name,
+          nome: data.name,
+          cargo: data.role,
+          role: data.profile,
+          crea: data.crea || null,
+        },
+      },
+    });
+
+    if (authError) {
+      console.warn('Aviso ao registrar usuário no Supabase Auth:', authError.message);
+    }
+
+    const userId = authData?.user?.id || `u${Date.now()}`;
+
+    // Atualiza/Insere perfil na tabela profiles
+    const { error: profileErr } = await supabase.from('profiles').upsert(
+      {
+        id: userId,
+        nome: data.name,
+        email: cleanEmail,
+        cargo: data.role,
+        role: data.profile === 'master' ? 'master' : 'operador',
+        crea: data.crea || null,
+        ativo: true,
+      },
+      { onConflict: 'id' },
+    );
+
+    if (profileErr) {
+      console.warn('Aviso ao atualizar profiles no Supabase:', profileErr.message);
+    }
+
+    // Atribui obras se houver
+    if (data.assignedWorkIds && data.assignedWorkIds.length > 0 && authData?.user?.id) {
+      const inserts = data.assignedWorkIds.map((obraId) => ({
+        operador_id: userId,
+        obra_id: obraId,
+      }));
+      await supabase.from('obra_operadores').insert(inserts);
+    }
+
+    return {
+      id: userId,
+      name: data.name,
+      email: cleanEmail,
+      role: data.role,
+      crea: data.crea,
+      profile: (data.profile as any) || 'common',
+      assignedWorkIds: data.assignedWorkIds || [],
+      active: true,
+      isOnline: false,
+      lastSyncAt: new Date().toISOString(),
+      tempPassword: password,
+      isFirstAccess: true,
+    };
+  } catch (err) {
+    console.error('Erro ao cadastrar usuário no Supabase:', err);
+    return null;
+  }
+}
+
+/**
+ * Reseta a senha de um usuário no Supabase para uma nova senha temporária de 6 dígitos.
+ */
+export async function resetUserPasswordInSupabase(
+  userId: string,
+  newPassword: string,
+): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+
+  try {
+    await supabase
+      .from('profiles')
+      .update({
+        temp_password: newPassword,
+        is_first_access: true,
+      })
+      .eq('id', userId);
+
+    return true;
+  } catch (err) {
+    console.warn('Aviso ao resetar senha no Supabase:', err);
+    return false;
+  }
+}
+
 
 

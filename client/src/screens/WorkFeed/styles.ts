@@ -125,7 +125,107 @@ export const ObraInfoColValue = styled.Text`
   color: ${({ theme }) => theme.colors.hero.text};
 `;
 
-/* Botão Inferior de Ação: Editar Informações da Obra */
+/* Cluster de Botões de Ação da Obra (design-taste: integrado e consistente) */
+export const ObraActionsGroup = styled.View`
+  margin-top: ${({ theme }) => theme.spacing.md}px;
+  gap: 10px;
+`;
+
+export const ObraPrimaryActionButton = styled(TouchableOpacity).attrs({
+  activeOpacity: 0.85,
+  accessibilityRole: 'button',
+})`
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  background-color: #F97316;
+  padding: 0 ${({ theme }) => theme.spacing.lg}px;
+  gap: 8px;
+`;
+
+export const ObraPrimaryActionText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 14px;
+  color: #FFFFFF;
+  letter-spacing: 0.2px;
+`;
+
+export const ObraSecondaryButtonsRow = styled.View`
+  flex-direction: row;
+  gap: 10px;
+`;
+
+export const ObraSecondaryActionButton = styled(TouchableOpacity).attrs({
+  activeOpacity: 0.8,
+  accessibilityRole: 'button',
+})<{ $accent?: 'orange' | 'blue' }>`
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  background-color: ${({ $accent }) =>
+    $accent === 'blue' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(255, 255, 255, 0.08)'};
+  border-width: 1px;
+  border-color: ${({ $accent }) =>
+    $accent === 'blue' ? 'rgba(96, 165, 250, 0.3)' : 'rgba(255, 255, 255, 0.16)'};
+  padding: 0 12px;
+  gap: 8px;
+`;
+
+export const ObraSecondaryActionText = styled.Text<{ $accent?: 'orange' | 'blue' }>`
+  font-family: ${({ theme }) => theme.fonts.semiBold};
+  font-size: 13px;
+  color: ${({ $accent }) => ($accent === 'blue' ? '#93C5FD' : '#FFFFFF')};
+`;
+
+export const MasterActionsStack = styled.View`
+  width: 100%;
+  gap: 8px;
+`;
+
+export const MasterActionButton = styled(TouchableOpacity).attrs({
+  activeOpacity: 0.8,
+  accessibilityRole: 'button',
+})<{ $variant?: 'default' | 'blue' | 'amber' }>`
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  background-color: ${({ $variant }) =>
+    $variant === 'blue'
+      ? 'rgba(84, 59, 246, 0.12)'
+      : $variant === 'amber'
+        ? 'rgba(245, 158, 11, 0.12)'
+        : '#F97316'};
+  border-width: 1px;
+  border-color: ${({ $variant }) =>
+    $variant === 'blue'
+      ? 'rgba(96, 165, 250, 0.32)'
+      : $variant === 'amber'
+        ? 'rgba(245, 158, 11, 0.35)'
+        : 'rgba(255, 255, 255, 0.16)'};
+  padding: 0 ${({ theme }) => theme.spacing.md}px;
+  gap: 8px;
+`;
+
+export const MasterActionText = styled.Text<{ $variant?: 'default' | 'blue' | 'amber' }>`
+  font-family: ${({ theme }) => theme.fonts.semiBold};
+  font-size: 13px;
+  color: ${({ $variant }) =>
+    $variant === 'blue'
+      ? '#93C5FD'
+      : $variant === 'amber'
+        ? '#FDE68A'
+        : '#FFFFFF'};
+  letter-spacing: 0.2px;
+`;
+
+/* Compatibilidade com os nomes antigos */
 export const EditObraButton = styled(TouchableOpacity).attrs({
   activeOpacity: 0.8,
   accessibilityRole: 'button',
@@ -133,12 +233,13 @@ export const EditObraButton = styled(TouchableOpacity).attrs({
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  padding: 12px ${({ theme }) => theme.spacing.md}px;
-  border-radius: 14px;
+  min-height: 44px;
+  padding: 10px ${({ theme }) => theme.spacing.md}px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
   background-color: rgba(255, 255, 255, 0.08);
   border-width: 1px;
   border-color: rgba(255, 255, 255, 0.15);
-  margin-top: 14px;
+  margin-top: 10px;
   gap: 8px;
 `;
 
@@ -146,6 +247,29 @@ export const EditObraButtonText = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
   font-size: 13px;
   color: #FFFFFF;
+`;
+
+export const CreateClientButton = styled(TouchableOpacity).attrs({
+  activeOpacity: 0.8,
+  accessibilityRole: 'button',
+})`
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px ${({ theme }) => theme.spacing.md}px;
+  border-radius: ${({ theme }) => theme.borderRadius.xl}px;
+  background-color: rgba(96, 165, 250, 0.12);
+  border-width: 1px;
+  border-color: rgba(96, 165, 250, 0.35);
+  margin-top: 8px;
+  gap: 8px;
+`;
+
+export const CreateClientButtonText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 13px;
+  color: #93C5FD;
 `;
 
 /* Compatibilidade retroativa */

@@ -30,7 +30,7 @@ export const STEPS = [
 
 export const useNewRDO = () => {
   const router = useRouter();
-  const rawParams = typeof useLocalSearchParams === 'function' ? useLocalSearchParams<{ workId?: string }>() : {};
+  const rawParams = typeof useLocalSearchParams === 'function' ? useLocalSearchParams<{ workId?: string; autoStart?: string }>() : {};
   const params = rawParams || {};
   const { user } = useAuth();
   const { createDraft, saveDraft, loadDraft, discardDraft, submitDraft, works: contextWorks } = useRDO();
@@ -54,6 +54,9 @@ export const useNewRDO = () => {
   const [selectedWork, setSelectedWork] = useState<ActiveWork | null>(null);
   const [activeDraft, setActiveDraft] = useState<RDO | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(0);
+  const [isInitializing, setIsInitializing] = useState<boolean>(
+    Boolean(params.workId || params.autoStart === 'true'),
+  );
 
   // Dialogs de controle
   const [isStartDialogOpen, setIsStartDialogOpen] = useState(false);
@@ -92,14 +95,45 @@ export const useNewRDO = () => {
 
   // Pré-seleciona obra caso venha do feed de uma obra específica
   useEffect(() => {
-    if (params.workId && works.length > 0 && !selectedWork && !activeDraft) {
+    let isMounted = true;
+    if (params.workId && works.length > 0 && !activeDraft) {
       const match = works.find((w) => w.id === params.workId);
       if (match) {
         setSelectedWork(match);
-        setIsStartDialogOpen(true);
+        (async () => {
+          try {
+            const persisted = await loadDraft(match.id);
+            if (isMounted) {
+              if (persisted && persisted.workId === match.id) {
+                setActiveDraft(persisted as RDO);
+              } else {
+                const newDraft = createDraft({
+                  workId: match.id,
+                  workName: match.name,
+                  author: currentUser,
+                });
+                setActiveDraft(newDraft);
+                await saveDraft(match.id, newDraft);
+              }
+              setCurrentStep(0);
+            }
+          } catch (err) {
+            console.warn('Erro ao iniciar rascunho para a obra:', err);
+          } finally {
+            if (isMounted) setIsInitializing(false);
+          }
+        })();
+      } else {
+        setIsInitializing(false);
       }
+    } else if (!params.workId) {
+      setIsInitializing(false);
     }
-  }, [params.workId, works, selectedWork, activeDraft]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [params.workId, works, activeDraft, loadDraft, createDraft, currentUser, saveDraft]);
 
   // Selecionar obra para novo RDO
   const handleSelectWork = useCallback((work: ActiveWork) => {
@@ -165,13 +199,26 @@ export const useNewRDO = () => {
 
   // Sair do assistente
   const handleExitWizard = useCallback(async () => {
+    const targetWorkId = activeDraft?.workId || params.workId;
     if (activeDraft && activeDraft.workId) {
       await saveDraft(activeDraft.workId, activeDraft);
     }
-    setActiveDraft(null);
-    setSelectedWork(null);
-    checkExistingDrafts();
-  }, [activeDraft, saveDraft, checkExistingDrafts]);
+    if (router.canGoBack()) {
+      router.back();
+    } else if (targetWorkId) {
+      router.replace({
+        pathname: '/work-feed',
+        params: { id: targetWorkId, workId: targetWorkId },
+      });
+    } else {
+      router.replace('/');
+    }
+    setTimeout(() => {
+      setActiveDraft(null);
+      setSelectedWork(null);
+      checkExistingDrafts();
+    }, 300);
+  }, [activeDraft, saveDraft, checkExistingDrafts, params.workId, router]);
 
   // ============================================================================
   // Validação por Etapas (Step-by-Step Validation)
@@ -542,16 +589,29 @@ export const useNewRDO = () => {
 
   const handleFinishSuccess = useCallback(() => {
     setIsSuccessDialogOpen(false);
-    setActiveDraft(null);
-    setSelectedWork(null);
-    router.push('/');
-  }, [router]);
+    const targetWorkId = activeDraft?.workId || params.workId;
+    if (router.canGoBack()) {
+      router.back();
+    } else if (targetWorkId) {
+      router.replace({
+        pathname: '/work-feed',
+        params: { id: targetWorkId, workId: targetWorkId },
+      });
+    } else {
+      router.replace('/');
+    }
+    setTimeout(() => {
+      setActiveDraft(null);
+      setSelectedWork(null);
+    }, 300);
+  }, [router, activeDraft, params.workId]);
 
   return {
     works,
     selectedWork,
     activeDraft,
     currentStep,
+    isInitializing,
     isStartDialogOpen,
     isDiscardDialogOpen,
     isValidationDialogOpen,

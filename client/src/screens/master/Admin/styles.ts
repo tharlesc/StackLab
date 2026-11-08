@@ -106,3 +106,108 @@ export const MatrixWorkName = styled.Text<{ $assigned?: boolean }>`
   color: ${({ theme, $assigned }) =>
     $assigned ? theme.colors.tintText : theme.colors.text.primary};
 `;
+
+export const OnlineBanner = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.md}px;
+  background-color: ${({ theme }) => theme.colors.surfaceVariant};
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  margin-top: ${({ theme }) => theme.spacing.md}px;
+`;
+
+export const OnlineBannerText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.semiBold};
+  font-size: 13px;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+export const UserSyncMetaRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+`;
+
+export const OnlineDot = styled.View<{ $online?: boolean }>`
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: ${({ $online }) => ($online ? '#10B981' : '#94A3B8')};
+`;
+
+export const OnlineLabel = styled.Text<{ $online?: boolean }>`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 11px;
+  color: ${({ $online }) => ($online ? '#10B981' : '#94A3B8')};
+`;
+
+export const SyncTimeText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.regular};
+  font-size: 11px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+`;
+
+export const TempPasswordCard = styled.View`
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  background-color: rgba(245, 158, 11, 0.12);
+  border-width: 1px;
+  border-color: rgba(245, 158, 11, 0.35);
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+export const TempPasswordTitle = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.regular};
+  font-size: 11px;
+  color: #D97706;
+`;
+
+export const TempPasswordCode = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  color: #B45309;
+`;
+
+export const CreaSectionBox = styled.View`
+  margin-top: 6px;
+  margin-bottom: 6px;
+  gap: 6px;
+`;
+
+export const CreaFieldRow = styled.View`
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+`;
+
+export const StateSelectorScroll = styled.ScrollView.attrs({
+  horizontal: true,
+  showsHorizontalScrollIndicator: false,
+})`
+  margin-top: 4px;
+  margin-bottom: 6px;
+`;
+
+export const StateChipButton = styled(TouchableOpacity)<{ $selected?: boolean }>`
+  padding: 6px 12px;
+  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
+  background-color: ${({ theme, $selected }) =>
+    $selected ? theme.colors.primary : theme.colors.surfaceVariant};
+  border-width: 1px;
+  border-color: ${({ theme, $selected }) =>
+    $selected ? theme.colors.primary : theme.colors.border};
+  margin-right: 6px;
+`;
+
+export const StateChipText = styled.Text<{ $selected?: boolean }>`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 12px;
+  color: ${({ theme, $selected }) =>
+    $selected ? theme.colors.text.inverse : theme.colors.text.primary};
+`;

@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
   Inbox as InboxIcon,
   Building2,
+  UserRound,
 } from 'lucide-react-native';
 
 import { useDashboardHome, useNotifications, useSyncQueue } from '@/hooks';
@@ -45,6 +46,9 @@ import { SyncQueueView } from '@/screens/SyncQueue/SyncQueueView';
 import { SettingsView } from '@/screens/Settings/SettingsView';
 import { InboxView } from '@/screens/master/Inbox/InboxView';
 import { AdminView } from '@/screens/master/Admin/AdminView';
+import { ProfileView } from '@/screens/Profile/ProfileView';
+import { ClientDashboardView } from '@/screens/ClientDashboard';
+import { FirstAccessModal } from '@/components/common/FirstAccessModal';
 
 export const DashboardHomeView = () => {
   const theme = useTheme();
@@ -54,6 +58,7 @@ export const DashboardHomeView = () => {
   const {
     user,
     isMaster,
+    isClient,
     activeTimeFilter,
     setActiveTimeFilter,
     timeFilterSubtitle,
@@ -80,6 +85,16 @@ export const DashboardHomeView = () => {
     navigateToWorkFeed,
   } = useDashboardHome();
 
+  // Caso o usuário seja perfil Cliente: renderiza o Dashboard exclusivo do Cliente
+  if (isClient) {
+    return (
+      <>
+        <ClientDashboardView />
+        {user?.isFirstAccess && <FirstAccessModal visible />}
+      </>
+    );
+  }
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Novo RDO':
@@ -90,6 +105,8 @@ export const DashboardHomeView = () => {
         return <AdminView isTab />;
       case 'Fila':
         return <SyncQueueView />;
+      case 'Perfil':
+        return <ProfileView isTab />;
       case 'Ajustes':
         return <SettingsView />;
       case 'Obras':
@@ -100,29 +117,19 @@ export const DashboardHomeView = () => {
               title="RDO Mobile"
               subtitle={isMaster ? 'Painel Executivo • Gestão Global' : 'Operação de Campo'}
               rightContent={
-                <>
-                  <HeaderAction
-                    icon={
-                      <Bell
-                        color={theme.colors.text.primary}
-                        size={theme.icon.size.lg}
-                        strokeWidth={theme.icon.strokeWidth}
-                      />
-                    }
-                    onPress={navigateToNotifications}
-                    hasNotification={unreadCount > 0}
-                    badgeCount={unreadCount}
-                    accessibilityLabel={strings.accessibility.notificationsButton}
-                  />
-                  <AvatarButton
-                    onPress={navigateToProfile}
-                    hitSlop={theme.touchTarget.hitSlop}
-                    accessibilityRole="button"
-                    accessibilityLabel={strings.accessibility.profileButton}
-                  >
-                    <Avatar name={user?.name} size={36} />
-                  </AvatarButton>
-                </>
+                <HeaderAction
+                  icon={
+                    <Bell
+                      color={theme.colors.text.primary}
+                      size={theme.icon.size.lg}
+                      strokeWidth={theme.icon.strokeWidth}
+                    />
+                  }
+                  onPress={navigateToNotifications}
+                  hasNotification={unreadCount > 0}
+                  badgeCount={unreadCount}
+                  accessibilityLabel={strings.accessibility.notificationsButton}
+                />
               }
             />
 
@@ -356,26 +363,29 @@ export const DashboardHomeView = () => {
 
           <NavigationItem
             icon={
-              <SettingsIcon
+              <UserRound
                 color={theme.colors.text.secondary}
                 size={theme.icon.size.lg}
                 strokeWidth={1.75}
               />
             }
             activeIcon={
-              <SettingsIcon
+              <UserRound
                 color={theme.colors.text.inverse}
                 size={theme.icon.size.lg}
                 strokeWidth={2.5}
               />
             }
-            label={strings.navigation.settings}
-            active={activeTab === 'Ajustes'}
-            onPress={() => setActiveTab('Ajustes')}
-            accessibilityLabel={strings.navigation.settings}
+            label={strings.navigation.profile}
+            active={activeTab === 'Perfil'}
+            onPress={() => setActiveTab('Perfil')}
+            accessibilityLabel={strings.navigation.profile}
           />
         </BottomNavigation>
       )}
+
+      {/* Modal obrigatório no Primeiro Acesso */}
+      {user?.isFirstAccess && <FirstAccessModal visible />}
     </Screen>
   );
 };

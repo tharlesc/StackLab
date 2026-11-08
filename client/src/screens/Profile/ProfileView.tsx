@@ -1,6 +1,7 @@
 import React from 'react';
+import { View } from 'react-native';
 import { useTheme } from 'styled-components/native';
-import { ChevronLeft, UserRound, Bell, Shield, LogOut } from 'lucide-react-native';
+import { ChevronLeft, UserRound, Bell, Shield, LogOut, Settings } from 'lucide-react-native';
 
 import { useProfile } from '@/hooks';
 import {
@@ -22,12 +23,17 @@ import { Avatar } from '@/components/common/Avatar';
 import { InteractiveCard } from '@/components/common/InteractiveCard';
 import { strings } from '@/constants/strings';
 
-export const ProfileView = () => {
+export interface ProfileViewProps {
+  isTab?: boolean;
+}
+
+export const ProfileView = ({ isTab = false }: ProfileViewProps) => {
   const theme = useTheme();
   const {
     user,
     goBack,
     navigateToNotifications,
+    navigateToSettings,
     handleEditPhoto,
     isSignOutDialogOpen,
     handleOpenSignOutDialog,
@@ -37,22 +43,26 @@ export const ProfileView = () => {
 
   const isMasterUser = user?.profile === 'master';
 
+  const ContainerWrapper = isTab ? View : Screen;
+
   return (
-    <Screen>
+    <ContainerWrapper style={isTab ? { flex: 1 } : undefined}>
       <Header
         title={strings.profile.title}
         leftContent={
-          <HeaderAction
-            icon={
-              <ChevronLeft
-                color={theme.colors.text.secondary}
-                size={theme.icon.size.lg}
-                strokeWidth={theme.icon.strokeWidth}
-              />
-            }
-            onPress={goBack}
-            accessibilityLabel={strings.accessibility.backButton}
-          />
+          isTab ? undefined : (
+            <HeaderAction
+              icon={
+                <ChevronLeft
+                  color={theme.colors.text.secondary}
+                  size={theme.icon.size.lg}
+                  strokeWidth={theme.icon.strokeWidth}
+                />
+              }
+              onPress={goBack}
+              accessibilityLabel={strings.accessibility.backButton}
+            />
+          )
         }
       />
 
@@ -64,8 +74,14 @@ export const ProfileView = () => {
 
           <ChipsRow>
             <Chip
-              label={isMasterUser ? 'MASTER (GESTOR)' : 'OPERACIONAL'}
-              variant={isMasterUser ? 'accent' : 'dark'}
+              label={
+                isMasterUser
+                  ? 'MASTER (GESTOR)'
+                  : user?.profile === 'client'
+                    ? 'CLIENTE'
+                    : 'OPERACIONAL'
+              }
+              variant={isMasterUser ? 'accent' : user?.profile === 'client' ? 'surface' : 'dark'}
             />
             <Chip label={user?.crea || user?.role || 'Ativo'} variant="surface" />
           </ChipsRow>
@@ -127,6 +143,17 @@ export const ProfileView = () => {
             onPress={() => {}}
           />
           <ActionItem
+            title={strings.navigation.settings}
+            leftIcon={
+              <Settings
+                color={theme.colors.text.secondary}
+                size={theme.icon.size.md}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
+            onPress={navigateToSettings}
+          />
+          <ActionItem
             title={strings.profile.logout}
             leftIcon={
               <LogOut
@@ -157,7 +184,7 @@ export const ProfileView = () => {
         }}
         onClose={handleCloseSignOutDialog}
       />
-    </Screen>
+    </ContainerWrapper>
   );
 };
 
