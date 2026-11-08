@@ -56,6 +56,8 @@ export const DashboardHomeView = () => {
     isMaster,
     activeTimeFilter,
     setActiveTimeFilter,
+    timeFilterSubtitle,
+    timeFilters,
     activeTab,
     setActiveTab,
     globalSearch,
@@ -133,6 +135,7 @@ export const DashboardHomeView = () => {
                 isOnline={true}
                 activeTimeFilter={activeTimeFilter}
                 onTimeFilterChange={setActiveTimeFilter}
+                timeFilters={timeFilters}
               />
 
               {/* Recurso Master: Busca Global em Todos os Relatórios da Organização */}
@@ -184,7 +187,7 @@ export const DashboardHomeView = () => {
               {/* 2º Dashboard Gerencial / Resumo Semanal */}
               <WeeklySummaryCard
                 title={isMaster ? 'Métricas Globais da Construtora' : strings.dashboard.weeklySummary}
-                subtitle={isMaster ? 'Todos os RDOs aprovados e submetidos' : strings.dashboard.last7Days}
+                subtitle={timeFilterSubtitle}
                 chartData={chartData}
                 chartTotal={chartData.reduce((acc, curr) => acc + curr.value, 0)}
                 indicators={indicators}

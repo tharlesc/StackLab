@@ -9,12 +9,10 @@ export const FeedHeaderContainer = styled.View`
 `;
 
 export const ObraOverviewCard = styled.View`
-  background-color: ${({ theme }) => theme.colors.surface};
+  background-color: ${({ theme }) => theme.colors.hero.background};
   border-radius: ${({ theme }) => theme.borderRadius.xl}px;
-  padding: ${({ theme }) => theme.spacing.md}px ${({ theme }) => theme.spacing.lg}px;
-  margin-bottom: ${({ theme }) => theme.spacing.md}px;
-  border-width: 1px;
-  border-color: ${({ theme }) => theme.colors.border};
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
 `;
 
 /* Top Row: Icone Edifício | Título + Status Ativa | Chevron */
@@ -27,9 +25,9 @@ export const ObraIconBox = styled.View`
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background-color: ${({ theme }) => theme.colors.surfaceVariant};
+  background-color: rgba(255, 255, 255, 0.08);
   border-width: 1px;
-  border-color: ${({ theme }) => theme.colors.border};
+  border-color: rgba(255, 255, 255, 0.15);
   align-items: center;
   justify-content: center;
 `;
@@ -37,7 +35,7 @@ export const ObraIconBox = styled.View`
 export const ObraTopDivider = styled.View`
   width: 1px;
   height: 38px;
-  background-color: ${({ theme }) => theme.colors.border};
+  background-color: ${({ theme }) => theme.colors.hero.divider};
   margin-left: 14px;
   margin-right: 14px;
 `;
@@ -51,7 +49,7 @@ export const ObraTitle = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
   font-size: 18px;
   line-height: 22px;
-  color: ${({ theme }) => theme.colors.text.primary};
+  color: ${({ theme }) => theme.colors.hero.text};
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
@@ -84,7 +82,7 @@ export const ObraChevronBox = styled.View`
 
 export const ObraCardDivider = styled.View`
   height: 1px;
-  background-color: ${({ theme }) => theme.colors.border};
+  background-color: ${({ theme }) => theme.colors.hero.divider};
   margin-top: 14px;
   margin-bottom: 14px;
 `;
@@ -105,7 +103,7 @@ export const ObraInfoCol = styled.View`
 export const ObraInfoColDivider = styled.View`
   width: 1px;
   height: 32px;
-  background-color: ${({ theme }) => theme.colors.border};
+  background-color: ${({ theme }) => theme.colors.hero.divider};
   margin-left: 12px;
   margin-right: 12px;
 `;
@@ -117,14 +115,14 @@ export const ObraInfoColTexts = styled.View`
 export const ObraInfoColLabel = styled.Text`
   font-family: ${({ theme }) => theme.fonts.regular};
   font-size: 11px;
-  color: ${({ theme }) => theme.colors.text.secondary};
+  color: ${({ theme }) => theme.colors.hero.textSecondary};
   margin-bottom: 1px;
 `;
 
 export const ObraInfoColValue = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
   font-size: 13px;
-  color: ${({ theme }) => theme.colors.text.primary};
+  color: ${({ theme }) => theme.colors.hero.text};
 `;
 
 /* Botão Inferior de Ação: Editar Informações da Obra */
@@ -137,7 +135,9 @@ export const EditObraButton = styled(TouchableOpacity).attrs({
   justify-content: center;
   padding: 12px ${({ theme }) => theme.spacing.md}px;
   border-radius: 14px;
-  background-color: ${({ theme }) => theme.colors.surfaceVariant};
+  background-color: rgba(255, 255, 255, 0.08);
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.15);
   margin-top: 14px;
   gap: 8px;
 `;
@@ -145,7 +145,7 @@ export const EditObraButton = styled(TouchableOpacity).attrs({
 export const EditObraButtonText = styled.Text`
   font-family: ${({ theme }) => theme.fonts.bold};
   font-size: 13px;
-  color: ${({ theme }) => theme.colors.text.primary};
+  color: #FFFFFF;
 `;
 
 /* Compatibilidade retroativa */
@@ -198,11 +198,19 @@ export const ObraDashboardCard = styled.View`
   border-color: ${({ theme }) => theme.colors.border};
 `;
 
-export const DashboardHeaderRow = styled.View`
+export const DashboardHeaderRow = styled(TouchableOpacity).attrs({
+  activeOpacity: 0.7,
+})`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+`;
+
+export const DashboardHeaderLeft = styled.View`
   flex-direction: row;
   align-items: center;
   gap: 8px;
-  margin-bottom: 2px;
 `;
 
 export const DashboardTitle = styled.Text`
@@ -311,28 +319,30 @@ export const StatusBreakdownRow = styled.View`
   flex-direction: row;
   justify-content: space-around;
   align-items: center;
-  padding-top: ${({ theme }) => theme.spacing.sm}px;
+  padding-top: ${({ theme }) => theme.spacing.md}px;
   border-top-width: 1px;
   border-top-color: ${({ theme }) => theme.colors.border};
 `;
 
 export const StatusBreakdownItem = styled.View`
   align-items: center;
+  flex: 1;
 `;
 
 export const StatusBreakdownCount = styled.Text<{ $color?: string }>`
   font-family: ${({ theme }) => theme.fonts.bold};
-  font-size: 15px;
-  line-height: 18px;
+  font-size: 18px;
+  line-height: 22px;
   color: ${({ $color, theme }) => $color || theme.colors.text.primary};
 `;
 
 export const StatusBreakdownLabel = styled.Text`
-  font-family: ${({ theme }) => theme.fonts.regular};
+  font-family: ${({ theme }) => theme.fonts.bold};
   font-size: 10px;
   color: ${({ theme }) => theme.colors.text.secondary};
   text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 3px;
+  letter-spacing: 0.5px;
 `;
 
 export const KpiRow = styled.View`

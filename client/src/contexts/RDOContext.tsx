@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ActiveWork, AuditLogEntry, RDO, RDOSectionKey, User } from '@/types';
 import * as workflow from '@/services/modules/rdoWorkflow';
 import { supabase, isSupabaseConfigured, supabaseDataService } from '@/services';
+import { MOCK_ACTIVE_WORKS, MOCK_RDOS } from '@/mocks';
 
 /**
  * 📄 RDOContext — estado dos RDOs e Obras (integrado ao Supabase com fallback local).
@@ -51,8 +52,8 @@ export interface RDOProviderProps {
 
 export const RDOProvider = ({
   children,
-  initialWorks = [],
-  initialRdos = [],
+  initialWorks = MOCK_ACTIVE_WORKS,
+  initialRdos = MOCK_RDOS,
 }: RDOProviderProps) => {
   const [rdos, setRdos] = useState<RDO[]>(initialRdos);
   const [works, setWorks] = useState<ActiveWork[]>(initialWorks);
@@ -70,8 +71,12 @@ export const RDOProvider = ({
         supabaseDataService.fetchRdosFromSupabase(),
       ]);
 
-      setWorks(fetchedWorks || []);
-      setRdos(fetchedRdos || []);
+      if (fetchedWorks && fetchedWorks.length > 0) {
+        setWorks(fetchedWorks);
+      }
+      if (fetchedRdos && fetchedRdos.length > 0) {
+        setRdos(fetchedRdos);
+      }
     } catch (err) {
       console.warn('Erro ao sincronizar dados com o Supabase:', err);
     } finally {

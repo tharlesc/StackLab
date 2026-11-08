@@ -7,6 +7,8 @@ import {
   Calendar,
   User as UserIcon,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Plus,
   Building2,
   X,
@@ -59,6 +61,7 @@ import {
   ActionButtonRow,
   ObraDashboardCard,
   DashboardHeaderRow,
+  DashboardHeaderLeft,
   DashboardTitle,
   DashboardSubtitle,
   ApprovalProgressContainer,
@@ -117,6 +120,7 @@ export const WorkFeedView = () => {
   const { works: adminWorks, updateWork } = useAdmin();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isDashboardExpanded, setIsDashboardExpanded] = useState(false);
 
   // Estados para edição das informações da obra (Master)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -157,13 +161,13 @@ export const WorkFeedView = () => {
   }, [params.id, adminWorks, rdoWorks]);
 
   // RDOs específicos desta obra:
-  // Regra: O Master NÃO visualiza rascunhos de operadores
+  // Regra: O Master NUNCA visualiza rascunhos de operadores (apenas submetidos, aprovados ou devolvidos)
   const obraRdos = useMemo(() => {
     let list = rdos.filter(
       (r) => r.workId === currentWork.id || r.workName === currentWork.name,
     );
     if (isMaster) {
-      list = list.filter((r) => r.status !== 'rascunho');
+      list = list.filter((r) => r.status && r.status !== 'rascunho');
     }
     return list;
   }, [rdos, currentWork, isMaster]);
@@ -231,13 +235,20 @@ export const WorkFeedView = () => {
   }, [router, currentWork.id]);
 
   const handleOpenRdoDetail = useCallback(
-    (rdoId: string) => {
+    (item: RDO) => {
+      if (item.status === 'rascunho' && !isMaster) {
+        router.push({
+          pathname: '/new-rdo',
+          params: { workId: item.workId },
+        });
+        return;
+      }
       router.push({
         pathname: '/rdo-review',
-        params: { id: rdoId },
+        params: { id: item.id },
       });
     },
-    [router],
+    [router, isMaster],
   );
 
   // Abertura do diálogo de edição
@@ -318,12 +329,12 @@ export const WorkFeedView = () => {
       />
 
       <ScrollContent showsVerticalScrollIndicator={false}>
-        {/* 1. Visão Geral da Obra com Distribuição Geral Conforme Referência do Usuário */}
+        {/* 1. Visão Geral da Obra com Fundo e Dimensões Iguais ao Card Hero da Tela Inicial */}
         <ObraOverviewCard>
           {/* Top Row: Ícone do Edifício | Divisor Vertical | Nome da Obra + Status | Chevron */}
           <ObraTopRow>
             <ObraIconBox>
-              <Building2 size={22} color={theme.colors.text.secondary} />
+              <Building2 size={22} color="#FB923C" />
             </ObraIconBox>
 
             <ObraTopDivider />
@@ -345,7 +356,7 @@ export const WorkFeedView = () => {
               accessibilityRole="button"
               accessibilityLabel="Opções da obra"
             >
-              <ChevronRight size={20} color={theme.colors.text.secondary} />
+              <ChevronRight size={20} color={theme.colors.hero.textSecondary} />
             </ObraChevronBox>
           </ObraTopRow>
 
@@ -354,7 +365,7 @@ export const WorkFeedView = () => {
           {/* Middle Row: Duas Colunas com Pin Azul (Cliente | Localização) */}
           <ObraInfoColumnsRow>
             <ObraInfoCol>
-              <MapPin size={18} color="#3B82F6" />
+              <MapPin size={18} color="#60A5FA" />
               <ObraInfoColTexts>
                 <ObraInfoColLabel>Cliente</ObraInfoColLabel>
                 <ObraInfoColValue numberOfLines={1}>
@@ -366,7 +377,7 @@ export const WorkFeedView = () => {
             <ObraInfoColDivider />
 
             <ObraInfoCol>
-              <MapPin size={18} color="#3B82F6" />
+              <MapPin size={18} color="#60A5FA" />
               <ObraInfoColTexts>
                 <ObraInfoColLabel>Localização</ObraInfoColLabel>
                 <ObraInfoColValue numberOfLines={1}>
@@ -383,7 +394,7 @@ export const WorkFeedView = () => {
               accessibilityRole="button"
               accessibilityLabel="Editar informações da obra"
             >
-              <Edit3 size={16} color="#F59E0B" />
+              <Edit3 size={16} color="#FB923C" />
               <EditObraButtonText>Editar Informações da Obra</EditObraButtonText>
             </EditObraButton>
           ) : (
@@ -401,97 +412,117 @@ export const WorkFeedView = () => {
           )}
         </ObraOverviewCard>
 
-        {/* 2. Dashboard Exclusivo Dentro do Feed da Obra */}
+        {/* 2. Dashboard da Obra — minimizado por padrão */}
         <ObraDashboardCard>
-          <DashboardHeaderRow>
-            <BarChart3 size={18} color={theme.colors.tint} />
-            <DashboardTitle>Dashboard da Obra</DashboardTitle>
+          <DashboardHeaderRow
+            onPress={() => setIsDashboardExpanded((prev) => !prev)}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isDashboardExpanded
+                ? 'Minimizar dashboard da obra'
+                : 'Expandir dashboard da obra completo'
+            }
+          >
+            <DashboardHeaderLeft>
+              <BarChart3 size={18} color="#F97316" />
+              <DashboardTitle>Dashboard da Obra</DashboardTitle>
+            </DashboardHeaderLeft>
+            {isDashboardExpanded ? (
+              <ChevronUp size={20} color={theme.colors.text.secondary} />
+            ) : (
+              <ChevronDown size={20} color={theme.colors.text.secondary} />
+            )}
           </DashboardHeaderRow>
           <DashboardSubtitle>
             Métricas de campo e produtividade consolidadas
           </DashboardSubtitle>
 
-          {/* Barra de Homologação */}
-          <ApprovalProgressContainer>
-            <ApprovalHeaderRow>
-              <ApprovalRateTitle>Taxa de Homologação</ApprovalRateTitle>
-              <ApprovalRateBadge>
-                {approvalRate}% ({approvedCount}/{totalRdos} OK)
-              </ApprovalRateBadge>
-            </ApprovalHeaderRow>
-            <ProgressBarTrack>
-              <ProgressBarFill
-                $percent={approvalRate}
-                $color={approvalRate >= 70 ? '#10B981' : '#F59E0B'}
-              />
-            </ProgressBarTrack>
-          </ApprovalProgressContainer>
+          {/* Se expandido: exibe a Taxa de Homologação e os 4 cartões de métricas */}
+          {isDashboardExpanded && (
+            <>
+              {/* Barra de Homologação */}
+              <ApprovalProgressContainer>
+                <ApprovalHeaderRow>
+                  <ApprovalRateTitle>Taxa de Homologação</ApprovalRateTitle>
+                  <ApprovalRateBadge>
+                    {approvalRate}% ({approvedCount}/{totalRdos} OK)
+                  </ApprovalRateBadge>
+                </ApprovalHeaderRow>
+                <ProgressBarTrack>
+                  <ProgressBarFill
+                    $percent={approvalRate}
+                    $color={approvalRate >= 70 ? '#10B981' : '#F59E0B'}
+                  />
+                </ProgressBarTrack>
+              </ApprovalProgressContainer>
 
-          {/* Grid de 4 Indicadores Principais */}
-          <MetricGrid>
-            <MetricCard>
-              <MetricIconRow>
-                <Clock size={16} color={theme.colors.tint} />
-                <MetricCaption>Acumulado</MetricCaption>
-              </MetricIconRow>
-              <MetricValue>{totalManHours.toLocaleString('pt-BR')} Hh</MetricValue>
-              <MetricLabel>Homem-Hora Total</MetricLabel>
-            </MetricCard>
+              {/* Grid de 4 Indicadores Principais */}
+              <MetricGrid>
+                <MetricCard>
+                  <MetricIconRow>
+                    <Clock size={16} color={theme.colors.tint} />
+                    <MetricCaption>Acumulado</MetricCaption>
+                  </MetricIconRow>
+                  <MetricValue>{totalManHours.toLocaleString('pt-BR')} Hh</MetricValue>
+                  <MetricLabel>Homem-Hora Total</MetricLabel>
+                </MetricCard>
 
-            <MetricCard>
-              <MetricIconRow>
-                <Users size={16} color="#8B5CF6" />
-                <MetricCaption>Em Campo</MetricCaption>
-              </MetricIconRow>
-              <MetricValue>{totalWorkers.toLocaleString('pt-BR')}</MetricValue>
-              <MetricLabel>Efetivo Total</MetricLabel>
-            </MetricCard>
+                <MetricCard>
+                  <MetricIconRow>
+                    <Users size={16} color="#8B5CF6" />
+                    <MetricCaption>Em Campo</MetricCaption>
+                  </MetricIconRow>
+                  <MetricValue>{totalWorkers.toLocaleString('pt-BR')}</MetricValue>
+                  <MetricLabel>Efetivo Total</MetricLabel>
+                </MetricCard>
 
-            <MetricCard>
-              <MetricIconRow>
-                <CloudRain size={16} color="#F59E0B" />
-                <MetricCaption>Clima</MetricCaption>
-              </MetricIconRow>
-              <MetricValue>{rainStoppageHours}h</MetricValue>
-              <MetricLabel>Paralisação Chuva</MetricLabel>
-            </MetricCard>
+                <MetricCard>
+                  <MetricIconRow>
+                    <CloudRain size={16} color="#F59E0B" />
+                    <MetricCaption>Clima</MetricCaption>
+                  </MetricIconRow>
+                  <MetricValue>{rainStoppageHours}h</MetricValue>
+                  <MetricLabel>Paralisação Chuva</MetricLabel>
+                </MetricCard>
 
-            <MetricCard>
-              <MetricIconRow>
-                <CheckCircle2 size={16} color="#10B981" />
-                <MetricCaption>Frentes</MetricCaption>
-              </MetricIconRow>
-              <MetricValue>{totalActivities}</MetricValue>
-              <MetricLabel>Atividades Registradas</MetricLabel>
-            </MetricCard>
-          </MetricGrid>
+                <MetricCard>
+                  <MetricIconRow>
+                    <CheckCircle2 size={16} color="#10B981" />
+                    <MetricCaption>Frentes</MetricCaption>
+                  </MetricIconRow>
+                  <MetricValue>{totalActivities}</MetricValue>
+                  <MetricLabel>Atividades Registradas</MetricLabel>
+                </MetricCard>
+              </MetricGrid>
+            </>
+          )}
 
-          {/* Resumo por Status */}
+          {/* Resumo por Status — visível tanto minimizado quanto expandido */}
           <StatusBreakdownRow>
             <StatusBreakdownItem>
               <StatusBreakdownCount>{totalRdos}</StatusBreakdownCount>
-              <StatusBreakdownLabel>Total RDOs</StatusBreakdownLabel>
+              <StatusBreakdownLabel>TOTAL RDOS</StatusBreakdownLabel>
             </StatusBreakdownItem>
 
             <StatusBreakdownItem>
               <StatusBreakdownCount $color="#10B981">
                 {approvedCount}
               </StatusBreakdownCount>
-              <StatusBreakdownLabel>Aprovados</StatusBreakdownLabel>
+              <StatusBreakdownLabel>APROVADOS</StatusBreakdownLabel>
             </StatusBreakdownItem>
 
             <StatusBreakdownItem>
               <StatusBreakdownCount $color="#F59E0B">
                 {pendingCount}
               </StatusBreakdownCount>
-              <StatusBreakdownLabel>Em Análise</StatusBreakdownLabel>
+              <StatusBreakdownLabel>EM ANÁLISE</StatusBreakdownLabel>
             </StatusBreakdownItem>
 
             <StatusBreakdownItem>
               <StatusBreakdownCount $color="#EF4444">
                 {returnedCount}
               </StatusBreakdownCount>
-              <StatusBreakdownLabel>Devolvidos</StatusBreakdownLabel>
+              <StatusBreakdownLabel>DEVOLVIDOS</StatusBreakdownLabel>
             </StatusBreakdownItem>
           </StatusBreakdownRow>
         </ObraDashboardCard>
@@ -546,7 +577,7 @@ export const WorkFeedView = () => {
               <RdoFeedCard
                 key={item.id}
                 activeOpacity={0.75}
-                onPress={() => handleOpenRdoDetail(item.id)}
+                onPress={() => handleOpenRdoDetail(item)}
                 accessibilityRole="button"
                 accessibilityLabel={`Abrir RDO número ${item.number}, status ${statusLabel}`}
               >

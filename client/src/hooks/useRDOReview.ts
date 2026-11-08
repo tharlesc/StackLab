@@ -55,14 +55,27 @@ export const useRDOReview = () => {
 
   const handleConfirmReturn = useCallback(() => {
     if (!rdo || !user) return;
+    if (rdo.status !== 'submetido') {
+      Alert.alert(
+        'Ação Não Permitida',
+        `Apenas RDOs com status "Submetido" podem ser devolvidos. O status atual deste documento é "${rdo.status}".`,
+      );
+      setReturnDialogOpen(false);
+      return;
+    }
     if (returnReason.trim().length < 5) {
       Alert.alert('Atenção', 'Informe uma justificativa de devolução válida (mínimo 5 caracteres).');
       return;
     }
-    returnRdo(rdo.id, user, returnReason);
-    setReturnDialogOpen(false);
-    Alert.alert('RDO Devolvido', `O relatório #${rdo.number} foi devolvido para a equipe de campo para ajustes.`);
-    router.back();
+    try {
+      returnRdo(rdo.id, user, returnReason);
+      setReturnDialogOpen(false);
+      Alert.alert('RDO Devolvido', `O relatório #${rdo.number} foi devolvido para a equipe de campo para ajustes.`);
+      router.back();
+    } catch (err: any) {
+      Alert.alert('Erro ao Devolver RDO', err?.message || 'Falha ao devolver o RDO.');
+      setReturnDialogOpen(false);
+    }
   }, [rdo, user, returnReason, returnRdo, router]);
 
   const handleOpenApproveDialog = useCallback(() => {
@@ -73,16 +86,29 @@ export const useRDOReview = () => {
 
   const handleConfirmApprove = useCallback(() => {
     if (!rdo || !user) return;
+    if (rdo.status !== 'submetido') {
+      Alert.alert(
+        'Ação Não Permitida',
+        `Apenas RDOs com status "Submetido" podem ser aprovados. O status atual deste documento é "${rdo.status}".`,
+      );
+      setApproveDialogOpen(false);
+      return;
+    }
     if (!signPin || signPin.trim().length < 4) {
       setPinError('Informe um PIN de assinatura válido (mínimo 4 dígitos).');
       return;
     }
-    const updated = approveRdo(rdo.id, user);
-    setApproveDialogOpen(false);
-    Alert.alert(
-      'RDO Aprovado e Assinado',
-      `O relatório #${updated.number} foi assinado com sucesso!\n\nHash: ${updated.signature?.hash}\nData: ${updated.signature?.signedAt}`,
-    );
+    try {
+      const updated = approveRdo(rdo.id, user);
+      setApproveDialogOpen(false);
+      Alert.alert(
+        'RDO Aprovado e Assinado',
+        `O relatório #${updated.number} foi assinado com sucesso!\n\nHash: ${updated.signature?.hash}\nData: ${updated.signature?.signedAt}`,
+      );
+    } catch (err: any) {
+      Alert.alert('Erro ao Homologar RDO', err?.message || 'Falha ao aprovar o RDO.');
+      setApproveDialogOpen(false);
+    }
   }, [rdo, user, signPin, approveRdo]);
 
   const handleOpenCommentDialog = useCallback((section: RDOSectionKey) => {

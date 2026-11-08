@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import type { User, UserProfile, Work } from '@/types';
 import { isSupabaseConfigured, supabaseDataService } from '@/services';
+import { MOCK_WORKS, MOCK_USERS } from '@/mocks';
 
 /**
  * 🛠️ AdminContext — Cadastros (obras, usuários) e matriz de acessos (usuário ↔ obra).
@@ -37,8 +38,8 @@ const AdminContext = createContext<AdminContextData>({} as AdminContextData);
 
 export const AdminProvider = ({
   children,
-  initialWorks = [],
-  initialUsers = [],
+  initialWorks = MOCK_WORKS,
+  initialUsers = MOCK_USERS,
 }: AdminProviderProps) => {
   const [works, setWorks] = useState<Work[]>(initialWorks);
   const [users, setUsers] = useState<User[]>(initialUsers);
@@ -54,8 +55,12 @@ export const AdminProvider = ({
         supabaseDataService.fetchAdminUsersFromSupabase(),
       ]);
 
-      setWorks(fetchedWorks || []);
-      setUsers(fetchedUsers || []);
+      if (fetchedWorks && fetchedWorks.length > 0) {
+        setWorks(fetchedWorks);
+      }
+      if (fetchedUsers && fetchedUsers.length > 0) {
+        setUsers(fetchedUsers);
+      }
     } catch (err) {
       console.warn('Erro ao carregar dados administrativos do Supabase:', err);
     } finally {
@@ -73,8 +78,12 @@ export const AdminProvider = ({
           supabaseDataService.fetchAdminUsersFromSupabase(),
         ]);
         if (isMounted) {
-          setWorks(fetchedWorks || []);
-          setUsers(fetchedUsers || []);
+          if (fetchedWorks && fetchedWorks.length > 0) {
+            setWorks(fetchedWorks);
+          }
+          if (fetchedUsers && fetchedUsers.length > 0) {
+            setUsers(fetchedUsers);
+          }
         }
       } catch (err) {
         console.warn('Erro ao carregar dados administrativos do Supabase:', err);
