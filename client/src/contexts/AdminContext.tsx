@@ -172,6 +172,8 @@ export const AdminProvider = ({
         const remote = await supabaseDataService.createUserInSupabase(data, randomPassword);
         if (remote) {
           createdUser = remote;
+        } else {
+          throw new Error('Falha ao registrar usuário no Supabase.');
         }
       }
 

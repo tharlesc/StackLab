@@ -77,6 +77,10 @@ export async function fetchUserProfile(
     userMetadata?.cargo ||
     (isMaster ? 'Engenheiro Master' : isClient ? 'Cliente / Fiscal' : 'Operador de Campo');
 
+  const isFirstAccess = Boolean(
+    profile?.is_first_access ?? (profile?.temp_password ? true : false),
+  );
+
   return {
     id: userId,
     name: userName,
@@ -88,6 +92,8 @@ export async function fetchUserProfile(
     active: profile?.ativo ?? true,
     isOnline: true,
     lastSyncAt: new Date().toISOString(),
+    isFirstAccess,
+    tempPassword: profile?.temp_password || undefined,
   };
 }
 
@@ -102,7 +108,11 @@ export async function loginWithEmail(
     return { user: null, error: 'Configuração do Supabase ausente no arquivo client/.env' };
   }
 
-  const cleanEmail = email.trim().toLowerCase();
+  let cleanEmail = email.trim().toLowerCase();
+  // Se o usuário digitou sem TLD (ex: carlos.mendes@a1b2), normaliza para .com
+  if (cleanEmail.includes('@') && !cleanEmail.split('@')[1].includes('.')) {
+    cleanEmail = `${cleanEmail}.com`;
+  }
 
   try {
     const { data, error } = await withTimeout(

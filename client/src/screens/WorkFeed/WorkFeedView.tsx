@@ -363,8 +363,9 @@ export const WorkFeedView = () => {
   const generatedClientLogin = useMemo(() => {
     const f = clientFirstName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const l = clientLastName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!f && !l) return `cliente@${clientRandomSuffix || 'obra'}`;
-    return `${f || 'cliente'}.${l || 'acesso'}@${clientRandomSuffix || 'obra'}`;
+    const suffix = (clientRandomSuffix || 'obra').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!f && !l) return `cliente@${suffix}.com`;
+    return `${f || 'cliente'}.${l || 'acesso'}@${suffix}.com`;
   }, [clientFirstName, clientLastName, clientRandomSuffix]);
 
   const handleConfirmCreateClient = useCallback(async () => {
@@ -389,8 +390,8 @@ export const WorkFeedView = () => {
 
       setIsCreateClientDialogOpen(false);
       setCreatedClientData(newUser);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível cadastrar o usuário cliente.');
+    } catch (err: any) {
+      Alert.alert('Erro ao Cadastrar Cliente', err?.message || 'Não foi possível cadastrar o usuário cliente.');
     }
   }, [existingClientUser, clientFirstName, clientLastName, generatedClientLogin, currentWork.id, addUser]);
 

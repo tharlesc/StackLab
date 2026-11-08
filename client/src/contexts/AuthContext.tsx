@@ -14,7 +14,7 @@ import {
   isClient as checkIsClient,
   type Permission,
 } from '@/constants/permissions';
-import { authService } from '@/services';
+import { authService, supabase, isSupabaseConfigured } from '@/services';
 
 interface AuthContextData {
   user: User | null;
@@ -71,7 +71,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const completeFirstAccess = useCallback(async (_newPassword: string) => {
+  const completeFirstAccess = useCallback(async (newPassword: string) => {
+    if (isSupabaseConfigured && user) {
+      try {
+        await supabase.auth.updateUser({ password: newPassword });
+        await supabase
+          .from('profiles')
+          .update({ is_first_access: false, temp_password: null })
+          .eq('id', user.id);
+      } catch (err) {
+        console.warn('Aviso ao atualizar senha definitiva no Supabase:', err);
+      }
+    }
     setUser((prev) => {
       if (!prev) return null;
       return {
@@ -80,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         tempPassword: undefined,
       };
     });
-  }, []);
+  }, [user]);
 
   const can = useCallback((permission: Permission) => hasPermission(user, permission), [user]);
 

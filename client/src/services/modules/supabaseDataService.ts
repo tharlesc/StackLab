@@ -530,10 +530,46 @@ export async function createUserInSupabase(
 ): Promise<User | null> {
   if (!isSupabaseConfigured) return null;
 
-  try {
-    const password = tempPassword || Math.floor(100000 + Math.random() * 900000).toString();
-    const cleanEmail = data.email.trim().toLowerCase();
+  const password = tempPassword || Math.floor(100000 + Math.random() * 900000).toString();
+  const cleanEmail = data.email.trim().toLowerCase();
 
+  // 1. Tenta criar via RPC seguro no Postgres (bypassa limites de SMTP/e-mail e confirma na hora)
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('create_client_user', {
+      p_email: cleanEmail,
+      p_password: password,
+      p_name: data.name,
+      p_role: data.profile || 'client',
+      p_cargo: data.role || 'Cliente / Fiscal',
+      p_obra_id: data.assignedWorkIds?.[0] || null,
+    });
+
+    if (!rpcError && rpcData) {
+      return {
+        id: rpcData.id,
+        name: rpcData.name || data.name,
+        email: rpcData.email || cleanEmail,
+        role: rpcData.role || data.role,
+        crea: data.crea,
+        profile: (rpcData.profile as any) || (data.profile as any) || 'client',
+        assignedWorkIds: data.assignedWorkIds || [],
+        active: true,
+        isOnline: false,
+        lastSyncAt: new Date().toISOString(),
+        tempPassword: password,
+        isFirstAccess: true,
+      };
+    }
+
+    if (rpcError && rpcError.code !== 'PGRST202') {
+      console.warn('Aviso ao executar RPC create_client_user:', rpcError.message);
+    }
+  } catch (rpcErr) {
+    console.warn('RPC create_client_user não disponível, tentando fallback padrão:', rpcErr);
+  }
+
+  // 2. Fallback via supabase.auth.signUp tradicional
+  try {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
@@ -549,10 +585,19 @@ export async function createUserInSupabase(
     });
 
     if (authError) {
-      console.warn('Aviso ao registrar usuário no Supabase Auth:', authError.message);
+      let errorMsg = authError.message;
+      if (errorMsg.toLowerCase().includes('rate limit')) {
+        errorMsg =
+          'Limite de envio de e-mails do Supabase atingido. Execute o script da migration "20261108000002_create_client_user_rpc.sql" no SQL Editor do Supabase para criar usuários sem restrição de e-mail.';
+      }
+      throw new Error(errorMsg);
     }
 
-    const userId = authData?.user?.id || `u${Date.now()}`;
+    if (!authData?.user?.id) {
+      throw new Error('Falha ao registrar usuário no Supabase Auth: ID não retornado.');
+    }
+
+    const userId = authData.user.id;
 
     // Atualiza/Insere perfil na tabela profiles
     const { error: profileErr } = await supabase.from('profiles').upsert(
@@ -564,6 +609,8 @@ export async function createUserInSupabase(
         role: data.profile === 'master' ? 'master' : 'operador',
         crea: data.crea || null,
         ativo: true,
+        is_first_access: true,
+        temp_password: password,
       },
       { onConflict: 'id' },
     );
@@ -573,7 +620,7 @@ export async function createUserInSupabase(
     }
 
     // Atribui obras se houver
-    if (data.assignedWorkIds && data.assignedWorkIds.length > 0 && authData?.user?.id) {
+    if (data.assignedWorkIds && data.assignedWorkIds.length > 0) {
       const inserts = data.assignedWorkIds.map((obraId) => ({
         operador_id: userId,
         obra_id: obraId,
@@ -595,9 +642,9 @@ export async function createUserInSupabase(
       tempPassword: password,
       isFirstAccess: true,
     };
-  } catch (err) {
+  } catch (err: any) {
     console.error('Erro ao cadastrar usuário no Supabase:', err);
-    return null;
+    throw err;
   }
 }
 
@@ -610,6 +657,20 @@ export async function resetUserPasswordInSupabase(
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
 
+  // 1. Tenta atualizar senha diretamente via RPC no Supabase Auth
+  try {
+    const { data, error } = await supabase.rpc('reset_client_password', {
+      p_user_id: userId,
+      p_new_password: newPassword,
+    });
+    if (!error && data) {
+      return true;
+    }
+  } catch (rpcErr) {
+    console.warn('RPC reset_client_password não disponível:', rpcErr);
+  }
+
+  // 2. Fallback: atualiza dados do perfil
   try {
     await supabase
       .from('profiles')
