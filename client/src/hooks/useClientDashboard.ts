@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { calcHeadcount, calcManHours } from '@/utils/rdo';
+import { isRdoAvailableToClient } from '@/services/modules/rdoWorkflow';
 import { matchesQuery } from '@/utils';
 import type { RDO, Work } from '@/types';
 
@@ -48,13 +49,12 @@ export const useClientDashboard = () => {
     };
   }, [user, adminWorks, rdoWorks]);
 
-  // RDOs da obra vinculada ao cliente (apenas aprovados ou em análise técnica)
+  // RDOs da obra vinculada ao cliente: disponibilizados automaticamente após aprovação e assinatura do Master
   const workRdos = useMemo(() => {
     return rdos.filter(
       (r) =>
         (r.workId === assignedWork.id || r.workName === assignedWork.name) &&
-        r.status &&
-        r.status !== 'rascunho',
+        isRdoAvailableToClient(r),
     );
   }, [rdos, assignedWork]);
 
@@ -72,24 +72,12 @@ export const useClientDashboard = () => {
     return [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [workRdos, selectedDate, searchQuery]);
 
-  // Métricas do Dashboard da Obra
+  // Métricas do Dashboard da Obra (RDOs homologados e disponibilizados ao cliente)
   const totalRdos = workRdos.length;
-  const approvedCount = useMemo(
-    () => workRdos.filter((r) => r.status === 'aprovado').length,
-    [workRdos],
-  );
-  const pendingCount = useMemo(
-    () => workRdos.filter((r) => r.status === 'submetido').length,
-    [workRdos],
-  );
-  const returnedCount = useMemo(
-    () => workRdos.filter((r) => r.status === 'devolvido').length,
-    [workRdos],
-  );
-  const approvalRate = useMemo(
-    () => (totalRdos > 0 ? Math.round((approvedCount / totalRdos) * 100) : 100),
-    [totalRdos, approvedCount],
-  );
+  const approvedCount = workRdos.length;
+  const pendingCount = 0;
+  const returnedCount = 0;
+  const approvalRate = 100;
 
   const totalManHours = useMemo(
     () => workRdos.reduce((sum, r) => sum + calcManHours(r.labor || []), 0),

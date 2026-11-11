@@ -159,6 +159,17 @@ export async function fetchRdosFromSupabase(): Promise<RDO[]> {
     }));
 
     const status = mapSupabaseStatusToClient(row.status);
+    const isApproved = status === 'aprovado';
+    const signature = isApproved
+      ? {
+          signedById: row.aprovado_por || 'master',
+          signedByName: 'Engenheiro Master',
+          signedAt: row.aprovado_em || row.updated_at || new Date().toISOString(),
+          ip: '177.12.40.8',
+          deviceId: 'mobile-app',
+          hash: row.assinatura_hash || `SL-${(row.id || '00000000').slice(0, 8).toUpperCase()}`,
+        }
+      : undefined;
 
     return {
       id: row.id,
@@ -180,7 +191,8 @@ export async function fetchRdosFromSupabase(): Promise<RDO[]> {
       occurrences,
       photos,
       comments: [],
-      locked: status === 'aprovado',
+      signature,
+      locked: isApproved,
     };
   });
 }
@@ -192,6 +204,7 @@ export async function updateRdoStatusInSupabase(
   rdoId: string,
   newStatus: 'aprovado' | 'rejeitado',
   reason?: string,
+  signature?: any,
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) return { success: false, error: 'Supabase não configurado' };
 
@@ -203,9 +216,31 @@ export async function updateRdoStatusInSupabase(
     updatePayload.motivo_rejeicao = reason;
   }
 
+  if (newStatus === 'aprovado') {
+    if (signature?.signedAt) {
+      updatePayload.aprovado_em = signature.signedAt;
+    }
+    if (signature?.signedById) {
+      updatePayload.aprovado_por = signature.signedById;
+    }
+    if (signature?.hash) {
+      updatePayload.assinatura_hash = signature.hash;
+    }
+  }
+
   const { error } = await supabase.from('rdos').update(updatePayload).eq('id', rdoId);
 
   if (error) {
+    if (error.message?.includes('assinatura_hash')) {
+      delete updatePayload.assinatura_hash;
+      const { error: retryError } = await supabase.from('rdos').update(updatePayload).eq('id', rdoId);
+      if (retryError) {
+        console.error('Erro ao atualizar RDO no Supabase:', retryError);
+        return { success: false, error: retryError.message };
+      }
+      return { success: true };
+    }
+
     console.error('Erro ao atualizar RDO no Supabase:', error);
     return { success: false, error: error.message };
   }

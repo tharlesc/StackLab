@@ -110,13 +110,16 @@ export const RDOReviewView = () => {
     handleExport,
     navigateToAuditTrail,
     goBack,
+    isClient,
+    isMaster,
+    isAccessible,
   } = useRDOReview();
 
-  if (!rdo) {
+  if (!rdo || !isAccessible) {
     return (
       <Screen>
         <Header
-          title={strings.rdoReview.title}
+          title={isClient ? 'Acompanhamento do RDO' : strings.rdoReview.title}
           leftContent={
             <HeaderAction
               icon={
@@ -133,13 +136,25 @@ export const RDOReviewView = () => {
         />
         <EmptyState
           icon={
-            <FileText
-              size={theme.icon.size.empty}
-              color={theme.colors.text.secondary}
-              strokeWidth={theme.icon.strokeWidth}
-            />
+            isClient ? (
+              <ShieldCheck
+                size={theme.icon.size.empty}
+                color={theme.colors.tint}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            ) : (
+              <FileText
+                size={theme.icon.size.empty}
+                color={theme.colors.text.secondary}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            )
           }
-          message={strings.rdoReview.notFoundMessage}
+          message={
+            isClient
+              ? 'Este Relatório Diário de Obra ainda está em análise técnica e não foi homologado e assinado pelo Master. Ele será disponibilizado automaticamente no seu painel assim que for chancelado.'
+              : strings.rdoReview.notFoundMessage
+          }
         />
       </Screen>
     );
@@ -259,7 +274,7 @@ export const RDOReviewView = () => {
               <SectionSubtitle>Registro de turno e frente de trabalho</SectionSubtitle>
             </SectionTitleContainer>
 
-            {!isApproved && (
+            {!isApproved && !isClient && (
               <SectionAction
                 onPress={() => handleOpenCommentDialog('identificacao')}
                 hitSlop={theme.touchTarget.hitSlop}
@@ -322,7 +337,7 @@ export const RDOReviewView = () => {
               </SectionSubtitle>
             </SectionTitleContainer>
 
-            {!isApproved && (
+            {!isApproved && !isClient && (
               <SectionAction
                 onPress={() => handleOpenCommentDialog('maoDeObra')}
                 hitSlop={theme.touchTarget.hitSlop}
@@ -387,7 +402,7 @@ export const RDOReviewView = () => {
               </SectionSubtitle>
             </SectionTitleContainer>
 
-            {!isApproved && (
+            {!isApproved && !isClient && (
               <SectionAction
                 onPress={() =>
                   handleOpenEditDialog(
@@ -440,7 +455,7 @@ export const RDOReviewView = () => {
               </SectionSubtitle>
             </SectionTitleContainer>
 
-            {!isApproved && (
+            {!isApproved && !isClient && (
               <SectionAction
                 onPress={() => handleOpenCommentDialog('fotos')}
                 hitSlop={theme.touchTarget.hitSlop}
@@ -492,9 +507,23 @@ export const RDOReviewView = () => {
         </SectionCard>
       </ScrollContent>
 
-      {/* Barra de Ações Críticas do Master */}
+      {/* Barra de Ações */}
       <ActionButtonBar>
-        {isSubmitted ? (
+        {isClient ? (
+          <Button
+            title="Exportar Relatório Homologado (PDF)"
+            variant="primary"
+            fullWidth
+            icon={
+              <Download
+                size={theme.icon.size.md}
+                color={theme.colors.text.inverse}
+                strokeWidth={theme.icon.strokeWidth}
+              />
+            }
+            onPress={() => handleExport('pdf')}
+          />
+        ) : isSubmitted ? (
           <>
             <Button
               title={strings.rdoReview.approveAction}

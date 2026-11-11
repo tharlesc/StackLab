@@ -323,32 +323,25 @@ export const ClientDashboardView = () => {
             </>
           )}
 
-          {/* Resumo por Status */}
+          {/* Resumo de Diários Homologados e Disponíveis */}
           <StatusBreakdownRow>
             <StatusBreakdownItem>
               <StatusBreakdownCount>{totalRdos}</StatusBreakdownCount>
-              <StatusBreakdownLabel>TOTAL RDOS</StatusBreakdownLabel>
+              <StatusBreakdownLabel>DISPONÍVEIS</StatusBreakdownLabel>
             </StatusBreakdownItem>
 
             <StatusBreakdownItem>
               <StatusBreakdownCount $color="#10B981">
                 {approvedCount}
               </StatusBreakdownCount>
-              <StatusBreakdownLabel>APROVADOS</StatusBreakdownLabel>
+              <StatusBreakdownLabel>HOMOLOGADOS</StatusBreakdownLabel>
             </StatusBreakdownItem>
 
             <StatusBreakdownItem>
-              <StatusBreakdownCount $color="#F59E0B">
-                {pendingCount}
+              <StatusBreakdownCount $color="#3B82F6">
+                {rainStoppageHours}h
               </StatusBreakdownCount>
-              <StatusBreakdownLabel>EM ANÁLISE</StatusBreakdownLabel>
-            </StatusBreakdownItem>
-
-            <StatusBreakdownItem>
-              <StatusBreakdownCount $color="#EF4444">
-                {returnedCount}
-              </StatusBreakdownCount>
-              <StatusBreakdownLabel>DEVOLVIDOS</StatusBreakdownLabel>
+              <StatusBreakdownLabel>PARALISAÇÃO</StatusBreakdownLabel>
             </StatusBreakdownItem>
           </StatusBreakdownRow>
         </ObraDashboardCard>

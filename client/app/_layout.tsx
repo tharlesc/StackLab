@@ -6,19 +6,21 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AppThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { LoadingProvider } from '@/contexts/LoadingContext';
 import { RDOProvider } from '@/contexts/RDOContext';
 import { AdminProvider } from '@/contexts/AdminContext';
+import { StackLabSplashScreen } from '@/components/common/StackLabLoader';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
-    if (!rootNavigationState?.key) return;
+    if (!rootNavigationState?.key || authLoading) return;
 
     const inAuthGroup = segments[0] === 'login';
 
@@ -27,7 +29,17 @@ function RootLayoutNav() {
     } else if (user && inAuthGroup) {
       router.replace('/');
     }
-  }, [user, segments, rootNavigationState?.key, router]);
+  }, [user, authLoading, segments, rootNavigationState?.key, router]);
+
+  if (authLoading) {
+    return (
+      <StackLabSplashScreen
+        message="Inicializando..."
+        subtitle="Carregando sessão segura"
+        testID="app-auth-splash-screen"
+      />
+    );
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -56,23 +68,31 @@ export default function Layout() {
 
   useEffect(() => {
     if (fontsLoaded) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded]);
 
   if (!fontsLoaded) {
-    return null;
+    return (
+      <StackLabSplashScreen
+        message="Carregando fontes..."
+        subtitle="Preparando interface"
+        testID="app-font-splash-screen"
+      />
+    );
   }
 
   return (
     <SafeAreaProvider>
       <AppThemeProvider>
         <AuthProvider>
-          <RDOProvider>
-            <AdminProvider>
-              <RootLayoutNav />
-            </AdminProvider>
-          </RDOProvider>
+          <LoadingProvider>
+            <RDOProvider>
+              <AdminProvider>
+                <RootLayoutNav />
+              </AdminProvider>
+            </RDOProvider>
+          </LoadingProvider>
         </AuthProvider>
       </AppThemeProvider>
     </SafeAreaProvider>

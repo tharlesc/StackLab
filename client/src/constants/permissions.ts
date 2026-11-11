@@ -1,4 +1,4 @@
-import type { User, UserProfile } from '@/types';
+import type { User, UserProfile, RDO, RDOStatus } from '@/types';
 
 /**
  * 🔐 Matriz de Permissões (RBAC) — fonte única de verdade no client.
@@ -87,3 +87,14 @@ export const hasPermission = (user: User | null | undefined, permission: Permiss
 
 export const isMaster = (user: User | null | undefined): boolean => user?.profile === 'master';
 export const isClient = (user: User | null | undefined): boolean => user?.profile === 'client';
+
+/**
+ * Regra: Um RDO só é disponibilizado para o cliente da obra após o Master aprovar e assinar.
+ */
+export const isRdoAvailableToClient = (
+  rdo: Pick<RDO, 'status'> | RDOStatus | null | undefined,
+): boolean => {
+  if (!rdo) return false;
+  const status: RDOStatus = typeof rdo === 'string' ? rdo : rdo.status;
+  return status === 'aprovado';
+};

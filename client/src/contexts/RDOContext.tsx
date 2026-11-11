@@ -227,7 +227,7 @@ export const RDOProvider = ({
       approveRdo: (id, actor) => {
         const approved = commit(id, (r) => workflow.approveRdo(r, actor, getDeviceInfo()));
         if (isSupabaseConfigured) {
-          supabaseDataService.updateRdoStatusInSupabase(id, 'aprovado');
+          supabaseDataService.updateRdoStatusInSupabase(id, 'aprovado', undefined, approved.signature);
         }
         return approved;
       },

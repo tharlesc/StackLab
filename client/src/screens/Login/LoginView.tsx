@@ -46,6 +46,7 @@ import {
 } from './styles';
 
 import { Input } from '@/components/common/Input';
+import { StackLabLoadingOverlay } from '@/components/common/StackLabLoader';
 import { darkTheme } from '@/constants/theme';
 import { R } from '@/constants/R';
 
@@ -108,6 +109,12 @@ export const LoginView = () => {
     <ThemeProvider theme={loginTheme}>
       <StatusBar style="light" />
       <LoginScreen>
+        <StackLabLoadingOverlay
+          visible={loading}
+          message="Entrando no StackLab..."
+          subtext="Validando credenciais e perfil de acesso"
+          testID="login-loading-overlay"
+        />
         <BackgroundLayer>
           <Svg
             width="100%"

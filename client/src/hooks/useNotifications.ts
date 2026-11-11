@@ -14,7 +14,7 @@ export type NotificationFilter = 'todas' | 'nao_lidas' | 'rdos';
 export const useNotifications = () => {
   const router = useRouter();
   const { rdos } = useRDOs();
-  const { user, isMaster } = useAuth();
+  const { user, isMaster, isClient } = useAuth();
 
   const [readIds, setReadIds] = useState<string[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
@@ -73,8 +73,8 @@ export const useNotifications = () => {
     const list: AppNotification[] = [];
 
     (rdos || []).forEach((rdo) => {
-      // 1. Notificação de RDO Submetido (Pendente de Homologação)
-      if (rdo.status === 'submetido') {
+      // 1. Notificação de RDO Submetido (apenas para equipe interna: Master e Operador)
+      if (rdo.status === 'submetido' && !isClient) {
         const notifId = `submetido-${rdo.id}`;
         const isUnread = !readIds.includes(notifId);
         list.push({
@@ -90,14 +90,16 @@ export const useNotifications = () => {
         });
       }
 
-      // 2. Notificação de RDO Aprovado
+      // 2. Notificação de RDO Aprovado (quando Master aprova e assina, fica disponível ao cliente)
       if (rdo.status === 'aprovado') {
         const notifId = `aprovado-${rdo.id}`;
         const isUnread = !readIds.includes(notifId);
         list.push({
           id: notifId,
-          title: 'RDO Homologado com Sucesso',
-          message: `RDO #${rdo.number} da ${rdo.workName} foi aprovado e chancelado digitalmente.`,
+          title: isClient ? 'Novo RDO Disponível' : 'RDO Homologado com Sucesso',
+          message: isClient
+            ? `RDO #${rdo.number} da ${rdo.workName} foi homologado e assinado pelo Master e já está disponível para sua consulta.`
+            : `RDO #${rdo.number} da ${rdo.workName} foi aprovado e chancelado digitalmente.`,
           time: rdo.submittedAt ? formatRelative(rdo.submittedAt) : 'Recentemente',
           isUnread,
           variant: 'success',
@@ -105,8 +107,8 @@ export const useNotifications = () => {
         });
       }
 
-      // 3. Notificação de RDO Devolvido para Correção
-      if (rdo.status === 'devolvido') {
+      // 3. Notificação de RDO Devolvido para Correção (apenas equipe interna)
+      if (rdo.status === 'devolvido' && !isClient) {
         const notifId = `devolvido-${rdo.id}`;
         const isUnread = !readIds.includes(notifId);
         list.push({
@@ -128,8 +130,14 @@ export const useNotifications = () => {
     const welcomeUnread = !readIds.includes(welcomeId);
     list.push({
       id: welcomeId,
-      title: isMaster ? 'Painel Master Ativo' : 'Sincronização Pronta',
-      message: isMaster
+      title: isClient
+        ? 'Portal do Cliente Ativo'
+        : isMaster
+        ? 'Painel Master Ativo'
+        : 'Sincronização Pronta',
+      message: isClient
+        ? 'Acompanhe os diários de obra homologados e os relatórios chancelados em tempo real.'
+        : isMaster
         ? 'Você tem acesso global a todas as obras, relatórios e homologação de RDOs.'
         : 'Suas obras estão sincronizadas. Todos os dados preenchidos offline serão enviados com segurança.',
       time: 'Hoje',
@@ -138,7 +146,7 @@ export const useNotifications = () => {
     });
 
     return list.filter((n) => !dismissedIds.includes(n.id));
-  }, [rdos, readIds, dismissedIds, isMaster, user]);
+  }, [rdos, readIds, dismissedIds, isMaster, isClient, user]);
 
   const unreadCount = useMemo(
     () => rawNotifications.filter((n) => n.isUnread).length,

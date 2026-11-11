@@ -6,6 +6,7 @@ import {
   auditedEdit,
   addComment,
   getAvailableActions,
+  isRdoAvailableToClient,
   WorkflowError,
 } from '@/services/modules/rdoWorkflow';
 import type { RDO, User } from '@/types';
@@ -199,6 +200,13 @@ describe('services/modules/rdoWorkflow', () => {
       expect(getAvailableActions('aprovado', 'common')).toEqual([]);
     });
 
+    it('returns empty actions for client profile across all statuses (read-only)', () => {
+      expect(getAvailableActions('rascunho', 'client')).toEqual([]);
+      expect(getAvailableActions('devolvido', 'client')).toEqual([]);
+      expect(getAvailableActions('submetido', 'client')).toEqual([]);
+      expect(getAvailableActions('aprovado', 'client')).toEqual([]);
+    });
+
     it('returns correct actions for master profile across all statuses', () => {
       expect(getAvailableActions('rascunho', 'master')).toEqual(['edit', 'submit']);
       expect(getAvailableActions('devolvido', 'master')).toEqual(['edit', 'submit']);
@@ -232,6 +240,33 @@ describe('services/modules/rdoWorkflow', () => {
       expect(commented.comments).toHaveLength(1);
       expect(commented.comments[0]!.text).toBe('Confirmar efetivo terceirizado amanhã.');
       expect(log.action).toBe('comentado');
+    });
+  });
+
+  describe('isRdoAvailableToClient (disponibilização para o cliente)', () => {
+    it('only makes RDO available to client after Master approves and signs it', () => {
+      const draft = createBaseRdo({ status: 'rascunho' });
+      const submitted = createBaseRdo({ status: 'submetido' });
+      const returned = createBaseRdo({ status: 'devolvido' });
+
+      // Antes da aprovação do Master: NÃO disponível para o cliente
+      expect(isRdoAvailableToClient(draft)).toBe(false);
+      expect(isRdoAvailableToClient(submitted)).toBe(false);
+      expect(isRdoAvailableToClient(returned)).toBe(false);
+      expect(isRdoAvailableToClient(null)).toBe(false);
+      expect(isRdoAvailableToClient(undefined)).toBe(false);
+
+      // Master aprova e assina o RDO
+      const { rdo: approved } = approveRdo(submitted, masterUser, {
+        ip: '192.168.1.1',
+        deviceId: 'device-master',
+      });
+
+      // Automaticamente disponível para o cliente da obra
+      expect(approved.status).toBe('aprovado');
+      expect(approved.locked).toBe(true);
+      expect(approved.signature).toBeDefined();
+      expect(isRdoAvailableToClient(approved)).toBe(true);
     });
   });
 });

@@ -192,15 +192,18 @@ export const WorkFeedView = () => {
 
   // RDOs específicos desta obra:
   // Regra: O Master NUNCA visualiza rascunhos de operadores (apenas submetidos, aprovados ou devolvidos)
+  // Regra: O Cliente só visualiza RDOs automaticamente após o Master aprovar e assinar (status === 'aprovado')
   const obraRdos = useMemo(() => {
     let list = rdos.filter(
       (r) => r.workId === currentWork.id || r.workName === currentWork.name,
     );
-    if (isMaster) {
+    if (isClient) {
+      list = list.filter((r) => r.status === 'aprovado');
+    } else if (isMaster) {
       list = list.filter((r) => r.status && r.status !== 'rascunho');
     }
     return list;
-  }, [rdos, currentWork, isMaster]);
+  }, [rdos, currentWork, isMaster, isClient]);
 
   // RDOs ordenados cronologicamente do mais recente para o mais antigo
   const sortedRdos = useMemo(() => {

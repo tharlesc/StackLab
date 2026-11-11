@@ -24,6 +24,7 @@ build/
 .vscode/
 .claude/
 .agents/
+.stacklab-loader/
 
 # OS
 .DS_Store

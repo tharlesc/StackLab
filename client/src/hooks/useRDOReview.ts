@@ -16,6 +16,11 @@ export const useRDOReview = () => {
   const rdoId = params.id || '';
   const rdo = rdoId ? getRdo(rdoId) : undefined;
 
+  const isClient = user?.profile === 'client';
+  const isMaster = user?.profile === 'master';
+  // Regra: O RDO só é disponibilizado para o cliente após aprovação e assinatura do Master
+  const isAccessible = !isClient || (rdo?.status === 'aprovado');
+
   // Modais de ações
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [returnReason, setReturnReason] = useState('');
@@ -249,6 +254,9 @@ export const useRDOReview = () => {
     handleExport,
     navigateToAuditTrail,
     goBack,
+    isClient,
+    isMaster,
+    isAccessible,
   };
 };
 

@@ -13,6 +13,7 @@ export * from './Pagination';
 export * from './QuantityStepper';
 export * from './SearchBar';
 export * from './SegmentedControl';
+export * from './StackLabLoader';
 export * from './StatusBadge';
 export * from './TimeIntervalAccordion';
 export * from './Toggle';

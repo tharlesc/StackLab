@@ -70,6 +70,10 @@ export const getAvailableActions = (
   const profile: UserProfile =
     typeof userOrProfile === 'string' ? userOrProfile : userOrProfile.profile;
 
+  if (profile === 'client') {
+    return [];
+  }
+
   if (profile === 'common') {
     if (!locked && (status === 'rascunho' || status === 'devolvido')) {
       return ['edit', 'submit'];
@@ -88,6 +92,19 @@ export const getAvailableActions = (
     return ['rectify'];
   }
   return [];
+};
+
+/**
+ * Regra de Negócio: O RDO só é disponibilizado para o usuário cliente da obra
+ * automaticamente após o Master aprovar e assinar o documento (status === 'aprovado').
+ */
+export const isRdoAvailableToClient = (
+  rdoOrStatus: Pick<RDO, 'status'> | RDOStatus | null | undefined,
+): boolean => {
+  if (!rdoOrStatus) return false;
+  const status: RDOStatus =
+    typeof rdoOrStatus === 'string' ? rdoOrStatus : rdoOrStatus.status;
+  return status === 'aprovado';
 };
 
 /** Operacional → submete rascunho ou RDO devolvido. Após isso fica somente leitura para ele. */
