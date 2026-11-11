@@ -61,40 +61,93 @@ export async function fetchObrasFromSupabase(): Promise<ActiveWork[]> {
   }));
 }
 
+function mapSupabaseActivityStatusToClient(status?: string): ActivityEntry['status'] {
+  const norm = (status || '').toLowerCase();
+  if (norm === 'concluido' || norm.includes('conclu')) return 'Concluído';
+  if (norm === 'paralisado' || norm.includes('paralis')) return 'Paralisado';
+  if (norm === 'iniciado' || norm.includes('iniciad')) return 'Iniciado';
+  return 'Em andamento';
+}
+
+function mapClientActivityStatusToSupabase(
+  status?: string,
+): 'iniciado' | 'em_andamento' | 'concluido' | 'paralisado' {
+  const norm = (status || '').toLowerCase();
+  if (norm.includes('conclu')) return 'concluido';
+  if (norm.includes('paralis')) return 'paralisado';
+  if (norm.includes('iniciad')) return 'iniciado';
+  return 'em_andamento';
+}
+
+function normalizeTimeForDb(timeStr?: string): string | null {
+  if (!timeStr) return null;
+  const trimmed = timeStr.trim();
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(trimmed)) return trimmed;
+  return null;
+}
+
+function normalizeDateForDb(dateStr?: string): string {
+  if (!dateStr) return new Date().toISOString().split('T')[0];
+  const brMatch = dateStr.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (brMatch) {
+    const [, d, m, y] = brMatch;
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  return dateStr;
+}
+
 /**
  * Busca RDOs reais do Supabase com todos os relacionamentos
  */
 export async function fetchRdosFromSupabase(): Promise<RDO[]> {
   if (!isSupabaseConfigured) return [];
 
-  const { data, error } = await supabase
-    .from('rdos')
-    .select(`
-      *,
-      obras (id, nome),
-      rdo_clima (*),
-      rdo_efetivo (*),
-      rdo_maquinas (*),
-      rdo_atividades (*),
-      rdo_insumos (*),
-      rdo_fatos (*),
-      rdo_fotos (*)
-    `)
-    .order('created_at', { ascending: false });
+  const [{ data, error }, { data: profilesData }] = await Promise.all([
+    supabase
+      .from('rdos')
+      .select(`
+        *,
+        obras (id, nome, cliente, endereco, descricao),
+        rdo_clima (*),
+        rdo_efetivo (*),
+        rdo_maquinas (*),
+        rdo_atividades (*),
+        rdo_insumos (*),
+        rdo_fatos (*),
+        rdo_fotos (*)
+      `)
+      .order('created_at', { ascending: false }),
+    supabase.from('profiles').select('id, nome, email'),
+  ]);
 
   if (error) {
     console.error('Erro ao buscar RDOs no Supabase:', error);
     return [];
   }
 
+  const profileMap = new Map<string, string>();
+  (profilesData || []).forEach((p: any) => {
+    if (p?.id) {
+      profileMap.set(p.id, p.nome || p.email || 'Operador');
+    }
+  });
+
   return (data || []).map((row: any): RDO => {
-    const weather: WeatherEntry[] = (row.rdo_clima || []).map((c: any) => ({
-      shift: c.turno || 'manha',
-      condition: c.condicao || 'Limpo',
-      practical: c.praticavel ?? true,
-      stoppageHours: c.horas_paralisacao ? Number(c.horas_paralisacao) : undefined,
-      impact: c.impacto || undefined,
-    }));
+    const authorName = profileMap.get(row.operador_id) || 'Operador';
+    const approverName = row.aprovado_por
+      ? profileMap.get(row.aprovado_por) || 'Engenheiro Master'
+      : 'Engenheiro Master';
+
+    const weather: WeatherEntry[] = (row.rdo_clima || []).map((c: any) => {
+      const stopH = c.horas_paralisadas ?? c.horas_paralisacao;
+      return {
+        shift: c.turno || 'manha',
+        condition: c.condicao || 'Ensolarado',
+        practical: c.praticavel ?? true,
+        stoppageHours: stopH !== undefined && stopH !== null ? Number(stopH) : undefined,
+        impact: c.impacto || undefined,
+      };
+    });
 
     const labor: LaborEntry[] = (row.rdo_efetivo || []).map((e: any) => ({
       role: e.funcao || 'Operador',
@@ -102,24 +155,31 @@ export async function fetchRdosFromSupabase(): Promise<RDO[]> {
       hours: Number(e.horas) || 8,
       isContractor: Boolean(e.terceirizado),
       name: e.nome || undefined,
+      horaInicio: e.hora_inicio ? String(e.hora_inicio).slice(0, 5) : undefined,
+      horaFim: e.hora_fim ? String(e.hora_fim).slice(0, 5) : undefined,
     }));
 
     const equipment: EquipmentEntry[] = (row.rdo_maquinas || []).map((m: any) => ({
-      name: m.nome || 'Equipamento',
+      name: m.equipamento || m.nome || 'Equipamento',
+      brand: m.marca || undefined,
+      code: m.codigo || undefined,
       quantity: Number(m.quantidade) || 1,
-      activeHours: Number(m.horas_operacao) || 8,
-      idleHours: Number(m.horas_parada) || 0,
-      idleJustification: m.motivo_parada || undefined,
-      isRented: Boolean(m.locada),
+      activeHours: Number(m.horas_ativas ?? m.horas_operacao ?? 8),
+      idleHours: Number(m.horas_ociosas ?? m.horas_parada ?? 0),
+      idleJustification: m.justificativa_ociosidade || m.motivo_parada || undefined,
+      isRented: Boolean(m.locado ?? m.locada),
+      horaInicio: m.hora_inicio ? String(m.hora_inicio).slice(0, 5) : undefined,
+      horaFim: m.hora_fim ? String(m.hora_fim).slice(0, 5) : undefined,
+      observations: m.observacoes || undefined,
     }));
 
     const activities: ActivityEntry[] = (row.rdo_atividades || []).map((a: any) => ({
       description: a.descricao || 'Atividade',
-      location: a.localizacao || 'Canteiro',
+      location: a.local || a.localizacao || 'Canteiro',
       unit: a.unidade || 'un',
       quantity: Number(a.quantidade) || 1,
-      progress: a.progresso ? Number(a.progresso) : undefined,
-      status: a.status || 'Em andamento',
+      progress: a.progresso !== undefined && a.progresso !== null ? Number(a.progresso) : undefined,
+      status: mapSupabaseActivityStatusToClient(a.status),
     }));
 
     const materials: MaterialEntry[] = (row.rdo_insumos || []).map((i: any) => ({
@@ -133,37 +193,53 @@ export async function fetchRdosFromSupabase(): Promise<RDO[]> {
     const occurrences: OccurrenceEntry[] = (row.rdo_fatos || []).map((f: any) => ({
       type: f.tipo || 'outro',
       description: f.descricao || '',
+      horaInicio: f.hora_inicio ? String(f.hora_inicio).slice(0, 5) : undefined,
+      horaFim: f.hora_fim ? String(f.hora_fim).slice(0, 5) : undefined,
     }));
 
-    const photos: PhotoEntry[] = (row.rdo_fotos || []).map((p: any) => ({
-      id: p.id,
-      caption: p.legenda || '',
-      uri: p.url,
-      watermarkedUri: p.url,
-      takenAt: p.capturada_em || row.created_at,
-      author: 'Operador',
-      metadata: p.latitude
-        ? {
-            latitude: Number(p.latitude),
-            longitude: Number(p.longitude),
-            accuracy: Number(p.precisao) || 0,
-            capturedAt: p.capturada_em || row.created_at,
-            authorId: row.operador_id,
-            authorName: 'Operador',
-            workId: row.obra_id,
-            workName: row.obras?.nome || '',
-            rdoNumber: Number(row.numero) || 1,
-            hash: '',
-          }
-        : undefined,
-    }));
+    const photos: PhotoEntry[] = (row.rdo_fotos || []).map((p: any) => {
+      const rawPath = p.url || p.storage_path || '';
+      const resolvedUrl =
+        rawPath && /^https?:\/\//i.test(rawPath)
+          ? rawPath
+          : rawPath
+            ? supabase.storage.from('rdo-fotos').getPublicUrl(rawPath).data?.publicUrl || rawPath
+            : undefined;
+      const photoAuthor = (p.autor_id && profileMap.get(p.autor_id)) || authorName;
+      const capturedTime = p.tirada_em || p.capturada_em || row.created_at;
+
+      return {
+        id: p.id,
+        caption: p.legenda || '',
+        uri: resolvedUrl,
+        watermarkedUri: resolvedUrl,
+        takenAt: capturedTime,
+        author: photoAuthor,
+        metadata:
+          p.latitude !== undefined && p.latitude !== null
+            ? {
+                latitude: Number(p.latitude),
+                longitude: Number(p.longitude),
+                accuracy: Number(p.precisao_m ?? p.precisao ?? 0),
+                address: p.endereco || undefined,
+                capturedAt: capturedTime,
+                authorId: p.autor_id || row.operador_id,
+                authorName: photoAuthor,
+                workId: row.obra_id,
+                workName: row.obras?.nome || '',
+                rdoNumber: Number(row.numero) || 1,
+                hash: p.hash || '',
+              }
+            : undefined,
+      };
+    });
 
     const status = mapSupabaseStatusToClient(row.status);
     const isApproved = status === 'aprovado';
     const signature = isApproved
       ? {
           signedById: row.aprovado_por || 'master',
-          signedByName: 'Engenheiro Master',
+          signedByName: approverName,
           signedAt: row.aprovado_em || row.updated_at || new Date().toISOString(),
           ip: '177.12.40.8',
           deviceId: 'mobile-app',
@@ -179,7 +255,7 @@ export async function fetchRdosFromSupabase(): Promise<RDO[]> {
       workName: row.obras?.nome || 'Obra Cadastrada',
       date: row.data || new Date().toISOString().split('T')[0],
       authorId: row.operador_id,
-      authorName: 'Operador',
+      authorName,
       status,
       submittedAt: row.enviado_em || undefined,
       returnReason: row.motivo_rejeicao || undefined,
@@ -479,7 +555,7 @@ export async function saveRdoToSupabase(rdo: RDO): Promise<{ success: boolean; e
 
     const rdoPayload: Record<string, any> = {
       obra_id: rdo.workId,
-      data: rdo.date,
+      data: normalizeDateForDb(rdo.date),
       status: rdo.status === 'submetido' ? 'pendente_aprovacao' : rdo.status === 'aprovado' ? 'aprovado' : 'rascunho',
       enviado_em: rdo.submittedAt || new Date().toISOString(),
     };
@@ -520,26 +596,76 @@ export async function saveRdoToSupabase(rdo: RDO): Promise<{ success: boolean; e
       const laborRows = rdo.labor.map((l, idx) => ({
         rdo_id: targetRdoId,
         funcao: l.role,
-        nome: l.name,
+        nome: l.name || null,
         quantidade: l.quantity,
         horas: l.hours,
         terceirizado: l.isContractor ?? false,
+        hora_inicio: normalizeTimeForDb(l.horaInicio),
+        hora_fim: normalizeTimeForDb(l.horaFim),
         ordem: idx,
       }));
       await supabase.from('rdo_efetivo').insert(laborRows);
+    }
+
+    if (rdo.equipment && rdo.equipment.length > 0) {
+      const equipRows = rdo.equipment.map((e, idx) => ({
+        rdo_id: targetRdoId,
+        equipamento: e.name,
+        marca: e.brand || null,
+        codigo: e.code || null,
+        quantidade: e.quantity ?? 1,
+        locado: e.isRented ?? false,
+        horas_ativas: e.activeHours ?? 0,
+        horas_ociosas: e.idleHours ?? 0,
+        justificativa_ociosidade: e.idleHours > 0 ? e.idleJustification || 'Ociosidade operacional' : null,
+        hora_inicio: normalizeTimeForDb(e.horaInicio),
+        hora_fim: normalizeTimeForDb(e.horaFim),
+        observacoes: e.observations || null,
+        ordem: idx,
+      }));
+      await supabase.from('rdo_maquinas').insert(equipRows);
     }
 
     if (rdo.activities && rdo.activities.length > 0) {
       const actRows = rdo.activities.map((a, idx) => ({
         rdo_id: targetRdoId,
         descricao: a.description,
-        localizacao: a.location,
-        unidade: a.unit,
+        local: a.location || null,
+        unidade: a.unit || null,
         quantidade: a.quantity,
-        progresso: a.progress,
+        progresso: a.progress ?? 0,
+        status: mapClientActivityStatusToSupabase(a.status),
         ordem: idx,
       }));
       await supabase.from('rdo_atividades').insert(actRows);
+    }
+
+    if (rdo.occurrences && rdo.occurrences.length > 0) {
+      const occRows = rdo.occurrences.map((o, idx) => ({
+        rdo_id: targetRdoId,
+        tipo: o.type || 'outro',
+        descricao: o.description,
+        hora_inicio: normalizeTimeForDb(o.horaInicio),
+        hora_fim: normalizeTimeForDb(o.horaFim),
+        ordem: idx,
+      }));
+      await supabase.from('rdo_fatos').insert(occRows);
+    }
+
+    if (rdo.photos && rdo.photos.length > 0) {
+      const photoRows = rdo.photos.map((p, idx) => ({
+        rdo_id: targetRdoId,
+        storage_path: `${targetRdoId}/${p.id || `foto-${idx + 1}`}.jpg`,
+        legenda: p.caption || null,
+        tirada_em: p.takenAt || new Date().toISOString(),
+        latitude: p.metadata?.latitude ?? null,
+        longitude: p.metadata?.longitude ?? null,
+        precisao_m: p.metadata?.accuracy ?? null,
+        endereco: p.metadata?.address ?? null,
+        hash: p.metadata?.hash ?? null,
+        ordem: idx,
+      }));
+      await supabase.from('rdo_fotos').insert(photoRows);
     }
 
     return { success: true };

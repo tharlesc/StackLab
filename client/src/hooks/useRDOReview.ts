@@ -1,20 +1,56 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { calcManHours, calcHeadcount, isOverdue } from '@/utils/rdo';
+import { triggerWebPdfDownload, triggerWebCsvDownload } from '@/utils/rdoPdfTemplate';
 import { getAvailableActions, applySectionFieldEdit } from '@/services/modules/rdoWorkflow';
-import type { RDOSectionKey } from '@/types';
+import { MOCK_WORKS } from '@/mocks';
+import type { RDOSectionKey, Work } from '@/types';
 
 export const useRDOReview = () => {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const { user } = useAuth();
-  const { getRdo, returnRdo, approveRdo, addComment, auditedEdit, rectifyRdo } = useRDOs();
+  const { getRdo, works: rdoWorks, returnRdo, approveRdo, addComment, auditedEdit, rectifyRdo } = useRDOs();
+  const adminCtx = useAdmin();
+  const adminWorks = adminCtx?.works || [];
 
   const rdoId = params.id || '';
   const rdo = rdoId ? getRdo(rdoId) : undefined;
+
+  const work: Partial<Work> | undefined = useMemo(() => {
+    if (!rdo) return undefined;
+    const fromAdmin = adminWorks.find(
+      (w) => w.id === rdo.workId || w.name === rdo.workName,
+    );
+    if (fromAdmin) return fromAdmin;
+    const fromMock = MOCK_WORKS.find(
+      (w) => w.id === rdo.workId || w.name === rdo.workName,
+    );
+    if (fromMock) return fromMock;
+    const fromActive = (rdoWorks || []).find(
+      (w) => w.id === rdo.workId || w.name === rdo.workName,
+    );
+    if (fromActive) {
+      return {
+        id: fromActive.id,
+        name: fromActive.name,
+        subtitle: fromActive.subtitle,
+        address: fromActive.subtitle,
+        client: 'StackLab Engenharia',
+      };
+    }
+    return {
+      id: rdo.workId,
+      name: rdo.workName,
+      subtitle: 'Canteiro de Obras StackLab',
+      address: 'Canteiro de Obras StackLab',
+      client: 'StackLab Engenharia',
+    };
+  }, [rdo, adminWorks, rdoWorks]);
 
   const isClient = user?.profile === 'client';
   const isMaster = user?.profile === 'master';
@@ -43,6 +79,7 @@ export const useRDOReview = () => {
   const [rectifyReason, setRectifyReason] = useState('');
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   const manHours = useMemo(() => (rdo ? calcManHours(rdo.labor) : 0), [rdo]);
   const headcount = useMemo(() => (rdo ? calcHeadcount(rdo.labor) : 0), [rdo]);
@@ -186,15 +223,28 @@ export const useRDOReview = () => {
     });
   }, [rdo, user, rectifyReason, rectifyRdo, router]);
 
-  const handleExport = useCallback((type: 'pdf' | 'csv' | 'photos') => {
-    setExportDialogOpen(false);
-    const labels = {
-      pdf: 'Relatório Final PDF emitido com QR Code e Hash de verificação.',
-      csv: 'Planilha CSV com dados analíticos exportada para download.',
-      photos: 'Acervo fotográfico compactado em lote com marcas d’água.',
-    };
-    Alert.alert('Exportação Concluída', labels[type]);
-  }, []);
+  const handleExport = useCallback(
+    (type: 'pdf' | 'csv' | 'photos') => {
+      setExportDialogOpen(false);
+      if (type === 'pdf') {
+        setPdfPreviewOpen(true);
+        if (rdo && Platform.OS === 'web') {
+          triggerWebPdfDownload(rdo, work);
+        }
+        return;
+      }
+      if (type === 'csv' && rdo && Platform.OS === 'web') {
+        triggerWebCsvDownload(rdo, work);
+      }
+      const labels = {
+        pdf: 'Relatório Final PDF emitido com padrão oficial StackLab.',
+        csv: 'Planilha CSV com dados analíticos exportada para download.',
+        photos: 'Acervo fotográfico compactado em lote com marcas d’água.',
+      };
+      Alert.alert('Exportação Concluída', labels[type]);
+    },
+    [rdo, work],
+  );
 
   const navigateToAuditTrail = useCallback(() => {
     if (!rdo) return;
@@ -210,6 +260,7 @@ export const useRDOReview = () => {
 
   return {
     rdo,
+    work,
     manHours,
     headcount,
     overdue,
@@ -241,6 +292,8 @@ export const useRDOReview = () => {
     setRectifyReason,
     exportDialogOpen,
     setExportDialogOpen,
+    pdfPreviewOpen,
+    setPdfPreviewOpen,
     handleOpenReturnDialog,
     handleConfirmReturn,
     handleOpenApproveDialog,

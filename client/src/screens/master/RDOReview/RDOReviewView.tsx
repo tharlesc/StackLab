@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Image } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import {
   ChevronLeft,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react-native';
 
 import { useRDOReview } from '@/hooks';
+import { RdoPdfPreviewModal } from '@/components/rdo/RdoPdfPreviewModal';
 import {
   SectionCard,
   SectionHeader,
@@ -69,6 +70,7 @@ export const RDOReviewView = () => {
   const theme = useTheme();
   const {
     rdo,
+    work,
     manHours,
     headcount,
     returnDialogOpen,
@@ -97,6 +99,8 @@ export const RDOReviewView = () => {
     setRectifyReason,
     exportDialogOpen,
     setExportDialogOpen,
+    pdfPreviewOpen,
+    setPdfPreviewOpen,
     handleOpenReturnDialog,
     handleConfirmReturn,
     handleOpenApproveDialog,
@@ -271,7 +275,7 @@ export const RDOReviewView = () => {
           <SectionHeader>
             <SectionTitleContainer>
               <SectionTitle>1. Identificação & Clima</SectionTitle>
-              <SectionSubtitle>Registro de turno e frente de trabalho</SectionSubtitle>
+              <SectionSubtitle>Registro de turno, condições climáticas e frente de trabalho</SectionSubtitle>
             </SectionTitleContainer>
 
             {!isApproved && !isClient && (
@@ -292,6 +296,11 @@ export const RDOReviewView = () => {
           </SectionHeader>
 
           <InfoRow>
+            <InfoLabel>Obra Vinculada:</InfoLabel>
+            <InfoValue>{rdo.workName}</InfoValue>
+          </InfoRow>
+
+          <InfoRow>
             <InfoLabel>Data do Registro:</InfoLabel>
             <InfoValue>{rdo.date}</InfoValue>
           </InfoRow>
@@ -302,13 +311,16 @@ export const RDOReviewView = () => {
           </InfoRow>
 
           <WeatherContainer>
-            <InfoLabel>Condições Climáticas:</InfoLabel>
+            <InfoLabel>Condições Climáticas por Turno:</InfoLabel>
             <WeatherBadgesRow>
               {rdo.weather.map((w, idx) => (
                 <WeatherBadge key={idx}>
                   {getWeatherIcon(w.condition, theme.icon.size.sm, theme.colors.tintText)}
                   <WeatherBadgeText>
-                    {w.shift.toUpperCase()}: {w.condition}
+                    {w.shift.toUpperCase()}: {w.condition} ({w.practical === false ? 'Impraticável' : 'Praticável'})
+                    {(w.stoppageHours ?? 0) > 0
+                      ? ` • ${w.stoppageHours}h parado${w.impact ? ` (${w.impact})` : ''}`
+                      : ''}
                   </WeatherBadgeText>
                 </WeatherBadge>
               ))}
@@ -327,13 +339,13 @@ export const RDOReviewView = () => {
             ))}
         </SectionCard>
 
-        {/* 2. Mão de Obra e Equipamentos */}
+        {/* 2. Mão de Obra e Efetivos */}
         <SectionCard>
           <SectionHeader>
             <SectionTitleContainer>
-              <SectionTitle>2. Mão de Obra & Equipamentos</SectionTitle>
+              <SectionTitle>2. Mão de Obra & Efetivos</SectionTitle>
               <SectionSubtitle>
-                {headcount} operários • {manHours} Homem-Hora total
+                {headcount} operários • {rdo.labor.length} funções • {manHours} Homem-Hora total
               </SectionSubtitle>
             </SectionTitleContainer>
 
@@ -354,31 +366,23 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.labor.map((l, index) => (
-            <ItemCard key={index}>
-              <ItemTitle>
-                {l.role}: {l.quantity} profissionais
-              </ItemTitle>
-              <ItemSubtitle>
-                Jornada: {l.hours}h ({l.quantity * l.hours} Homem-Hora total)
-              </ItemSubtitle>
-            </ItemCard>
-          ))}
-
-          <SubSectionTitle>Equipamentos no Canteiro:</SubSectionTitle>
-          {rdo.equipment.map((e, index) => (
-            <ItemCard key={index}>
-              <ItemTitle>{e.name}</ItemTitle>
-              <ItemSubtitle>
-                Horas Ativas: {e.activeHours}h | Horas Paradas: {e.idleHours}h
-              </ItemSubtitle>
-              {e.idleJustification ? (
-                <WarningSubtitle>
-                  Justificativa inatividade: {e.idleJustification}
-                </WarningSubtitle>
-              ) : null}
-            </ItemCard>
-          ))}
+          {rdo.labor.length === 0 ? (
+            <ItemSubtitle>Nenhum efetivo registrado.</ItemSubtitle>
+          ) : (
+            rdo.labor.map((l, index) => (
+              <ItemCard key={index}>
+                <ItemTitle>
+                  {l.name ? `${l.name} · ` : ''}{l.role} ({l.isContractor ? 'Terceirizado' : 'Próprio'}): {l.quantity} profissionais
+                </ItemTitle>
+                <ItemSubtitle>
+                  Jornada: {l.hours}h ({l.quantity * l.hours} Homem-Hora total)
+                  {l.horaInicio || l.horaFim
+                    ? ` • Horário: ${l.horaInicio || '—'} às ${l.horaFim || '—'}`
+                    : ''}
+                </ItemSubtitle>
+              </ItemCard>
+            ))
+          )}
 
           {rdo.comments
             .filter((c) => c.section === 'maoDeObra')
@@ -392,13 +396,79 @@ export const RDOReviewView = () => {
             ))}
         </SectionCard>
 
-        {/* 3. Atividades & Materiais */}
+        {/* 3. Equipamentos Presentes */}
         <SectionCard>
           <SectionHeader>
             <SectionTitleContainer>
-              <SectionTitle>3. Atividades & Materiais</SectionTitle>
+              <SectionTitle>3. Equipamentos Presentes</SectionTitle>
               <SectionSubtitle>
-                {rdo.activities.length} atividades • {rdo.materials.length} insumos
+                {rdo.equipment.length} tipos •{' '}
+                {rdo.equipment.reduce((acc, e) => acc + (e.quantity ?? 1), 0)} unidades no canteiro
+              </SectionSubtitle>
+            </SectionTitleContainer>
+
+            {!isApproved && !isClient && (
+              <SectionAction
+                onPress={() => handleOpenCommentDialog('equipamentos')}
+                hitSlop={theme.touchTarget.hitSlop}
+                accessibilityRole="button"
+                accessibilityLabel={`${strings.rdoReview.commentAction} Equipamentos`}
+              >
+                <MessageSquare
+                  size={theme.icon.size.sm}
+                  color={theme.colors.tintText}
+                  strokeWidth={theme.icon.strokeWidth}
+                />
+                <SectionActionText>{strings.rdoReview.commentAction}</SectionActionText>
+              </SectionAction>
+            )}
+          </SectionHeader>
+
+          {rdo.equipment.length === 0 ? (
+            <ItemSubtitle>Nenhum equipamento registrado no canteiro.</ItemSubtitle>
+          ) : (
+            rdo.equipment.map((e, index) => (
+              <ItemCard key={index}>
+                <ItemTitle>
+                  {e.name}
+                  {e.brand ? ` • ${e.brand}` : ''}
+                  {e.code ? ` [${e.code}]` : ''} ({e.isRented ? 'Locado' : 'Próprio'}) • Qtd: {e.quantity ?? 1}
+                </ItemTitle>
+                <ItemSubtitle>
+                  Horas Ativas: {e.activeHours}h | Horas Paradas: {e.idleHours}h
+                  {e.horaInicio || e.horaFim
+                    ? ` • Horário: ${e.horaInicio || '—'} às ${e.horaFim || '—'}`
+                    : ''}
+                  {e.observations ? `\nObservações: ${e.observations}` : ''}
+                </ItemSubtitle>
+                {e.idleJustification ? (
+                  <WarningSubtitle>
+                    Justificativa inatividade: {e.idleJustification}
+                  </WarningSubtitle>
+                ) : null}
+              </ItemCard>
+            ))
+          )}
+
+          {rdo.comments
+            .filter((c) => c.section === 'equipamentos')
+            .map((c) => (
+              <CommentBox key={c.id}>
+                <CommentAuthor>
+                  {c.authorName} ({formatDateTime(c.createdAt)})
+                </CommentAuthor>
+                <CommentText>{c.text}</CommentText>
+              </CommentBox>
+            ))}
+        </SectionCard>
+
+        {/* 4. Atividades Executadas */}
+        <SectionCard>
+          <SectionHeader>
+            <SectionTitleContainer>
+              <SectionTitle>4. Atividades Executadas</SectionTitle>
+              <SectionSubtitle>
+                {rdo.activities.length} frentes de serviço registradas
               </SectionSubtitle>
             </SectionTitleContainer>
 
@@ -425,42 +495,48 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.activities.map((a, index) => (
-            <ItemCard key={index}>
-              <ItemTitle>{a.description}</ItemTitle>
-              <ItemSubtitle>
-                Local: {a.location} • Quantidade: {a.quantity} {a.unit}
-              </ItemSubtitle>
-            </ItemCard>
-          ))}
+          {rdo.activities.length === 0 ? (
+            <ItemSubtitle>Nenhuma atividade executada registrada.</ItemSubtitle>
+          ) : (
+            rdo.activities.map((a, index) => (
+              <ItemCard key={index}>
+                <ItemTitle>{a.description}</ItemTitle>
+                <ItemSubtitle>
+                  Status: {a.status || 'Em andamento'} • Local: {a.location} • Quantidade: {a.quantity} {a.unit}
+                  {typeof a.progress === 'number' ? ` • Avanço: ${a.progress}%` : ''}
+                </ItemSubtitle>
+              </ItemCard>
+            ))
+          )}
 
-          <SubSectionTitle>Materiais Recebidos:</SubSectionTitle>
-          {rdo.materials.map((m, index) => (
-            <ItemCard key={index}>
-              <ItemTitle>{m.name}</ItemTitle>
-              <ItemSubtitle>
-                Fornecedor: {m.supplier} • {m.invoice}
-              </ItemSubtitle>
-            </ItemCard>
-          ))}
+          {rdo.comments
+            .filter((c) => c.section === 'atividades')
+            .map((c) => (
+              <CommentBox key={c.id}>
+                <CommentAuthor>
+                  {c.authorName} ({formatDateTime(c.createdAt)})
+                </CommentAuthor>
+                <CommentText>{c.text}</CommentText>
+              </CommentBox>
+            ))}
         </SectionCard>
 
-        {/* 4. Ocorrências & Fotos */}
+        {/* 5. Ocorrências & DDS */}
         <SectionCard>
           <SectionHeader>
             <SectionTitleContainer>
-              <SectionTitle>4. Ocorrências & Fotos</SectionTitle>
+              <SectionTitle>5. Ocorrências & DDS</SectionTitle>
               <SectionSubtitle>
-                {rdo.occurrences.length} ocorrências • {rdo.photos.length} registros
+                {rdo.occurrences.length} ocorrências e diálogos de segurança
               </SectionSubtitle>
             </SectionTitleContainer>
 
             {!isApproved && !isClient && (
               <SectionAction
-                onPress={() => handleOpenCommentDialog('fotos')}
+                onPress={() => handleOpenCommentDialog('ocorrencias')}
                 hitSlop={theme.touchTarget.hitSlop}
                 accessibilityRole="button"
-                accessibilityLabel={`${strings.rdoReview.commentAction} Ocorrências e Fotos`}
+                accessibilityLabel={`${strings.rdoReview.commentAction} Ocorrências e DDS`}
               >
                 <MessageSquare
                   size={theme.icon.size.sm}
@@ -472,27 +548,95 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.occurrences.map((o, index) => (
-            <ItemCard key={index}>
-              <ItemTitle>[{o.type.toUpperCase()}]</ItemTitle>
-              <ItemSubtitle>{o.description}</ItemSubtitle>
-            </ItemCard>
-          ))}
+          {rdo.occurrences.length === 0 ? (
+            <ItemSubtitle>Nenhuma ocorrência ou DDS registrado.</ItemSubtitle>
+          ) : (
+            rdo.occurrences.map((o, index) => (
+              <ItemCard key={index}>
+                <ItemTitle>[{o.type.toUpperCase()}]</ItemTitle>
+                <ItemSubtitle>
+                  {o.description}
+                  {o.horaInicio || o.horaFim
+                    ? `\nHorário: ${o.horaInicio || '—'} às ${o.horaFim || '—'}`
+                    : ''}
+                </ItemSubtitle>
+              </ItemCard>
+            ))
+          )}
 
-          {rdo.photos.map((p) => (
-            <PhotoThumbnail key={p.id}>
-              <Camera
-                size={theme.icon.size.md}
-                color={theme.colors.tintText}
-                strokeWidth={theme.icon.strokeWidth}
-              />
-              <PhotoCaption>{p.caption}</PhotoCaption>
-              <WatermarkText>
-                [Marca d&apos;Água]: {formatDateTime(p.takenAt)} • Autor: {p.author} • Obra:{' '}
-                {rdo.workName}
-              </WatermarkText>
-            </PhotoThumbnail>
-          ))}
+          {rdo.comments
+            .filter((c) => c.section === 'ocorrencias')
+            .map((c) => (
+              <CommentBox key={c.id}>
+                <CommentAuthor>
+                  {c.authorName} ({formatDateTime(c.createdAt)})
+                </CommentAuthor>
+                <CommentText>{c.text}</CommentText>
+              </CommentBox>
+            ))}
+        </SectionCard>
+
+        {/* 6. Fotos da Obra */}
+        <SectionCard>
+          <SectionHeader>
+            <SectionTitleContainer>
+              <SectionTitle>6. Fotos da Obra</SectionTitle>
+              <SectionSubtitle>
+                {rdo.photos.length} registros fotográficos com marca d&apos;água
+              </SectionSubtitle>
+            </SectionTitleContainer>
+
+            {!isApproved && !isClient && (
+              <SectionAction
+                onPress={() => handleOpenCommentDialog('fotos')}
+                hitSlop={theme.touchTarget.hitSlop}
+                accessibilityRole="button"
+                accessibilityLabel={`${strings.rdoReview.commentAction} Fotos da Obra`}
+              >
+                <MessageSquare
+                  size={theme.icon.size.sm}
+                  color={theme.colors.tintText}
+                  strokeWidth={theme.icon.strokeWidth}
+                />
+                <SectionActionText>{strings.rdoReview.commentAction}</SectionActionText>
+              </SectionAction>
+            )}
+          </SectionHeader>
+
+          {rdo.photos.length === 0 ? (
+            <ItemSubtitle>Nenhuma foto anexada ao relatório.</ItemSubtitle>
+          ) : (
+            rdo.photos.map((p, idx) => {
+              const photoUri = p.watermarkedUri || p.uri;
+              return (
+                <PhotoThumbnail key={p.id || idx}>
+                  {photoUri ? (
+                    <Image
+                      source={{ uri: photoUri }}
+                      style={{
+                        width: '100%',
+                        height: 180,
+                        borderRadius: 8,
+                        marginBottom: 8,
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Camera
+                      size={theme.icon.size.md}
+                      color={theme.colors.tintText}
+                      strokeWidth={theme.icon.strokeWidth}
+                    />
+                  )}
+                  <PhotoCaption>{p.caption}</PhotoCaption>
+                  <WatermarkText>
+                    [Marca d&apos;Água]: {formatDateTime(p.takenAt)} • Autor: {p.author} • Obra:{' '}
+                    {rdo.workName}
+                  </WatermarkText>
+                </PhotoThumbnail>
+              );
+            })
+          )}
 
           {rdo.comments
             .filter((c) => c.section === 'fotos')
@@ -749,6 +893,14 @@ export const RDOReviewView = () => {
           />
         </ExportOptionsGroup>
       </Dialog>
+
+      {/* Modal 7: Visualização e Download do Relatório Oficial PDF no Padrão StackLab */}
+      <RdoPdfPreviewModal
+        visible={pdfPreviewOpen}
+        rdo={rdo}
+        work={work}
+        onClose={() => setPdfPreviewOpen(false)}
+      />
     </Screen>
   );
 };
