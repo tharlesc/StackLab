@@ -1,6 +1,9 @@
 import type { RDO, Shift, WeatherEntry, Work } from '@/types';
 import { calcHeadcount, calcManHours } from './rdo';
 import { parseFlexibleDate } from './date';
+import { generateRdoPdfBytes, getRdoPdfFilename, encodePdfWinAnsi } from './rdoPdfBinaryGenerator';
+
+export { generateRdoPdfBytes, getRdoPdfFilename, encodePdfWinAnsi };
 
 const WEEKDAYS_PT = [
   'Domingo',
@@ -1597,8 +1600,8 @@ export const generateRdoCsv = (rdo: RDO, work?: Partial<Work> | null): string =>
 };
 
 /**
- * Em ambiente Web, abre a janela de impressão/salvamento oficial em PDF
- * com o template do RDO no padrão StackLab.
+ * Em ambiente Web (Desktop e Mobile Web), gera o arquivo binário `.pdf` oficial
+ * no padrão StackLab (`%PDF-1.4`) e inicia o download direto no navegador.
  */
 export const triggerWebPdfDownload = (rdo: RDO, work?: Partial<Work> | null): boolean => {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -1606,40 +1609,77 @@ export const triggerWebPdfDownload = (rdo: RDO, work?: Partial<Work> | null): bo
   }
 
   try {
-    const html = generateRdoReportHtml(rdo, work, { autoPrint: true });
-    const printWin = window.open('', '_blank');
-    if (printWin && printWin.document) {
-      printWin.document.open();
-      printWin.document.write(html);
-      printWin.document.close();
-      return true;
-    }
+    const pdfBytes = generateRdoPdfBytes(rdo, work);
+    const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const filename = getRdoPdfFilename(rdo);
 
-    // Fallback caso pop-up seja bloqueado: iframe invisível para acionar o diálogo nativo de PDF
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
+    link.href = url;
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
 
-    const doc = iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(html);
-      doc.close();
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      }, 450);
-      return true;
-    }
+    setTimeout(() => {
+      try {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+        URL.revokeObjectURL(url);
+      } catch {}
+    }, 1500);
+
+    return true;
   } catch (err) {
-    console.warn('Falha ao abrir janela de impressão do PDF:', err);
+    console.warn('Falha ao baixar PDF do RDO:', err);
+    return false;
   }
-  return false;
+};
+
+/**
+ * Em ambiente Mobile Nativo (Android / iOS), grava o arquivo binário `.pdf`
+ * (`%PDF-1.4`) no armazenamento do dispositivo via `expo-file-system` e abre
+ * diretamente no visualizador/gerenciador de PDF do sistema (ou salva na pasta escolhida).
+ */
+export const triggerMobilePdfDownload = async (
+  rdo: RDO,
+  work?: Partial<Work> | null,
+): Promise<boolean> => {
+  try {
+    const pdfBytes = generateRdoPdfBytes(rdo, work);
+    const filename = getRdoPdfFilename(rdo);
+    const { File, Paths, Directory } = require('expo-file-system');
+
+    const pdfFile = new File(Paths.cache, filename);
+    if (pdfFile.exists) {
+      try {
+        pdfFile.delete();
+      } catch {}
+    }
+    pdfFile.create({ overwrite: true });
+    await pdfFile.write(pdfBytes);
+
+    try {
+      await pdfFile.preview({
+        mimeType: 'application/pdf',
+        title: filename,
+      });
+      return true;
+    } catch {
+      // Fallback: permite escolher pasta do dispositivo (ex: Downloads) para salvar o arquivo .pdf
+      const pickedDir = await Directory.pickDirectoryAsync();
+      if (pickedDir) {
+        const savedFile = pickedDir.createFile(filename, 'application/pdf');
+        await savedFile.write(pdfBytes);
+        return true;
+      }
+    }
+    return false;
+  } catch (err) {
+    console.warn('Falha ao gerar/baixar PDF no mobile:', err);
+    return false;
+  }
 };
 
 /**
@@ -1658,10 +1698,19 @@ export const triggerWebCsvDownload = (rdo: RDO, work?: Partial<Work> | null): bo
     const paddedNum = formatRdoNumberPadded(rdo.number);
     link.href = url;
     link.setAttribute('download', `StackLab_RDO_${paddedNum}.csv`);
+    link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+
+    setTimeout(() => {
+      try {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+        URL.revokeObjectURL(url);
+      } catch {}
+    }, 1500);
+
     return true;
   } catch (err) {
     console.warn('Falha ao baixar CSV:', err);

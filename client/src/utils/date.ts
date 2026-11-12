@@ -2,28 +2,42 @@
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** ISO → "dd/mm/aaaa" */
-export const formatDate = (iso: string | Date): string => {
+/** ISO ou DD/MM/AAAA → "dd/mm/aaaa" */
+export const formatDate = (iso?: string | Date | null): string => {
+  if (!iso) return '—';
   if (typeof iso === 'string') {
-    const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const trimmed = iso.trim();
+    const brMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (brMatch) {
+      const [, d, m, y] = brMatch;
+      return `${pad(Number(d))}/${pad(Number(m))}/${y}`;
+    }
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
       const [, y, m, d] = match;
       return `${d}/${m}/${y}`;
     }
   }
-  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  const d = parseFlexibleDate(iso);
+  if (!d) return '—';
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 };
 
-/** ISO → "dd/mm/aaaa às hh:mm" */
-export const formatDateTime = (iso: string | Date): string => {
-  const d = typeof iso === 'string' ? new Date(iso) : iso;
+/** ISO ou DD/MM/AAAA → "dd/mm/aaaa às hh:mm" */
+export const formatDateTime = (iso?: string | Date | null): string => {
+  if (!iso) return '—';
+  const d = parseFlexibleDate(iso);
+  if (!d) return '—';
   return `${formatDate(d)} às ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 /** Horas decorridas desde a data informada. */
-export const hoursSince = (iso: string, now: Date = new Date()): number =>
-  (now.getTime() - new Date(iso).getTime()) / 36e5;
+export const hoursSince = (iso?: string | null, now: Date = new Date()): number => {
+  if (!iso) return 0;
+  const d = parseFlexibleDate(iso);
+  if (!d) return 0;
+  return (now.getTime() - d.getTime()) / 36e5;
+};
 
 /** "há 5 min", "há 3 h", "há 2 dias" */
 export const formatRelative = (iso: string, now: Date = new Date()): string => {

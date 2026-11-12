@@ -159,7 +159,7 @@ export const ClientDashboardView = () => {
               const label = STATUS_LABELS[item.status] || item.status;
               return (
                 <RdoFeedCard
-                  onPress={() => navigateToReview(item.id)}
+                  onPress={() => navigateToReview(item.id, item.workId)}
                   accessibilityRole="button"
                   accessibilityLabel={`RDO número ${item.number}, status ${label}`}
                 >
@@ -374,7 +374,7 @@ export const ClientDashboardView = () => {
             return (
               <RdoFeedCard
                 key={item.id}
-                onPress={() => navigateToReview(item.id)}
+                onPress={() => navigateToReview(item.id, item.workId)}
                 accessibilityRole="button"
                 accessibilityLabel={`RDO número ${item.number}, status ${label}`}
               >

@@ -169,7 +169,7 @@ export const DashboardHomeView = () => {
                             return (
                               <SearchResultItem
                                 key={r.id}
-                                onPress={() => navigateToReview(r.id)}
+                                onPress={() => navigateToReview(r.id, r.workId)}
                                 activeOpacity={0.7}
                                 $isLast={isLast}
                                 accessibilityRole="button"

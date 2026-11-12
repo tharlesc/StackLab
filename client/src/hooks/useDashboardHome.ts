@@ -163,10 +163,10 @@ export const useDashboardHome = () => {
   }, []);
 
   const navigateToReview = useCallback(
-    (rdoId: string) => {
+    (rdoId: string, workId?: string) => {
       router.push({
         pathname: '/rdo-review',
-        params: { id: rdoId },
+        params: { id: rdoId, ...(workId ? { workId } : {}) },
       });
     },
     [router],

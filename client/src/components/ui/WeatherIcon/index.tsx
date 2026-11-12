@@ -13,13 +13,13 @@ import {
 } from 'lucide-react-native';
 
 export interface WeatherIconProps {
-  weather: string;
+  weather?: string;
   size?: number;
   color?: string;
 }
 
-export const getWeatherIcon = (weather: string, size = 20, color?: string): React.ReactElement => {
-  const key = weather.toLowerCase().trim();
+export const getWeatherIcon = (weather?: string, size = 20, color?: string): React.ReactElement => {
+  const key = String(weather || '').toLowerCase().trim();
   // Ordenado por especificidade/severidade (ex.: "tempestade com chuva" -> tempestade)
   if (key.includes('tempestade') || key.includes('trovoada') || key.includes('raio')) {
     return <CloudLightning size={size} color={color} />;

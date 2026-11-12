@@ -21,7 +21,6 @@ import {
   SectionHeader,
   SectionTitleContainer,
   SectionTitle,
-  SubSectionTitle,
   SectionSubtitle,
   SectionAction,
   SectionActionText,
@@ -53,6 +52,12 @@ import {
   StatusBannerTitle,
   StatusBannerText,
   ExportOptionsGroup,
+  ExportOptionCard,
+  ExportOptionRadio,
+  ExportOptionRadioInner,
+  ExportOptionContent,
+  ExportOptionTitle,
+  ExportOptionDescription,
 } from './styles';
 
 import { Header } from '@/components/navigation/Header';
@@ -63,8 +68,30 @@ import { Dialog } from '@/components/common/Dialog';
 import { Input } from '@/components/common/Input';
 import { EmptyState } from '@/components/common/EmptyState';
 import { getWeatherIcon } from '@/components/ui/WeatherIcon';
-import { formatDateTime } from '@/utils';
+import { formatDate, formatDateTime } from '@/utils';
 import { strings } from '@/constants/strings';
+
+const EXPORT_OPTIONS: {
+  id: 'pdf' | 'csv' | 'photos';
+  title: string;
+  description: string;
+}[] = [
+  {
+    id: 'pdf',
+    title: 'PDF Oficial',
+    description: 'Relatório executivo homologado no padrão StackLab.',
+  },
+  {
+    id: 'csv',
+    title: 'Exportar Planilha Analítica (CSV)',
+    description: 'Planilha detalhada de mão de obra, equipamentos e atividades.',
+  },
+  {
+    id: 'photos',
+    title: 'Download em Lote de Fotos (ZIP)',
+    description: 'Acervo fotográfico da obra com marcas d’água de segurança.',
+  },
+];
 
 export const RDOReviewView = () => {
   const theme = useTheme();
@@ -99,6 +126,8 @@ export const RDOReviewView = () => {
     setRectifyReason,
     exportDialogOpen,
     setExportDialogOpen,
+    selectedExportFormat,
+    setSelectedExportFormat,
     pdfPreviewOpen,
     setPdfPreviewOpen,
     handleOpenReturnDialog,
@@ -115,7 +144,6 @@ export const RDOReviewView = () => {
     navigateToAuditTrail,
     goBack,
     isClient,
-    isMaster,
     isAccessible,
   } = useRDOReview();
 
@@ -297,12 +325,12 @@ export const RDOReviewView = () => {
 
           <InfoRow>
             <InfoLabel>Obra Vinculada:</InfoLabel>
-            <InfoValue>{rdo.workName}</InfoValue>
+            <InfoValue>{rdo.workName || work?.name || 'Obra Cadastrada'}</InfoValue>
           </InfoRow>
 
           <InfoRow>
             <InfoLabel>Data do Registro:</InfoLabel>
-            <InfoValue>{rdo.date}</InfoValue>
+            <InfoValue>{formatDate(rdo.date)}</InfoValue>
           </InfoRow>
 
           <InfoRow>
@@ -313,21 +341,25 @@ export const RDOReviewView = () => {
           <WeatherContainer>
             <InfoLabel>Condições Climáticas por Turno:</InfoLabel>
             <WeatherBadgesRow>
-              {rdo.weather.map((w, idx) => (
-                <WeatherBadge key={idx}>
-                  {getWeatherIcon(w.condition, theme.icon.size.sm, theme.colors.tintText)}
-                  <WeatherBadgeText>
-                    {w.shift.toUpperCase()}: {w.condition} ({w.practical === false ? 'Impraticável' : 'Praticável'})
-                    {(w.stoppageHours ?? 0) > 0
-                      ? ` • ${w.stoppageHours}h parado${w.impact ? ` (${w.impact})` : ''}`
-                      : ''}
-                  </WeatherBadgeText>
-                </WeatherBadge>
-              ))}
+              {(rdo.weather || []).length === 0 ? (
+                <ItemSubtitle>Nenhuma condição climática registrada.</ItemSubtitle>
+              ) : (
+                (rdo.weather || []).map((w, idx) => (
+                  <WeatherBadge key={idx}>
+                    {getWeatherIcon(w.condition || 'ensolarado', theme.icon.size.sm, theme.colors.tintText)}
+                    <WeatherBadgeText>
+                      {(w.shift || 'TURNO').toUpperCase()}: {w.condition || 'Sem registro'} ({w.practical === false ? 'Impraticável' : 'Praticável'})
+                      {(w.stoppageHours ?? 0) > 0
+                        ? ` • ${w.stoppageHours}h parado${w.impact ? ` (${w.impact})` : ''}`
+                        : ''}
+                    </WeatherBadgeText>
+                  </WeatherBadge>
+                ))
+              )}
             </WeatherBadgesRow>
           </WeatherContainer>
 
-          {rdo.comments
+          {(rdo.comments || [])
             .filter((c) => c.section === 'identificacao')
             .map((c) => (
               <CommentBox key={c.id}>
@@ -345,7 +377,7 @@ export const RDOReviewView = () => {
             <SectionTitleContainer>
               <SectionTitle>2. Mão de Obra & Efetivos</SectionTitle>
               <SectionSubtitle>
-                {headcount} operários • {rdo.labor.length} funções • {manHours} Homem-Hora total
+                {headcount} operários • {(rdo.labor || []).length} funções • {manHours} Homem-Hora total
               </SectionSubtitle>
             </SectionTitleContainer>
 
@@ -366,25 +398,30 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.labor.length === 0 ? (
+          {(rdo.labor || []).length === 0 ? (
             <ItemSubtitle>Nenhum efetivo registrado.</ItemSubtitle>
           ) : (
-            rdo.labor.map((l, index) => (
-              <ItemCard key={index}>
-                <ItemTitle>
-                  {l.name ? `${l.name} · ` : ''}{l.role} ({l.isContractor ? 'Terceirizado' : 'Próprio'}): {l.quantity} profissionais
-                </ItemTitle>
-                <ItemSubtitle>
-                  Jornada: {l.hours}h ({l.quantity * l.hours} Homem-Hora total)
-                  {l.horaInicio || l.horaFim
-                    ? ` • Horário: ${l.horaInicio || '—'} às ${l.horaFim || '—'}`
-                    : ''}
-                </ItemSubtitle>
-              </ItemCard>
-            ))
+            (rdo.labor || []).map((l, index) => {
+              const lineHours = l.hours !== undefined && l.hours !== null ? Number(l.hours) : 8;
+              const lineQty = Number(l.quantity) || 1;
+              const lineHh = lineQty * lineHours;
+              return (
+                <ItemCard key={index}>
+                  <ItemTitle>
+                    {l.name ? `${l.name} · ` : ''}{l.role || 'Operador'} ({l.isContractor ? 'Terceirizado' : 'Próprio'}): {l.quantity ?? 1} profissionais
+                  </ItemTitle>
+                  <ItemSubtitle>
+                    Jornada: {lineHours}h ({lineHh} Homem-Hora total)
+                    {l.horaInicio || l.horaFim
+                      ? ` • Horário: ${l.horaInicio || '—'} às ${l.horaFim || '—'}`
+                      : ''}
+                  </ItemSubtitle>
+                </ItemCard>
+              );
+            })
           )}
 
-          {rdo.comments
+          {(rdo.comments || [])
             .filter((c) => c.section === 'maoDeObra')
             .map((c) => (
               <CommentBox key={c.id}>
@@ -402,8 +439,8 @@ export const RDOReviewView = () => {
             <SectionTitleContainer>
               <SectionTitle>3. Equipamentos Presentes</SectionTitle>
               <SectionSubtitle>
-                {rdo.equipment.length} tipos •{' '}
-                {rdo.equipment.reduce((acc, e) => acc + (e.quantity ?? 1), 0)} unidades no canteiro
+                {(rdo.equipment || []).length} tipos •{' '}
+                {(rdo.equipment || []).reduce((acc, e) => acc + (Number(e.quantity) || 1), 0)} unidades no canteiro
               </SectionSubtitle>
             </SectionTitleContainer>
 
@@ -424,18 +461,18 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.equipment.length === 0 ? (
+          {(rdo.equipment || []).length === 0 ? (
             <ItemSubtitle>Nenhum equipamento registrado no canteiro.</ItemSubtitle>
           ) : (
-            rdo.equipment.map((e, index) => (
+            (rdo.equipment || []).map((e, index) => (
               <ItemCard key={index}>
                 <ItemTitle>
-                  {e.name}
+                  {e.name || 'Equipamento'}
                   {e.brand ? ` • ${e.brand}` : ''}
                   {e.code ? ` [${e.code}]` : ''} ({e.isRented ? 'Locado' : 'Próprio'}) • Qtd: {e.quantity ?? 1}
                 </ItemTitle>
                 <ItemSubtitle>
-                  Horas Ativas: {e.activeHours}h | Horas Paradas: {e.idleHours}h
+                  Horas Ativas: {e.activeHours ?? 0}h | Horas Paradas: {e.idleHours ?? 0}h
                   {e.horaInicio || e.horaFim
                     ? ` • Horário: ${e.horaInicio || '—'} às ${e.horaFim || '—'}`
                     : ''}
@@ -450,7 +487,7 @@ export const RDOReviewView = () => {
             ))
           )}
 
-          {rdo.comments
+          {(rdo.comments || [])
             .filter((c) => c.section === 'equipamentos')
             .map((c) => (
               <CommentBox key={c.id}>
@@ -468,7 +505,7 @@ export const RDOReviewView = () => {
             <SectionTitleContainer>
               <SectionTitle>4. Atividades Executadas</SectionTitle>
               <SectionSubtitle>
-                {rdo.activities.length} frentes de serviço registradas
+                {(rdo.activities || []).length} frentes de serviço registradas
               </SectionSubtitle>
             </SectionTitleContainer>
 
@@ -478,7 +515,7 @@ export const RDOReviewView = () => {
                   handleOpenEditDialog(
                     'atividades',
                     'Descrição de Atividade',
-                    rdo.activities[0]?.description ?? '',
+                    (rdo.activities || [])[0]?.description ?? '',
                   )
                 }
                 hitSlop={theme.touchTarget.hitSlop}
@@ -495,21 +532,21 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.activities.length === 0 ? (
+          {(rdo.activities || []).length === 0 ? (
             <ItemSubtitle>Nenhuma atividade executada registrada.</ItemSubtitle>
           ) : (
-            rdo.activities.map((a, index) => (
+            (rdo.activities || []).map((a, index) => (
               <ItemCard key={index}>
-                <ItemTitle>{a.description}</ItemTitle>
+                <ItemTitle>{a.description || 'Atividade Executada'}</ItemTitle>
                 <ItemSubtitle>
-                  Status: {a.status || 'Em andamento'} • Local: {a.location} • Quantidade: {a.quantity} {a.unit}
+                  Status: {a.status || 'Em andamento'} • Local: {a.location || 'Canteiro'} • Quantidade: {a.quantity ?? 1} {a.unit || 'un'}
                   {typeof a.progress === 'number' ? ` • Avanço: ${a.progress}%` : ''}
                 </ItemSubtitle>
               </ItemCard>
             ))
           )}
 
-          {rdo.comments
+          {(rdo.comments || [])
             .filter((c) => c.section === 'atividades')
             .map((c) => (
               <CommentBox key={c.id}>
@@ -527,7 +564,7 @@ export const RDOReviewView = () => {
             <SectionTitleContainer>
               <SectionTitle>5. Ocorrências & DDS</SectionTitle>
               <SectionSubtitle>
-                {rdo.occurrences.length} ocorrências e diálogos de segurança
+                {(rdo.occurrences || []).length} ocorrências e diálogos de segurança
               </SectionSubtitle>
             </SectionTitleContainer>
 
@@ -548,14 +585,14 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.occurrences.length === 0 ? (
+          {(rdo.occurrences || []).length === 0 ? (
             <ItemSubtitle>Nenhuma ocorrência ou DDS registrado.</ItemSubtitle>
           ) : (
-            rdo.occurrences.map((o, index) => (
+            (rdo.occurrences || []).map((o, index) => (
               <ItemCard key={index}>
-                <ItemTitle>[{o.type.toUpperCase()}]</ItemTitle>
+                <ItemTitle>[{(o.type || 'outro').toUpperCase()}]</ItemTitle>
                 <ItemSubtitle>
-                  {o.description}
+                  {o.description || 'Ocorrência registrada'}
                   {o.horaInicio || o.horaFim
                     ? `\nHorário: ${o.horaInicio || '—'} às ${o.horaFim || '—'}`
                     : ''}
@@ -564,7 +601,7 @@ export const RDOReviewView = () => {
             ))
           )}
 
-          {rdo.comments
+          {(rdo.comments || [])
             .filter((c) => c.section === 'ocorrencias')
             .map((c) => (
               <CommentBox key={c.id}>
@@ -582,7 +619,7 @@ export const RDOReviewView = () => {
             <SectionTitleContainer>
               <SectionTitle>6. Fotos da Obra</SectionTitle>
               <SectionSubtitle>
-                {rdo.photos.length} registros fotográficos com marca d&apos;água
+                {(rdo.photos || []).length} registros fotográficos com marca d&apos;água
               </SectionSubtitle>
             </SectionTitleContainer>
 
@@ -603,10 +640,10 @@ export const RDOReviewView = () => {
             )}
           </SectionHeader>
 
-          {rdo.photos.length === 0 ? (
+          {(rdo.photos || []).length === 0 ? (
             <ItemSubtitle>Nenhuma foto anexada ao relatório.</ItemSubtitle>
           ) : (
-            rdo.photos.map((p, idx) => {
+            (rdo.photos || []).map((p, idx) => {
               const photoUri = p.watermarkedUri || p.uri;
               return (
                 <PhotoThumbnail key={p.id || idx}>
@@ -628,17 +665,17 @@ export const RDOReviewView = () => {
                       strokeWidth={theme.icon.strokeWidth}
                     />
                   )}
-                  <PhotoCaption>{p.caption}</PhotoCaption>
+                  <PhotoCaption>{p.caption || 'Registro fotográfico da obra'}</PhotoCaption>
                   <WatermarkText>
-                    [Marca d&apos;Água]: {formatDateTime(p.takenAt)} • Autor: {p.author} • Obra:{' '}
-                    {rdo.workName}
+                    [Marca d&apos;Água]: {formatDateTime(p.takenAt)} • Autor: {p.author || rdo.authorName || 'Operador'} • Obra:{' '}
+                    {rdo.workName || work?.name || 'Obra Cadastrada'}
                   </WatermarkText>
                 </PhotoThumbnail>
               );
             })
           )}
 
-          {rdo.comments
+          {(rdo.comments || [])
             .filter((c) => c.section === 'fotos')
             .map((c) => (
               <CommentBox key={c.id}>
@@ -874,23 +911,40 @@ export const RDOReviewView = () => {
         visible={exportDialogOpen}
         title="Exportar Ativos do RDO"
         description="Selecione o formato de exportação desejado:"
-        primaryAction={{ label: 'Gerar PDF Oficial', onPress: () => handleExport('pdf') }}
-        secondaryAction={{ label: 'Fechar', onPress: () => setExportDialogOpen(false) }}
+        primaryAction={{
+          label: 'Baixar',
+          onPress: () => handleExport(selectedExportFormat),
+        }}
+        secondaryAction={{
+          label: 'Fechar',
+          onPress: () => setExportDialogOpen(false),
+        }}
         onClose={() => setExportDialogOpen(false)}
       >
         <ExportOptionsGroup>
-          <Button
-            title="Exportar Planilha Analítica (CSV)"
-            variant="outline"
-            size="small"
-            onPress={() => handleExport('csv')}
-          />
-          <Button
-            title="Download em Lote de Fotos (ZIP)"
-            variant="outline"
-            size="small"
-            onPress={() => handleExport('photos')}
-          />
+          {EXPORT_OPTIONS.map((opt) => {
+            const isSelected = selectedExportFormat === opt.id;
+            return (
+              <ExportOptionCard
+                key={opt.id}
+                testID={`export-option-${opt.id}`}
+                $selected={isSelected}
+                onPress={() => setSelectedExportFormat(opt.id)}
+                activeOpacity={0.7}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={opt.title}
+              >
+                <ExportOptionRadio $selected={isSelected}>
+                  {isSelected && <ExportOptionRadioInner />}
+                </ExportOptionRadio>
+                <ExportOptionContent>
+                  <ExportOptionTitle $selected={isSelected}>{opt.title}</ExportOptionTitle>
+                  <ExportOptionDescription>{opt.description}</ExportOptionDescription>
+                </ExportOptionContent>
+              </ExportOptionCard>
+            );
+          })}
         </ExportOptionsGroup>
       </Dialog>
 

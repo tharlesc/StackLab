@@ -22,7 +22,7 @@ interface RDOContextData {
   loading: boolean;
   auditLogs: AuditLogEntry[];
   refreshData: () => Promise<void>;
-  getRdo: (id: string) => RDO | undefined;
+  getRdo: (id: string, workId?: string) => RDO | undefined;
   getAuditTrail: (rdoId: string) => AuditLogEntry[];
   submitRdo: (id: string, actor: User) => RDO;
   returnRdo: (id: string, actor: User, reason: string) => void;
@@ -113,7 +113,52 @@ export const RDOProvider = ({
     };
   }, [refreshData]);
 
-  const getRdo = useCallback((id: string) => rdos.find((r) => r.id === id), [rdos]);
+  const getRdo = useCallback(
+    (id: string, workId?: string) => {
+      if (!id) return undefined;
+      const cleanId = String(id).trim();
+
+      // 1. Busca exata por ID
+      const exact =
+        rdos.find((r) => r.id === cleanId && (!workId || r.workId === workId)) ||
+        rdos.find((r) => r.id === cleanId);
+      if (exact) return exact;
+
+      // 2. Busca com prefixo ou padding de ID (ex: 'rdo-004' vs '4' ou '004')
+      const prefixed =
+        rdos.find(
+          (r) =>
+            (!workId || r.workId === workId) &&
+            (r.id === `rdo-${cleanId}` ||
+              r.id === `rdo-${String(cleanId).padStart(3, '0')}` ||
+              cleanId === `rdo-${r.id}` ||
+              cleanId === `rdo-${String(r.id).padStart(3, '0')}`),
+        ) ||
+        rdos.find(
+          (r) =>
+            r.id === `rdo-${cleanId}` ||
+            r.id === `rdo-${String(cleanId).padStart(3, '0')}` ||
+            cleanId === `rdo-${r.id}` ||
+            cleanId === `rdo-${String(r.id).padStart(3, '0')}`,
+        );
+      if (prefixed) return prefixed;
+
+      // 3. Fallback estrito para busca por número sequencial (apenas se for puramente numérico ou no formato rdo-004)
+      const numMatch = cleanId.match(/^(?:rdo-)?0*(\d+)$/i);
+      if (numMatch) {
+        const numVal = parseInt(numMatch[1], 10);
+        if (numVal > 0) {
+          return (
+            rdos.find((r) => (!workId || r.workId === workId) && r.number === numVal) ||
+            rdos.find((r) => r.number === numVal)
+          );
+        }
+      }
+
+      return undefined;
+    },
+    [rdos],
+  );
 
   const getAuditTrail = useCallback(
     (rdoId: string) => {
@@ -128,14 +173,14 @@ export const RDOProvider = ({
   /** Executa a transição pura, substitui o RDO e registra o log (append-only). */
   const commit = useCallback(
     (id: string, fn: (rdo: RDO) => workflow.TransitionResult): RDO => {
-      const current = rdos.find((r) => r.id === id);
+      const current = getRdo(id);
       if (!current) throw new workflow.WorkflowError('RDO não encontrado.');
       const { rdo, log } = fn(current);
-      setRdos((prev) => prev.map((r) => (r.id === id ? rdo : r)));
+      setRdos((prev) => prev.map((r) => (r.id === current.id ? rdo : r)));
       setAuditLogs((prev) => [...prev, log]);
       return rdo;
     },
-    [rdos],
+    [getRdo],
   );
 
   const createDraft = useCallback((params: workflow.CreateDraftParams) => {
@@ -172,32 +217,54 @@ export const RDOProvider = ({
 
       const { rdo: submitted, log } = workflow.submitRdo(draft, actor);
 
-      setRdos((prev) => {
-        const exists = prev.some((r) => r.id === submitted.id);
-        if (exists) {
-          return prev.map((r) => (r.id === submitted.id ? submitted : r));
+      // Garante número sequencial no estado local caso ainda seja 0
+      let nextNumber = submitted.number;
+      if (!nextNumber || nextNumber <= 0) {
+        const workRdos = rdos.filter((r) => r.workId === submitted.workId);
+        const maxNumber = workRdos.reduce((max, r) => Math.max(max, r.number || 0), 0);
+        nextNumber = maxNumber + 1;
+      }
+
+      let finalSubmitted: RDO = {
+        ...submitted,
+        number: nextNumber,
+      };
+
+      if (isSupabaseConfigured) {
+        try {
+          const res = await supabaseDataService.saveRdoToSupabase(finalSubmitted);
+          if (res.success && res.savedRdo) {
+            finalSubmitted = {
+              ...finalSubmitted,
+              id: res.savedRdo.id,
+              number: res.savedRdo.number || finalSubmitted.number,
+            };
+          }
+        } catch (err) {
+          console.warn('Falha ao persistir RDO no Supabase:', err);
         }
-        return [submitted, ...prev];
+      }
+
+      setRdos((prev) => {
+        const exists = prev.some((r) => r.id === finalSubmitted.id || r.id === draft.id);
+        if (exists) {
+          return prev.map((r) => (r.id === finalSubmitted.id || r.id === draft.id ? finalSubmitted : r));
+        }
+        return [finalSubmitted, ...prev];
       });
       setAuditLogs((prev) => [...prev, log]);
 
-      if (isSupabaseConfigured) {
-        supabaseDataService.saveRdoToSupabase(submitted).catch((err) => {
-          console.warn('Falha ao persistir RDO no Supabase:', err);
-        });
-      }
-
-      if (submitted.workId) {
+      if (finalSubmitted.workId) {
         try {
-          await discardDraft(submitted.workId);
+          await discardDraft(finalSubmitted.workId);
         } catch (err) {
           console.warn('Falha ao limpar rascunho persistido após submissão:', err);
         }
       }
 
-      return submitted;
+      return finalSubmitted;
     },
-    [discardDraft],
+    [rdos, discardDraft],
   );
 
   const value = useMemo<RDOContextData>(
@@ -210,7 +277,23 @@ export const RDOProvider = ({
       getRdo,
       getAuditTrail,
       submitRdo: (id, actor) => {
-        const submitted = commit(id, (r) => workflow.submitRdo(r, actor));
+        const submitted = commit(id, (r) => {
+          const res = workflow.submitRdo(r, actor);
+          if (!res.rdo.number || res.rdo.number <= 0) {
+            const workRdos = rdos.filter((x) => x.workId === res.rdo.workId);
+            const maxNumber = workRdos.reduce((max, x) => Math.max(max, x.number || 0), 0);
+            return {
+              ...res,
+              rdo: { ...res.rdo, number: maxNumber + 1 },
+            };
+          }
+          return res;
+        });
+        if (isSupabaseConfigured) {
+          supabaseDataService.saveRdoToSupabase(submitted).catch((err) => {
+            console.warn('Falha ao persistir RDO no Supabase:', err);
+          });
+        }
         if (submitted.workId) {
           discardDraft(submitted.workId).catch((err) => {
             console.warn('Falha ao limpar rascunho persistido:', err);
@@ -219,15 +302,15 @@ export const RDOProvider = ({
         return submitted;
       },
       returnRdo: (id, actor, reason) => {
-        commit(id, (r) => workflow.returnRdo(r, actor, reason));
+        const returned = commit(id, (r) => workflow.returnRdo(r, actor, reason));
         if (isSupabaseConfigured) {
-          supabaseDataService.updateRdoStatusInSupabase(id, 'rejeitado', reason);
+          supabaseDataService.updateRdoStatusInSupabase(returned.id, 'rejeitado', reason);
         }
       },
       approveRdo: (id, actor) => {
         const approved = commit(id, (r) => workflow.approveRdo(r, actor, getDeviceInfo()));
         if (isSupabaseConfigured) {
-          supabaseDataService.updateRdoStatusInSupabase(id, 'aprovado', undefined, approved.signature);
+          supabaseDataService.updateRdoStatusInSupabase(approved.id, 'aprovado', undefined, approved.signature);
         }
         return approved;
       },
@@ -238,7 +321,7 @@ export const RDOProvider = ({
         commit(id, (r) => workflow.auditedEdit(r, actor, params));
       },
       rectifyRdo: (id, actor, reason) => {
-        const current = rdos.find((r) => r.id === id);
+        const current = getRdo(id);
         if (!current) throw new workflow.WorkflowError('RDO não encontrado.');
         const { newVersion, rdos: nextRdos, log } = workflow.rectifyRdo(current, actor, reason, rdos);
         setRdos(nextRdos);

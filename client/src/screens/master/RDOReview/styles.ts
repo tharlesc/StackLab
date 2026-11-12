@@ -274,3 +274,55 @@ export const ExportOptionsGroup = styled.View`
   gap: ${({ theme }) => theme.spacing.sm}px;
   margin-top: ${({ theme }) => theme.spacing.xs}px;
 `;
+
+export const ExportOptionCard = styled(TouchableOpacity)<{ $selected?: boolean }>`
+  flex-direction: row;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.md}px;
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  border-width: 1.5px;
+  border-color: ${({ theme, $selected }) =>
+    $selected ? theme.colors.primary : theme.colors.border};
+  background-color: ${({ theme, $selected }) =>
+    $selected ? (theme.colors.surfaceVariant || '#EEF2F6') : theme.colors.surface};
+  gap: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+export const ExportOptionRadio = styled.View<{ $selected?: boolean }>`
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border-width: 2px;
+  border-color: ${({ theme, $selected }) =>
+    $selected ? theme.colors.primary : theme.colors.border};
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+`;
+
+export const ExportOptionRadioInner = styled.View`
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: ${({ theme }) => theme.colors.primary};
+`;
+
+export const ExportOptionContent = styled.View`
+  flex: 1;
+`;
+
+export const ExportOptionTitle = styled.Text<{ $selected?: boolean }>`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: ${({ theme }) => theme.typography.callout.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.callout.lineHeight}px;
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+export const ExportOptionDescription = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.regular};
+  font-size: ${({ theme }) => theme.typography.caption.fontSize}px;
+  line-height: ${({ theme }) => theme.typography.caption.lineHeight}px;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-top: 2px;
+`;
+

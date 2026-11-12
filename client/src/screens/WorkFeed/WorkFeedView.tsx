@@ -297,7 +297,7 @@ export const WorkFeedView = () => {
       }
       router.push({
         pathname: '/rdo-review',
-        params: { id: item.id },
+        params: { id: item.id, workId: item.workId },
       });
     },
     [router, isMaster],

@@ -13,7 +13,7 @@ export type NotificationFilter = 'todas' | 'nao_lidas' | 'rdos';
 
 export const useNotifications = () => {
   const router = useRouter();
-  const { rdos } = useRDOs();
+  const { rdos, getRdo } = useRDOs();
   const { user, isMaster, isClient } = useAuth();
 
   const [readIds, setReadIds] = useState<string[]>([]);
@@ -180,20 +180,18 @@ export const useNotifications = () => {
       }
 
       if (notification.rdoId) {
-        if (isMaster) {
-          router.push({
-            pathname: '/rdo-review',
-            params: { id: notification.rdoId },
-          });
-        } else {
-          router.push({
-            pathname: '/rdo-review',
-            params: { id: notification.rdoId },
-          });
-        }
+        const targetRdo = (getRdo ? getRdo(notification.rdoId) : undefined) || rdos.find((r) => r.id === notification.rdoId);
+        const navParams: { id: string; workId?: string } = {
+          id: targetRdo?.id || notification.rdoId,
+          ...(targetRdo?.workId ? { workId: targetRdo.workId } : {}),
+        };
+        router.push({
+          pathname: '/rdo-review',
+          params: navParams,
+        });
       }
     },
-    [readIds, persistReadIds, isMaster, router],
+    [readIds, persistReadIds, rdos, router],
   );
 
   const goBack = useCallback(() => {

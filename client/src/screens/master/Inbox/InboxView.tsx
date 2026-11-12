@@ -70,7 +70,7 @@ export const InboxView = ({ isTab = false }: InboxViewProps) => {
         $isOverdue={overdue}
         $displayStatus={displayStatus}
         activeOpacity={0.8}
-        onPress={() => navigateToReview(item.id)}
+        onPress={() => navigateToReview(item.id, item.workId)}
         accessibilityRole="button"
         accessibilityLabel={`Analisar RDO número ${item.number}, Obra ${item.workName}, Status ${meta.label}`}
       >

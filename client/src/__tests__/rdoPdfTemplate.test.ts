@@ -1,6 +1,8 @@
 import {
   generateRdoReportHtml,
   generateRdoCsv,
+  generateRdoPdfBytes,
+  getRdoPdfFilename,
   formatRdoNumberPadded,
   formatReportDateBr,
 } from '@/utils/rdoPdfTemplate';
@@ -240,5 +242,31 @@ describe('StackLab RDO Official PDF Report Template', () => {
     expect(csv).toContain('6. FOTOS DA OBRA');
     expect(csv).toContain('Caminhão Munck');
     expect(csv).toContain('DDS sobre uso de EPIs e trabalho em altura');
+  });
+
+  it('generates valid 2-page A4 binary %PDF-1.4 file with StackLab brand and RDO fields for direct download', () => {
+    const filename = getRdoPdfFilename(sampleRdo);
+    expect(filename).toBe('RDO_004_-_30-10-2026_-_Residencial_Alphaville.pdf');
+
+    const pdfBytes = generateRdoPdfBytes(sampleRdo, sampleWork);
+    expect(pdfBytes).toBeInstanceOf(Uint8Array);
+    expect(pdfBytes.byteLength).toBeGreaterThan(2000);
+
+    const rawPdf = Array.from(pdfBytes)
+      .map((b) => String.fromCharCode(b))
+      .join('');
+
+    expect(rawPdf.startsWith('%PDF-1.4')).toBe(true);
+    expect(rawPdf).toContain('/Type /Pages /Count 2');
+    expect(rawPdf).toContain('/MediaBox [ 0 0 595 842 ]');
+    expect(rawPdf).toContain('StackLab');
+    expect(rawPdf).toContain('#004');
+    expect(rawPdf).toContain('APROVADO');
+    expect(rawPdf).toContain('Alphaville Urbanismo');
+    expect(rawPdf).toContain('Apontador');
+    expect(rawPdf).toContain('Betoneira');
+    expect(rawPdf).toContain('1 / 2');
+    expect(rawPdf).toContain('2 / 2');
+    expect(rawPdf.trim().endsWith('%%EOF')).toBe(true);
   });
 });

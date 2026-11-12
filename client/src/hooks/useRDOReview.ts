@@ -5,21 +5,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRDOs } from '@/contexts/RDOContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { calcManHours, calcHeadcount, isOverdue } from '@/utils/rdo';
-import { triggerWebPdfDownload, triggerWebCsvDownload } from '@/utils/rdoPdfTemplate';
+import {
+  triggerWebPdfDownload,
+  triggerWebCsvDownload,
+} from '@/utils/rdoPdfTemplate';
 import { getAvailableActions, applySectionFieldEdit } from '@/services/modules/rdoWorkflow';
 import { MOCK_WORKS } from '@/mocks';
 import type { RDOSectionKey, Work } from '@/types';
 
+export type ExportFormat = 'pdf' | 'csv' | 'photos';
+
 export const useRDOReview = () => {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; workId?: string }>();
   const { user } = useAuth();
   const { getRdo, works: rdoWorks, returnRdo, approveRdo, addComment, auditedEdit, rectifyRdo } = useRDOs();
   const adminCtx = useAdmin();
   const adminWorks = adminCtx?.works || [];
 
   const rdoId = params.id || '';
-  const rdo = rdoId ? getRdo(rdoId) : undefined;
+  const rdo = rdoId ? getRdo(rdoId, params.workId) : undefined;
 
   const work: Partial<Work> | undefined = useMemo(() => {
     if (!rdo) return undefined;
@@ -79,6 +84,7 @@ export const useRDOReview = () => {
   const [rectifyReason, setRectifyReason] = useState('');
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [selectedExportFormat, setSelectedExportFormat] = useState<ExportFormat>('pdf');
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   const manHours = useMemo(() => (rdo ? calcManHours(rdo.labor) : 0), [rdo]);
@@ -224,26 +230,40 @@ export const useRDOReview = () => {
   }, [rdo, user, rectifyReason, rectifyRdo, router]);
 
   const handleExport = useCallback(
-    (type: 'pdf' | 'csv' | 'photos') => {
+    (type: ExportFormat = selectedExportFormat) => {
       setExportDialogOpen(false);
       if (type === 'pdf') {
-        setPdfPreviewOpen(true);
-        if (rdo && Platform.OS === 'web') {
+        if (Platform.OS === 'web') {
+          if (!rdo) {
+            Alert.alert('Erro ao Baixar PDF', 'Relatório RDO não encontrado para download.');
+            return;
+          }
           triggerWebPdfDownload(rdo, work);
+        } else {
+          if (!rdo) {
+            Alert.alert('Erro ao Abrir PDF', 'Relatório RDO não encontrado para visualização.');
+            return;
+          }
+          try {
+            setPdfPreviewOpen(true);
+            return;
+          } catch (err: any) {
+            Alert.alert('Erro ao Abrir PDF', err?.message || 'Falha ao abrir a visualização do PDF.');
+            return;
+          }
         }
-        return;
       }
       if (type === 'csv' && rdo && Platform.OS === 'web') {
         triggerWebCsvDownload(rdo, work);
       }
-      const labels = {
+      const labels: Record<ExportFormat, string> = {
         pdf: 'Relatório Final PDF emitido com padrão oficial StackLab.',
         csv: 'Planilha CSV com dados analíticos exportada para download.',
         photos: 'Acervo fotográfico compactado em lote com marcas d’água.',
       };
       Alert.alert('Exportação Concluída', labels[type]);
     },
-    [rdo, work],
+    [rdo, work, selectedExportFormat],
   );
 
   const navigateToAuditTrail = useCallback(() => {
@@ -292,6 +312,8 @@ export const useRDOReview = () => {
     setRectifyReason,
     exportDialogOpen,
     setExportDialogOpen,
+    selectedExportFormat,
+    setSelectedExportFormat,
     pdfPreviewOpen,
     setPdfPreviewOpen,
     handleOpenReturnDialog,

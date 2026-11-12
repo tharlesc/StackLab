@@ -795,7 +795,8 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 size="small"
                 onPress={() => {
                   if (!laborRole.trim()) return;
-                  const hoursVal = parseFloat(laborHours) || 8;
+                  const parsedLaborHours = parseFloat(laborHours);
+                  const hoursVal = Number.isFinite(parsedLaborHours) ? Math.max(0, parsedLaborHours) : 8;
                   addLaborEntry({
                     role: laborRole.trim(),
                     name: laborName.trim() || undefined,
@@ -1122,12 +1123,16 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 size="small"
                 onPress={() => {
                   if (!actDesc.trim() || actDesc.trim().length < 3) return;
+                  const parsedActQty = parseFloat(actQty);
+                  const actQtyVal = Number.isFinite(parsedActQty) && parsedActQty >= 0 ? parsedActQty : 1;
+                  const parsedProgress = parseFloat(actProgress);
+                  const actProgressVal = Number.isFinite(parsedProgress) ? Math.min(100, Math.max(0, parsedProgress)) : 0;
                   addActivityEntry({
                     description: actDesc.trim(),
                     location: actLocation.trim() || 'Canteiro Geral',
                     unit: actUnit.trim() || 'un',
-                    quantity: parseFloat(actQty) || 1,
-                    progress: parseFloat(actProgress) || 0,
+                    quantity: actQtyVal,
+                    progress: actProgressVal,
                     status: actStatus,
                   });
                   setActDesc('');

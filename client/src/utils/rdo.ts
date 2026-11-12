@@ -46,15 +46,22 @@ export const formatRdoLabel = (status: string, date?: string, number?: number | 
   date && number != null ? `${date} Nº${number} - ${status}` : status;
 
 /** Homem-hora total da equipe. */
-export const calcManHours = (labor: LaborEntry[]): number =>
-  labor.reduce((acc, l) => acc + l.quantity * l.hours, 0);
+export const calcManHours = (labor?: LaborEntry[]): number =>
+  (labor || []).reduce(
+    (acc, l) =>
+      acc +
+      (Number(l.quantity) || 0) *
+        (l.hours !== undefined && l.hours !== null ? Number(l.hours) : 8),
+    0,
+  );
 
-export const calcHeadcount = (labor: LaborEntry[]): number => labor.reduce((acc, l) => acc + l.quantity, 0);
+export const calcHeadcount = (labor?: LaborEntry[]): number =>
+  (labor || []).reduce((acc, l) => acc + (Number(l.quantity) || 0), 0);
 
 /** Busca global em todos os campos relevantes do RDO (incluindo o rótulo do glossário de status). */
 export const rdoMatchesQuery = (rdo: RDO, query: string): boolean => {
   const displayStatus = getDisplayStatus(rdo);
-  const statusLabel = RDO_STATUS_META[displayStatus].label;
+  const statusLabel = RDO_STATUS_META[displayStatus]?.label || String(displayStatus || '');
   return matchesQuery(
     query,
     rdo.number,
@@ -63,9 +70,9 @@ export const rdoMatchesQuery = (rdo: RDO, query: string): boolean => {
     rdo.date,
     rdo.status,
     statusLabel,
-    ...rdo.activities.map((a) => `${a.description} ${a.location}`),
-    ...rdo.occurrences.map((o) => o.description),
-    ...rdo.materials.map((m) => `${m.name} ${m.supplier}`),
+    ...(rdo.activities || []).map((a) => `${a?.description || ''} ${a?.location || ''}`.trim()),
+    ...(rdo.occurrences || []).map((o) => o?.description || ''),
+    ...(rdo.materials || []).map((m) => `${m?.name || ''} ${m?.supplier || ''}`.trim()),
   );
 };
 

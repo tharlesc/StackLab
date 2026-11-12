@@ -8,11 +8,11 @@ import {
   Image,
   StyleSheet,
   Platform,
+  Alert,
 } from 'react-native';
 import {
   X,
   Download,
-  Printer,
   Sun,
   Cloud,
   CloudRain,
@@ -28,6 +28,8 @@ import {
   formatReportDateWithWeekday,
   formatReportTimestampBr,
   triggerWebPdfDownload,
+  triggerMobilePdfDownload,
+  getRdoPdfFilename,
 } from '@/utils/rdoPdfTemplate';
 
 export interface RdoPdfPreviewModalProps {
@@ -152,9 +154,17 @@ export const RdoPdfPreviewModal: React.FC<RdoPdfPreviewModalProps> = ({
     allNotes.push({ author: `${c.authorName} (${c.section})`, text: c.text });
   });
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (Platform.OS === 'web') {
       triggerWebPdfDownload(rdo, work);
+      return;
+    }
+    const ok = await triggerMobilePdfDownload(rdo, work);
+    if (!ok) {
+      Alert.alert(
+        'Erro ao Baixar PDF',
+        `Não foi possível salvar ou abrir o arquivo ${getRdoPdfFilename(rdo)} no dispositivo.`,
+      );
     }
   };
 
@@ -174,24 +184,27 @@ export const RdoPdfPreviewModal: React.FC<RdoPdfPreviewModalProps> = ({
               <View style={styles.miniBar} />
               <View style={[styles.miniBar, { marginRight: 4 }]} />
             </View>
-            <View>
-              <Text style={styles.topBarTitle}>Relatório Oficial RDO #{paddedNum}</Text>
-              <Text style={styles.topBarSub}>Padrão Executivo StackLab · 2 Páginas</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.topBarTitle} numberOfLines={1}>
+                Relatório Oficial RDO #{paddedNum}
+              </Text>
+              <Text style={styles.topBarSub} numberOfLines={1}>
+                Padrão Executivo StackLab · 2 Páginas
+              </Text>
             </View>
           </View>
 
           <View style={styles.topBarActions}>
-            {Platform.OS === 'web' && (
-              <TouchableOpacity
-                style={styles.downloadBtn}
-                onPress={handleDownloadPdf}
-                accessibilityRole="button"
-                accessibilityLabel="Baixar ou imprimir PDF Oficial"
-              >
-                <Printer size={15} color="#0B2240" />
-                <Text style={styles.downloadBtnText}>Baixar PDF</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              testID="pdf-preview-download-btn"
+              style={styles.downloadBtn}
+              onPress={handleDownloadPdf}
+              accessibilityRole="button"
+              accessibilityLabel="Baixar PDF Oficial"
+            >
+              <Download size={15} color="#0B2240" />
+              <Text style={styles.downloadBtnText}>Baixar PDF</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.closeBtn}
               onPress={onClose}

@@ -14,7 +14,8 @@ export const useClientDashboard = () => {
   const router = useRouter();
   const { user } = useAuth();
   const { works: rdoWorks, rdos } = useRDOs();
-  const { works: adminWorks } = useAdmin();
+  const adminCtx = useAdmin();
+  const adminWorks = adminCtx?.works || [];
 
   const [activeTab, setActiveTab] = useState<ClientTab>('Inicio');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -26,7 +27,7 @@ export const useClientDashboard = () => {
     if (assignedId) {
       const foundInAdmin = adminWorks.find((w) => w.id === assignedId);
       if (foundInAdmin) return foundInAdmin;
-      const foundInRdo = rdoWorks.find((w) => w.id === assignedId);
+      const foundInRdo = (rdoWorks || []).find((w) => w.id === assignedId);
       if (foundInRdo) {
         return {
           id: foundInRdo.id,
@@ -107,13 +108,13 @@ export const useClientDashboard = () => {
   );
 
   const navigateToReview = useCallback(
-    (rdoId: string) => {
+    (rdoId: string, workId?: string) => {
       router.push({
         pathname: '/rdo-review',
-        params: { id: rdoId },
+        params: { id: rdoId, ...(workId ? { workId } : (assignedWork?.id ? { workId: assignedWork.id } : {})) },
       });
     },
-    [router],
+    [router, assignedWork?.id],
   );
 
   return {
