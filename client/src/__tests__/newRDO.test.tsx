@@ -399,7 +399,6 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
     expect(viewSource).toContain("accept: 'image/*'");
     expect(viewSource).toContain("capture: 'environment'");
     expect(viewSource).toContain("'data-testid': 'camera-file-input'");
-    expect(viewSource).toContain("'data-testid': 'sequential-camera-file-input'");
     expect(viewSource).toContain("'data-testid': 'gallery-file-input'");
     expect(viewSource).toContain('readAsDataURL');
 

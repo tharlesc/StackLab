@@ -63,9 +63,6 @@ import {
   ToggleLabel,
   ToggleControlWrapper,
   PhotoActionsContainer,
-  SequentialCaptureBanner,
-  SequentialBannerTitle,
-  SequentialBannerActions,
   PhotoOriginBadge,
   PhotoOriginBadgeText,
   PhotoCard,
@@ -413,16 +410,11 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
 
   // Fotos na Obra (Câmera & Galeria)
   const [photoCaptionDraft, setPhotoCaptionDraft] = useState('');
-  const [isSequentialCameraMode, setIsSequentialCameraMode] = useState(false);
-  const [showSequentialBanner, setShowSequentialBanner] = useState(false);
   const cameraInputRef = useRef<any>(null);
-  const sequentialCameraInputRef = useRef<any>(null);
-  const nextSequentialCameraInputRef = useRef<any>(null);
   const galleryInputRef = useRef<any>(null);
-  const triggerCameraCaptureRef = useRef<((sequential?: boolean) => Promise<void>) | null>(null);
 
   const handleCameraInputChange = useCallback(
-    async (e: any, sequential = false) => {
+    async (e: any) => {
       const fileList: FileList | File[] | undefined = e?.target?.files;
       const files = fileList ? Array.from(fileList as ArrayLike<File>) : [];
       if (e?.target) {
@@ -458,118 +450,89 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
       }
 
       setPhotoCaptionDraft('');
-      setShowSequentialBanner(true);
-      if (sequential) {
-        setIsSequentialCameraMode(true);
-      }
     },
     [handleCapturePhoto, photoCaptionDraft],
   );
 
-  const triggerCameraCapture = useCallback(
-    async (sequential = false) => {
-      const defaultCaption = photoCaptionDraft.trim() || 'Registro fotográfico do canteiro';
+  const triggerCameraCapture = useCallback(async () => {
+    const defaultCaption = photoCaptionDraft.trim() || 'Registro fotográfico do canteiro';
 
-      if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        if (sequential) {
-          setIsSequentialCameraMode(true);
-          setShowSequentialBanner(true);
-        }
-        const targetInput =
-          (sequential && sequentialCameraInputRef.current) || cameraInputRef.current;
-        if (targetInput && typeof targetInput.click === 'function') {
-          targetInput.value = '';
-          targetInput.click();
-        }
-        return;
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const targetInput = cameraInputRef.current;
+      if (targetInput && typeof targetInput.click === 'function') {
+        targetInput.value = '';
+        targetInput.click();
       }
+      return;
+    }
 
-      if (Platform.OS !== 'web') {
-        const picker = getNativeImagePicker();
-        if (picker && typeof picker.launchCameraAsync === 'function') {
-          try {
-            if (typeof picker.requestCameraPermissionsAsync === 'function') {
-              const perm = await picker.requestCameraPermissionsAsync();
-              if (perm && perm.granted === false && perm.status !== 'granted') {
-                Alert?.alert?.(
-                  'Permissão necessária',
-                  'Permita o acesso à câmera nas configurações do celular para tirar fotos da obra.',
-                );
-                return;
-              }
+    if (Platform.OS !== 'web') {
+      const picker = getNativeImagePicker();
+      if (picker && typeof picker.launchCameraAsync === 'function') {
+        try {
+          if (typeof picker.requestCameraPermissionsAsync === 'function') {
+            const perm = await picker.requestCameraPermissionsAsync();
+            if (perm && perm.granted === false && perm.status !== 'granted') {
+              Alert?.alert?.(
+                'Permissão necessária',
+                'Permita o acesso à câmera nas configurações do celular para tirar fotos da obra.',
+              );
+              return;
             }
-
-            const result = await picker.launchCameraAsync({
-              mediaTypes: ['images'],
-              quality: 0.8,
-            });
-
-            const isCanceled = Boolean(result?.canceled ?? result?.cancelled);
-            const rawAssets = !isCanceled
-              ? Array.isArray(result?.assets)
-                ? result.assets
-                : result?.uri
-                  ? [{ uri: result.uri }]
-                  : []
-              : [];
-
-            if (rawAssets.length > 0) {
-              const capturedAt = new Date().toISOString();
-              let addedCount = 0;
-              for (const asset of rawAssets) {
-                if (
-                  typeof asset?.uri === 'string' &&
-                  asset.uri.trim() &&
-                  !isMockOrUnsplashUrl(asset.uri)
-                ) {
-                  handleCapturePhoto(defaultCaption, {
-                    uri: asset.uri,
-                    takenAt: capturedAt,
-                    source: 'camera',
-                  });
-                  addedCount++;
-                }
-              }
-              if (addedCount > 0) {
-                setPhotoCaptionDraft('');
-                setShowSequentialBanner(true);
-                if (sequential) {
-                  setIsSequentialCameraMode(true);
-                }
-                if (sequential || isSequentialCameraMode) {
-                  Alert?.alert?.('Foto registrada!', 'Deseja tirar a próxima foto agora?', [
-                    { text: 'Concluir', style: 'cancel' },
-                    {
-                      text: 'Tirar Próxima Foto',
-                      onPress: () => triggerCameraCaptureRef.current?.(true),
-                    },
-                  ]);
-                }
-              }
-            }
-            return;
-          } catch (err) {
-            console.warn('Erro ao abrir câmera nativa:', err);
-            Alert?.alert?.(
-              'Erro na câmera',
-              'Não foi possível capturar a foto pela câmera. Verifique as permissões e tente novamente.',
-            );
-            return;
           }
+
+          const result = await picker.launchCameraAsync({
+            mediaTypes: ['images'],
+            quality: 0.8,
+          });
+
+          const isCanceled = Boolean(result?.canceled ?? result?.cancelled);
+          const rawAssets = !isCanceled
+            ? Array.isArray(result?.assets)
+              ? result.assets
+              : result?.uri
+                ? [{ uri: result.uri }]
+                : []
+            : [];
+
+          if (rawAssets.length > 0) {
+            const capturedAt = new Date().toISOString();
+            let addedCount = 0;
+            for (const asset of rawAssets) {
+              if (
+                typeof asset?.uri === 'string' &&
+                asset.uri.trim() &&
+                !isMockOrUnsplashUrl(asset.uri)
+              ) {
+                handleCapturePhoto(defaultCaption, {
+                  uri: asset.uri,
+                  takenAt: capturedAt,
+                  source: 'camera',
+                });
+                addedCount++;
+              }
+            }
+            if (addedCount > 0) {
+              setPhotoCaptionDraft('');
+            }
+          }
+          return;
+        } catch (err) {
+          console.warn('Erro ao abrir câmera nativa:', err);
+          Alert?.alert?.(
+            'Erro na câmera',
+            'Não foi possível capturar a foto pela câmera. Verifique as permissões e tente novamente.',
+          );
+          return;
         }
       }
+    }
 
-      Alert?.alert?.(
-        'Câmera indisponível',
-        'O módulo de câmera nativa não está disponível neste dispositivo. Utilize a opção de galeria ou selecione um arquivo de imagem válido.',
-      );
-    },
-    [handleCapturePhoto, isSequentialCameraMode, photoCaptionDraft],
-  );
-
-  useEffect(() => {
-    triggerCameraCaptureRef.current = triggerCameraCapture;
-  }, [triggerCameraCapture]);
+    Alert?.alert?.(
+      'Câmera indisponível',
+      'O módulo de câmera nativa não está disponível neste dispositivo. Utilize a opção de galeria ou selecione um arquivo de imagem válido.',
+    );
+  }, [handleCapturePhoto, photoCaptionDraft]);
 
   const handleGalleryInputChange = useCallback(
     async (e: any) => {
@@ -1723,9 +1686,9 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             <PhotoActionsContainer>
               <View style={{ position: 'relative' }}>
                 <Button
-                  title="📷 Tirar Foto Agora (Câmera)"
+                  title="Tirar Foto"
                   variant="primary"
-                  onPress={() => triggerCameraCapture(false)}
+                  onPress={triggerCameraCapture}
                 />
                 {Platform.OS === 'web' &&
                   typeof document !== 'undefined' &&
@@ -1741,51 +1704,14 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                         e.currentTarget.value = '';
                       }
                     },
-                    onChange: (e: any) => handleCameraInputChange(e, false),
-                    style: WEB_FILE_INPUT_OVERLAY_STYLE,
-                  })}
-              </View>
-
-              <View style={{ position: 'relative' }}>
-                <Button
-                  title="Tirar várias fotos em sequência"
-                  variant={isSequentialCameraMode ? 'secondary' : 'outline'}
-                  size="small"
-                  onPress={() => {
-                    setIsSequentialCameraMode(true);
-                    setShowSequentialBanner(true);
-                    triggerCameraCapture(true);
-                  }}
-                />
-                {Platform.OS === 'web' &&
-                  typeof document !== 'undefined' &&
-                  React.createElement('input', {
-                    ref: sequentialCameraInputRef,
-                    type: 'file',
-                    accept: 'image/*',
-                    capture: 'environment',
-                    multiple: true,
-                    'aria-label': 'Tirar várias fotos em sequência',
-                    'data-testid': 'sequential-camera-file-input',
-                    onClick: (e: any) => {
-                      setIsSequentialCameraMode(true);
-                      setShowSequentialBanner(true);
-                      if (e?.currentTarget) {
-                        e.currentTarget.value = '';
-                      }
-                    },
-                    onChange: (e: any) => {
-                      setIsSequentialCameraMode(true);
-                      setShowSequentialBanner(true);
-                      handleCameraInputChange(e, true);
-                    },
+                    onChange: handleCameraInputChange,
                     style: WEB_FILE_INPUT_OVERLAY_STYLE,
                   })}
               </View>
 
               <View style={{ position: 'relative', width: '100%' }}>
                 <Button
-                  title="🖼️ Enviar Fotos da Galeria (Upload)"
+                  title="Upload"
                   variant="outline"
                   fullWidth
                   onPress={triggerGalleryUpload}
@@ -1809,50 +1735,6 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                   })}
               </View>
             </PhotoActionsContainer>
-
-            {(showSequentialBanner || isSequentialCameraMode) && (
-              <SequentialCaptureBanner>
-                <SequentialBannerTitle>
-                  Foto registrada com sucesso! Deseja tirar mais fotos?
-                </SequentialBannerTitle>
-                <SequentialBannerActions>
-                  <View style={{ position: 'relative' }}>
-                    <Button
-                      title="➕ Tirar Próxima Foto"
-                      variant="primary"
-                      size="small"
-                      onPress={() => triggerCameraCapture(true)}
-                    />
-                    {Platform.OS === 'web' &&
-                      typeof document !== 'undefined' &&
-                      React.createElement('input', {
-                        ref: nextSequentialCameraInputRef,
-                        type: 'file',
-                        accept: 'image/*',
-                        capture: 'environment',
-                        'aria-label': 'Tirar Próxima Foto',
-                        'data-testid': 'next-camera-file-input',
-                        onClick: (e: any) => {
-                          if (e?.currentTarget) {
-                            e.currentTarget.value = '';
-                          }
-                        },
-                        onChange: (e: any) => handleCameraInputChange(e, true),
-                        style: WEB_FILE_INPUT_OVERLAY_STYLE,
-                      })}
-                  </View>
-                  <Button
-                    title="Concluir sequência"
-                    variant="outline"
-                    size="small"
-                    onPress={() => {
-                      setShowSequentialBanner(false);
-                      setIsSequentialCameraMode(false);
-                    }}
-                  />
-                </SequentialBannerActions>
-              </SequentialCaptureBanner>
-            )}
 
             <SectionDivider />
 
@@ -2134,6 +2016,25 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               ) : (
                 activeDraft.photos.map((p, idx) => (
                   <ReviewItemBox key={p.id || idx}>
+                    <PhotoPreviewBox>
+                      <Camera size={48} color="#94A3B8" />
+                      <ResilientPhoto
+                        photo={p}
+                        index={idx}
+                        testID={`review-photo-${p.id || idx}`}
+                        accessibilityLabel={p.caption || `Foto #${idx + 1}`}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          width: '100%',
+                          height: '100%',
+                        }}
+                        resizeMode="cover"
+                      />
+                    </PhotoPreviewBox>
                     <ReviewItemHeader>
                       <ReviewItemTitle>{p.caption || `Foto #${idx + 1}`}</ReviewItemTitle>
                       <ReviewBadge $variant={p.source === 'gallery' ? 'secondary' : 'primary'}>
