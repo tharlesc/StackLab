@@ -199,6 +199,7 @@ jest.mock('@/utils/rdoPdfTemplate', () => {
   return {
     ...actual,
     triggerWebPdfDownload: jest.fn().mockReturnValue(true),
+    triggerWebPdfDownloadAsync: jest.fn().mockResolvedValue(true),
     triggerWebCsvDownload: jest.fn().mockReturnValue(true),
   };
 });
@@ -212,7 +213,7 @@ import { RDOReviewView } from '@/screens/master/RDOReview/RDOReviewView';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { RDOProvider } from '@/contexts/RDOContext';
 import { AdminProvider } from '@/contexts/AdminContext';
-import { triggerWebPdfDownload, triggerWebCsvDownload } from '@/utils/rdoPdfTemplate';
+import { triggerWebPdfDownloadAsync, triggerWebCsvDownload } from '@/utils/rdoPdfTemplate';
 import type { RDO, User, ActiveWork } from '@/types';
 
 if (typeof (globalThis as any).IS_REACT_ACT_ENVIRONMENT === 'undefined') {
@@ -371,16 +372,16 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
       });
       expect(hookValue.exportDialogOpen).toBe(true);
 
-      act(() => {
-        hookValue.handleExport('pdf');
+      await act(async () => {
+        await hookValue.handleExport('pdf');
       });
 
       // Dialog is closed
       expect(hookValue.exportDialogOpen).toBe(false);
       // RdoPdfPreviewModal is strictly NOT opened
       expect(hookValue.pdfPreviewOpen).toBe(false);
-      // triggerWebPdfDownload is invoked directly
-      expect(triggerWebPdfDownload).toHaveBeenCalledWith(
+      // triggerWebPdfDownloadAsync is invoked directly
+      expect(triggerWebPdfDownloadAsync).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'rdo-test-100', number: 100 }),
         expect.anything(),
       );
@@ -391,7 +392,38 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
       );
     });
 
-    it('on Mobile (iOS): directly opens PDF preview modal without invoking Share.share or triggerWebPdfDownload', async () => {
+    it('on Web: shows error alert instead of success when triggerWebPdfDownloadAsync returns false or rejects', async () => {
+      mockCurrentPlatform = 'web';
+      let hookValue!: ReturnType<typeof useRDOReview>;
+      const TestComponent = () => {
+        hookValue = useRDOReview();
+        return null;
+      };
+
+      await renderWithProviders(<TestComponent />);
+
+      (triggerWebPdfDownloadAsync as jest.Mock).mockResolvedValueOnce(false);
+      await act(async () => {
+        await hookValue.handleExport('pdf');
+      });
+      expect(mockAlert).toHaveBeenCalledWith(
+        'Erro ao Baixar PDF',
+        expect.stringContaining('Não foi possível'),
+      );
+      expect(mockAlert).not.toHaveBeenCalledWith('Exportação Concluída', expect.anything());
+
+      mockAlert.mockClear();
+      (triggerWebPdfDownloadAsync as jest.Mock).mockRejectedValueOnce(
+        new Error('Falha de rede simulada'),
+      );
+      await act(async () => {
+        await hookValue.handleExport('pdf');
+      });
+      expect(mockAlert).toHaveBeenCalledWith('Erro ao Baixar PDF', 'Falha de rede simulada');
+      expect(mockAlert).not.toHaveBeenCalledWith('Exportação Concluída', expect.anything());
+    });
+
+    it('on Mobile (iOS): directly opens PDF preview modal without invoking Share.share or triggerWebPdfDownloadAsync', async () => {
       mockCurrentPlatform = 'ios';
       let hookValue!: ReturnType<typeof useRDOReview>;
       const TestComponent = () => {
@@ -405,8 +437,8 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         hookValue.setExportDialogOpen(true);
       });
 
-      act(() => {
-        hookValue.handleExport('pdf');
+      await act(async () => {
+        await hookValue.handleExport('pdf');
       });
 
       // Dialog is closed
@@ -416,12 +448,12 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
       // Native Share.share is strictly NOT invoked
       expect(mockShare).not.toHaveBeenCalled();
       // Web download is strictly NOT invoked on mobile
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
       // Generic completion alert is NOT shown (preview modal opened directly)
       expect(mockAlert).not.toHaveBeenCalled();
     });
 
-    it('on Mobile (Android): directly opens PDF preview modal without invoking Share.share or triggerWebPdfDownload', async () => {
+    it('on Mobile (Android): directly opens PDF preview modal without invoking Share.share or triggerWebPdfDownloadAsync', async () => {
       mockCurrentPlatform = 'android';
       let hookValue!: ReturnType<typeof useRDOReview>;
       const TestComponent = () => {
@@ -435,8 +467,8 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         hookValue.setExportDialogOpen(true);
       });
 
-      act(() => {
-        hookValue.handleExport('pdf');
+      await act(async () => {
+        await hookValue.handleExport('pdf');
       });
 
       // Dialog is closed
@@ -446,7 +478,7 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
       // Native Share.share is strictly NOT invoked
       expect(mockShare).not.toHaveBeenCalled();
       // Web download is strictly NOT invoked on mobile
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
       // Generic completion alert is NOT shown
       expect(mockAlert).not.toHaveBeenCalled();
     });
@@ -471,8 +503,8 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         );
       });
 
-      act(() => {
-        hookValue.handleExport('pdf');
+      await act(async () => {
+        await hookValue.handleExport('pdf');
       });
 
       expect(hookValue.pdfPreviewOpen).toBe(false);
@@ -481,7 +513,7 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         'Relatório RDO não encontrado para visualização.',
       );
       expect(mockShare).not.toHaveBeenCalled();
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
     });
 
     it('on Web: displays error alert when rdo is missing', async () => {
@@ -504,15 +536,15 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         );
       });
 
-      act(() => {
-        hookValue.handleExport('pdf');
+      await act(async () => {
+        await hookValue.handleExport('pdf');
       });
 
       expect(mockAlert).toHaveBeenCalledWith(
         'Erro ao Baixar PDF',
         'Relatório RDO não encontrado para download.',
       );
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
       expect(mockShare).not.toHaveBeenCalled();
     });
 
@@ -526,8 +558,8 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
 
       await renderWithProviders(<TestComponent />);
 
-      act(() => {
-        hookValue.handleExport('csv');
+      await act(async () => {
+        await hookValue.handleExport('csv');
       });
 
       expect(hookValue.pdfPreviewOpen).toBe(false);
@@ -550,8 +582,8 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
 
       await renderWithProviders(<TestComponent />);
 
-      act(() => {
-        hookValue.handleExport('photos');
+      await act(async () => {
+        await hookValue.handleExport('photos');
       });
 
       expect(hookValue.pdfPreviewOpen).toBe(false);
@@ -575,8 +607,8 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         hookValue.setSelectedExportFormat('csv');
       });
 
-      act(() => {
-        hookValue.handleExport();
+      await act(async () => {
+        await hookValue.handleExport();
       });
 
       expect(triggerWebCsvDownload).toHaveBeenCalled();
@@ -612,8 +644,8 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
 
       await renderWithProviders(<TestComponent />);
 
-      act(() => {
-        hookValue.handleExport('pdf');
+      await act(async () => {
+        await hookValue.handleExport('pdf');
       });
 
       expect(mockAlert).toHaveBeenCalledWith(
@@ -621,7 +653,7 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         'Falha simulada ao renderizar visualizador',
       );
       expect(mockShare).not.toHaveBeenCalled();
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
 
       useStateSpy.mockRestore();
     });
@@ -721,10 +753,11 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
       const baixarBtn = container!.querySelector('[aria-label="Baixar"]') as HTMLElement;
       await act(async () => {
         baixarBtn.click();
+        await Promise.resolve();
       });
 
       // Verify PDF download was called and alert shown
-      expect(triggerWebPdfDownload).toHaveBeenCalledWith(
+      expect(triggerWebPdfDownloadAsync).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'rdo-test-100' }),
         expect.anything(),
       );
@@ -751,6 +784,7 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
       const baixarBtn = container!.querySelector('[aria-label="Baixar"]') as HTMLElement;
       await act(async () => {
         baixarBtn.click();
+        await Promise.resolve();
       });
 
       // Verify PDF preview modal was rendered
@@ -760,7 +794,7 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
 
       // Native share and web download were not called
       expect(mockShare).not.toHaveBeenCalled();
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
     });
 
     it('selecting CSV and clicking "Baixar" exports CSV and closes modal', async () => {
@@ -780,10 +814,11 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
       const baixarBtn = container!.querySelector('[aria-label="Baixar"]') as HTMLElement;
       await act(async () => {
         baixarBtn.click();
+        await Promise.resolve();
       });
 
       expect(triggerWebCsvDownload).toHaveBeenCalled();
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
       expect(mockAlert).toHaveBeenCalledWith(
         'Exportação Concluída',
         'Planilha CSV com dados analíticos exportada para download.',
@@ -805,7 +840,7 @@ describe('RDO Export Modal Restructuring & Direct PDF Download', () => {
         fecharBtn.click();
       });
 
-      expect(triggerWebPdfDownload).not.toHaveBeenCalled();
+      expect(triggerWebPdfDownloadAsync).not.toHaveBeenCalled();
       expect(triggerWebCsvDownload).not.toHaveBeenCalled();
       expect(mockShare).not.toHaveBeenCalled();
       expect(mockAlert).not.toHaveBeenCalled();

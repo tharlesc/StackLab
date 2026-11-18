@@ -1388,8 +1388,8 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
         {
           id: 'photo-1',
           caption: 'Armadura da viga baldrame',
-          uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
-          watermarkedUri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+          uri: 'https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-master-photos-test/photo-1.jpg',
+          watermarkedUri: 'https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-master-photos-test/photo-1.jpg',
           takenAt: '31/10/2026 09:15',
           author: 'Eng. Tharles Silva',
         },
@@ -1398,7 +1398,7 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
           caption: 'Concretagem iniciada',
           takenAt: '31/10/2026 14:30',
           author: 'Eng. Tharles Silva',
-          // Notice: uri/watermarkedUri omitted to verify fallback resolution
+          // Notice: uri/watermarkedUri omitted — must render explicit unavailable state, never Unsplash
         },
       ],
       comments: [],
@@ -1431,19 +1431,23 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
     expect(renderedText).toContain('Armadura da viga baldrame');
     expect(renderedText).toContain('Concretagem iniciada');
 
-    // Both images must be rendered with valid src URLs
+    // Photo 1 renders the exact submitted URL; Photo 2 (no URI) renders honest unavailable state (zero Unsplash)
     const img1 = container!.querySelector('img[data-testid="rdo-photo-photo-1"]') as HTMLImageElement | null;
     const img2 = container!.querySelector('img[data-testid="rdo-photo-photo-2"]') as HTMLImageElement | null;
+    const img2Unavailable = container!.querySelector('[data-testid="rdo-photo-photo-2-unavailable"]');
 
     expect(img1).not.toBeNull();
-    expect(img1?.src).toContain('https://images.unsplash.com/photo-1541888946425-d0fbb1861563');
+    expect(img1?.src).toBe(
+      'https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-master-photos-test/photo-1.jpg',
+    );
 
-    expect(img2).not.toBeNull();
-    expect(img2?.src).toBeTruthy();
-    expect(img2?.src.startsWith('http')).toBe(true);
+    expect(img2).toBeNull();
+    expect(img2Unavailable).not.toBeNull();
+    expect(img2Unavailable?.textContent).toContain('Foto indisponível');
+    expect(container!.innerHTML).not.toContain('unsplash.com');
   });
 
-  it('R1 (Adversarial): Master approval view recovers gracefully when image throws onError (network or 403 failure)', async () => {
+  it('R2 (Adversarial): Master approval view shows honest unavailable state instead of Unsplash when image throws onError (network or 403 failure)', async () => {
     const errorPhotoRdo: RDO = {
       id: 'rdo-error-photo-test',
       number: 89,
@@ -1503,8 +1507,12 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
       img!.dispatchEvent(new Event('error'));
     });
 
-    // ResilientPhoto must have fallen back to a valid stock photo without breaking
-    expect(img?.src).toContain('https://images.unsplash.com/');
+    // ResilientPhoto must show honest unavailable state and NEVER substitute Unsplash stock photos
+    expect(container!.querySelector('img[data-testid="rdo-photo-photo-err"]')).toBeNull();
+    const unavailable = container!.querySelector('[data-testid="rdo-photo-photo-err-unavailable"]');
+    expect(unavailable).not.toBeNull();
+    expect(unavailable?.textContent).toContain('Foto indisponível');
+    expect(container!.innerHTML).not.toContain('images.unsplash.com');
   });
 
   it('R1 & R2: Master approval view correctly displays RDO with 3 diverse photos (raw Base64, mobile path, Supabase row)', async () => {
@@ -1543,6 +1551,7 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
         {
           id: 'p-supa',
           caption: 'Foto Supabase Storage',
+          url: 'https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-90/foto-3.jpg',
           storage_path: 'rdo-90/foto-3.jpg',
           takenAt: '31/10/2026 10:00',
           author: 'Eng. Tharles Silva',
@@ -1584,7 +1593,7 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
 
     expect(img1?.src).toContain('data:image/jpeg;base64,');
     expect(img2?.src).toContain('/var/mobile/Containers/Data/Application/foto.jpg');
-    expect(img3?.src).toBeTruthy();
+    expect(img3?.src).toBe('https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-90/foto-3.jpg');
   });
 
   it('R1 (Adversarial): Master approval view renders gracefully without crashing when photos array contains null, undefined, or malformed entries', async () => {
@@ -1618,7 +1627,7 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
           caption: Object.create(null) as any,
           author: Object.create(null) as any,
           takenAt: Object.create(null) as any,
-          uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+          uri: 'https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-91/valid.jpg',
         } as any,
       ],
       comments: [],
@@ -1649,15 +1658,15 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
     expect(renderedText).toContain('6. Fotos da Obra');
     expect(renderedText).toContain('4 registros fotográficos');
 
-    const img3 = container!.querySelector('img[data-testid="rdo-photo-p-malformed-uri"]') as HTMLImageElement | null;
-    expect(img3).not.toBeNull();
-    expect(img3?.src).toBeTruthy();
-    expect(img3?.src.startsWith('http')).toBe(true);
+    const img3Unavailable = container!.querySelector('[data-testid="rdo-photo-p-malformed-uri-unavailable"]');
+    expect(img3Unavailable).not.toBeNull();
+    expect(img3Unavailable?.textContent).toContain('Foto indisponível');
 
     const img4 = container!.querySelector('img[data-testid="rdo-photo-p-malformed-props"]') as HTMLImageElement | null;
     expect(img4).not.toBeNull();
-    expect(img4?.src).toBeTruthy();
+    expect(img4?.src).toBe('https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-91/valid.jpg');
     expect(renderedText).toContain('Registro fotográfico da obra');
+    expect(container!.innerHTML).not.toContain('unsplash.com');
   });
 
   it('R1 (Adversarial): Master approval view displays real photo URI when watermarkedUri is empty string', async () => {
@@ -1777,12 +1786,16 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
     expect(img).not.toBeNull();
     expect(img?.src).toBe('https://cdn.stacklab.com/wrapped-photo.jpg');
 
-    // Trigger onError to verify resilient fallback to default construction photo
+    // Trigger onError to verify honest unavailable state (zero Unsplash stock photo fallback)
     await act(async () => {
       img!.dispatchEvent(new Event('error'));
     });
 
-    expect(img?.src).toContain('unsplash.com');
+    expect(container!.querySelector('img[data-testid="rdo-photo-p-wrapped"]')).toBeNull();
+    const unavailable = container!.querySelector('[data-testid="rdo-photo-p-wrapped-unavailable"]');
+    expect(unavailable).not.toBeNull();
+    expect(unavailable?.textContent).toContain('Foto indisponível');
+    expect(container!.innerHTML).not.toContain('unsplash.com');
   });
 
   it('R1 (Adversarial): Master approval view renders Windows UNC path and raw WebP photos without broken links', async () => {
@@ -1860,7 +1873,7 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
     expect(imgWebp?.src).toBe(`data:image/webp;base64,${rawWebP}`);
   });
 
-  it('R1 (Adversarial): fetchRdosFromSupabase preserves diverse photo URIs (file, content, blob, UNC, raw base64) without discarding to broken storage URLs', async () => {
+  it('R1 & R2 (Adversarial): fetchRdosFromSupabase resolves storage_path public URLs whenever url is ephemeral/local, Unsplash, or null, and preserves valid remote/data URIs', async () => {
     let isolatedFetchRdos: () => Promise<RDO[]>;
     const prevUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     const prevKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -1910,10 +1923,10 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
                 ordem: 2,
               },
               {
-                id: 'foto-unc',
-                url: '\\\\servidor\\obras\\foto-share.jpg',
-                storage_path: 'rdo-remote-test/foto-unc-3.jpg',
-                legenda: 'Foto Windows UNC',
+                id: 'foto-unsplash',
+                url: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+                storage_path: 'rdo-remote-test/foto-real-3.jpg',
+                legenda: 'Foto com storage_path real',
                 ordem: 3,
               },
               {
@@ -1929,6 +1942,13 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
                 storage_path: 'rdo-remote-test/storage-only.jpg',
                 legenda: 'Foto Apenas Storage',
                 ordem: 5,
+              },
+              {
+                id: 'foto-persisted-https',
+                url: 'https://mock-adversarial.supabase.co/storage/v1/object/public/rdo-fotos/rdo-remote-test/persisted-6.jpg',
+                storage_path: 'rdo-remote-test/persisted-6.jpg',
+                legenda: 'Foto Persistida HTTPS',
+                ordem: 6,
               },
             ],
           },
@@ -1961,27 +1981,36 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
       const rdos = await isolatedFetchRdos!();
       expect(rdos).toHaveLength(1);
       const testPhotos = rdos[0].photos || [];
-      expect(testPhotos).toHaveLength(6);
+      expect(testPhotos).toHaveLength(7);
 
-      // Verify file:// is preserved verbatim
-      expect(testPhotos[0].uri).toBe('file:///data/user/0/host.exp.exponent/cache/photo1.jpg');
-      expect(testPhotos[0].watermarkedUri).toBe('file:///data/user/0/host.exp.exponent/cache/photo1.jpg');
+      // Ephemeral/local URIs (file://, content://, blob:) & Unsplash NEVER shadow storage_path across devices
+      expect(testPhotos[0].uri).toBe(
+        'https://mock-adversarial.supabase.co/storage/v1/object/public/rdo-fotos/rdo-remote-test/foto-file-0.jpg',
+      );
+      expect(testPhotos[0].storage_path).toBe('rdo-remote-test/foto-file-0.jpg');
 
-      // Verify content:// is preserved verbatim
-      expect(testPhotos[1].uri).toBe('content://media/external/images/media/999');
+      expect(testPhotos[1].uri).toBe(
+        'https://mock-adversarial.supabase.co/storage/v1/object/public/rdo-fotos/rdo-remote-test/foto-content-1.jpg',
+      );
+      expect(testPhotos[2].uri).toBe(
+        'https://mock-adversarial.supabase.co/storage/v1/object/public/rdo-fotos/rdo-remote-test/foto-blob-2.jpg',
+      );
+      expect(testPhotos[3].uri).toBe(
+        'https://mock-adversarial.supabase.co/storage/v1/object/public/rdo-fotos/rdo-remote-test/foto-real-3.jpg',
+      );
 
-      // Verify blob: is preserved verbatim
-      expect(testPhotos[2].uri).toBe('blob:http://localhost:8081/abc-456');
-
-      // Verify Windows UNC path is preserved verbatim
-      expect(testPhotos[3].uri).toBe('\\\\servidor\\obras\\foto-share.jpg');
-
-      // Verify raw Base64 is normalized to data:image/jpeg;base64,...
+      // Raw Base64 is normalized to data:image/jpeg;base64,...
       expect(testPhotos[4].uri).toBe('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test');
 
-      // Verify storage path without url resolves via Supabase storage publicUrl
-      expect(typeof testPhotos[5].uri).toBe('string');
-      expect(testPhotos[5].uri?.length).toBeGreaterThan(0);
+      // storage_path without url resolves via Supabase storage publicUrl
+      expect(testPhotos[5].uri).toBe(
+        'https://mock-adversarial.supabase.co/storage/v1/object/public/rdo-fotos/rdo-remote-test/storage-only.jpg',
+      );
+
+      // Persisted HTTPS URL is preserved
+      expect(testPhotos[6].uri).toBe(
+        'https://mock-adversarial.supabase.co/storage/v1/object/public/rdo-fotos/rdo-remote-test/persisted-6.jpg',
+      );
     } finally {
       process.env.EXPO_PUBLIC_SUPABASE_URL = prevUrl;
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = prevKey;

@@ -231,17 +231,17 @@ export const RDOProvider = ({
       };
 
       if (isSupabaseConfigured) {
-        try {
-          const res = await supabaseDataService.saveRdoToSupabase(finalSubmitted);
-          if (res.success && res.savedRdo) {
-            finalSubmitted = {
-              ...finalSubmitted,
-              id: res.savedRdo.id,
-              number: res.savedRdo.number || finalSubmitted.number,
-            };
-          }
-        } catch (err) {
-          console.warn('Falha ao persistir RDO no Supabase:', err);
+        const res = await supabaseDataService.saveRdoToSupabase(finalSubmitted);
+        if (!res.success) {
+          throw new Error(res.error || 'Falha ao persistir RDO e fotos no Supabase.');
+        }
+        if (res.savedRdo) {
+          finalSubmitted = {
+            ...finalSubmitted,
+            id: res.savedRdo.id,
+            number: res.savedRdo.number || finalSubmitted.number,
+            photos: res.savedRdo.photos ?? finalSubmitted.photos,
+          };
         }
       }
 
@@ -290,11 +290,38 @@ export const RDOProvider = ({
           return res;
         });
         if (isSupabaseConfigured) {
-          supabaseDataService.saveRdoToSupabase(submitted).catch((err) => {
-            console.warn('Falha ao persistir RDO no Supabase:', err);
-          });
-        }
-        if (submitted.workId) {
+          supabaseDataService
+            .saveRdoToSupabase(submitted)
+            .then((res) => {
+              if (!res.success) {
+                console.warn('Falha ao persistir RDO no Supabase:', res.error);
+                return;
+              }
+              if (res.savedRdo) {
+                const synced = res.savedRdo;
+                setRdos((prev) =>
+                  prev.map((r) =>
+                    r.id === submitted.id
+                      ? {
+                          ...r,
+                          id: synced.id,
+                          number: synced.number || r.number,
+                          photos: synced.photos ?? r.photos,
+                        }
+                      : r,
+                  ),
+                );
+              }
+              if (submitted.workId) {
+                discardDraft(submitted.workId).catch((err) => {
+                  console.warn('Falha ao limpar rascunho persistido:', err);
+                });
+              }
+            })
+            .catch((err) => {
+              console.warn('Falha ao persistir RDO no Supabase:', err);
+            });
+        } else if (submitted.workId) {
           discardDraft(submitted.workId).catch((err) => {
             console.warn('Falha ao limpar rascunho persistido:', err);
           });

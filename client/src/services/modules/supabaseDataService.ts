@@ -1,5 +1,15 @@
 import { supabase, isSupabaseConfigured } from '../supabase';
-import { resolvePhotoUri, extractRawPhotoCandidate } from '@/utils/rdoPhotoUtils';
+import {
+  resolvePhotoUri,
+  extractRawPhotoCandidate,
+  isMockOrUnsplashUrl,
+  isEphemeralLocalUri,
+  getStoragePathFromPhoto,
+  extractSupabaseRdoFotoStoragePath,
+  detectImageMimeTypeFromUri,
+  mimeTypeToExtension,
+  readPhotoBinaryForUpload,
+} from '@/utils/rdoPhotoUtils';
 import type {
   ActiveWork,
   Work,
@@ -223,17 +233,27 @@ export async function fetchRdosFromSupabase(): Promise<RDO[]> {
     const photos: PhotoEntry[] = (row.rdo_fotos || [])
       .sort((a: any, b: any) => (a.ordem ?? 0) - (b.ordem ?? 0))
       .map((p: any, idx: number) => {
-      const resolvedUrl = resolvePhotoUri(p, idx);
-      const photoAuthor = (p.autor_id && profileMap.get(p.autor_id)) || authorName;
-      const capturedTime = p.tirada_em || p.capturada_em || row.created_at;
+        const resolvedUrl = resolvePhotoUri(p, idx, {
+          supabaseClient: supabase,
+          isConfigured: isSupabaseConfigured,
+        });
+        const photoAuthor = (p.autor_id && profileMap.get(p.autor_id)) || authorName;
+        const capturedTime = p.tirada_em || p.capturada_em || row.created_at;
 
-      return {
-        id: p.id,
-        caption: p.legenda || '',
-        uri: resolvedUrl,
-        watermarkedUri: resolvedUrl,
-        takenAt: capturedTime,
-        author: photoAuthor,
+        return {
+          id: p.id,
+          caption: p.legenda || '',
+          uri: resolvedUrl,
+          watermarkedUri: resolvedUrl,
+          url: resolvedUrl || undefined,
+          storage_path: p.storage_path || undefined,
+          mime_type: p.mime_type || undefined,
+          tamanho_bytes:
+            p.tamanho_bytes !== undefined && p.tamanho_bytes !== null
+              ? Number(p.tamanho_bytes)
+              : undefined,
+          takenAt: capturedTime,
+          author: photoAuthor,
         metadata:
           p.latitude !== undefined && p.latitude !== null
             ? {
@@ -642,6 +662,99 @@ export async function saveRdoToSupabase(
       }
     }
 
+    // Pré-valida e lê binários de novas fotos ANTES de inserir/atualizar o cabeçalho do RDO,
+    // evitando criação de linhas rascunho órfãs caso alguma foto local seja inválida ou ilegível.
+    const knownRdoId = isUuid(rdo.id) ? rdo.id : '';
+    type PreparedPhoto =
+      | {
+          kind: 'existing';
+          photo: PhotoEntry;
+          idx: number;
+          storagePath: string;
+          publicUrl: string;
+          mimeType: string;
+          sizeBytes: number;
+        }
+      | {
+          kind: 'upload';
+          photo: PhotoEntry;
+          idx: number;
+          binary: { bytes: Uint8Array; mimeType: string };
+        };
+
+    const preparedPhotos: PreparedPhoto[] = [];
+    if (rdo.photos && rdo.photos.length > 0) {
+      for (let idx = 0; idx < rdo.photos.length; idx++) {
+        const p = rdo.photos[idx];
+        const rawUri = extractRawPhotoCandidate(p);
+        const persistedStoragePath = getStoragePathFromPhoto(p);
+
+        if (!rawUri && !persistedStoragePath) {
+          return {
+            success: false,
+            error: `A foto #${idx + 1} não possui arquivo de imagem válido para envio.`,
+          };
+        }
+        if (rawUri && isMockOrUnsplashUrl(rawUri)) {
+          return {
+            success: false,
+            error: `A foto #${idx + 1} contém uma imagem fictícia inválida e foi bloqueada.`,
+          };
+        }
+
+        const matchingStorageUrl = knownRdoId
+          ? [rawUri, p.url, (p as any).publicUrl, p.uri, p.watermarkedUri]
+              .filter((u): u is string => typeof u === 'string' && !isMockOrUnsplashUrl(u))
+              .find((u) => {
+                const extracted = extractSupabaseRdoFotoStoragePath(u);
+                return Boolean(extracted && extracted.startsWith(`${knownRdoId}/`));
+              }) || ''
+          : '';
+        const isExplicitNewDataUri = /^data:image\//i.test(rawUri);
+        const canReusePersistedStorage =
+          Boolean(knownRdoId) &&
+          !isExplicitNewDataUri &&
+          (Boolean(matchingStorageUrl) ||
+            (Boolean(persistedStoragePath) &&
+              persistedStoragePath.startsWith(`${knownRdoId}/`) &&
+              (!rawUri || rawUri === persistedStoragePath || isEphemeralLocalUri(rawUri))));
+
+        if (canReusePersistedStorage) {
+          const reusedPath = matchingStorageUrl
+            ? extractSupabaseRdoFotoStoragePath(matchingStorageUrl)
+            : persistedStoragePath;
+          let reusedUrl = matchingStorageUrl;
+          if (!reusedUrl) {
+            const { data: pubData } = supabase.storage.from('rdo-fotos').getPublicUrl(reusedPath);
+            reusedUrl = pubData?.publicUrl || '';
+          }
+          if (!reusedUrl || reusedUrl.endsWith('/undefined')) {
+            return {
+              success: false,
+              error: `Não foi possível obter a URL pública da foto #${idx + 1}.`,
+            };
+          }
+          preparedPhotos.push({
+            kind: 'existing',
+            photo: p,
+            idx,
+            storagePath: reusedPath,
+            publicUrl: reusedUrl,
+            mimeType: p.mime_type || detectImageMimeTypeFromUri(reusedPath) || 'image/jpeg',
+            sizeBytes: typeof p.tamanho_bytes === 'number' ? p.tamanho_bytes : 0,
+          });
+        } else {
+          const binary = await readPhotoBinaryForUpload(rawUri);
+          preparedPhotos.push({
+            kind: 'upload',
+            photo: p,
+            idx,
+            binary,
+          });
+        }
+      }
+    }
+
     const { data: insertedRdo, error: rdoErr } = await supabase
       .from('rdos')
       .upsert(rdoPayload, { onConflict: 'id' })
@@ -655,16 +768,109 @@ export async function saveRdoToSupabase(
 
     const targetRdoId = insertedRdo?.id || rdo.id;
 
+    // 0. Upload real das fotos para o Supabase Storage ('rdo-fotos') enquanto o RDO está em 'rascunho'
+    // (satisfazendo can_edit_rdo(targetRdoId) e rdo_fotos_path_chk antes de limpar/inserir rdo_fotos)
+    const uploadedPhotoEntries: { row: Record<string, any>; photo: PhotoEntry }[] = [];
+    for (const item of preparedPhotos) {
+      const { photo: p, idx } = item;
+      let storagePath = '';
+      let publicUrl = '';
+      let mimeType = '';
+      let sizeBytes = 0;
+
+      if (item.kind === 'existing') {
+        storagePath = item.storagePath;
+        publicUrl = item.publicUrl;
+        mimeType = item.mimeType;
+        sizeBytes = item.sizeBytes;
+      } else {
+        mimeType = item.binary.mimeType;
+        sizeBytes = item.binary.bytes.byteLength;
+        const ext = mimeTypeToExtension(mimeType);
+        const sanitizedId = (p.id || `foto-${idx + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_');
+        storagePath = `${targetRdoId}/${sanitizedId}-${idx}.${ext}`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from('rdo-fotos')
+          .upload(storagePath, item.binary.bytes, {
+            contentType: mimeType,
+            upsert: true,
+          });
+
+        if (uploadErr) {
+          return {
+            success: false,
+            error: `Falha ao enviar foto #${idx + 1} para o armazenamento: ${uploadErr.message}`,
+          };
+        }
+
+        const { data: pubData } = supabase.storage
+          .from('rdo-fotos')
+          .getPublicUrl(storagePath);
+
+        publicUrl = pubData?.publicUrl || '';
+        if (!publicUrl || publicUrl.endsWith('/undefined')) {
+          return {
+            success: false,
+            error: `Não foi possível obter a URL pública da foto #${idx + 1}.`,
+          };
+        }
+      }
+
+      const updatedPhoto: PhotoEntry = {
+        ...p,
+        uri: publicUrl,
+        watermarkedUri: publicUrl,
+        url: publicUrl,
+        storage_path: storagePath,
+        mime_type: mimeType,
+        tamanho_bytes: sizeBytes,
+      };
+
+      uploadedPhotoEntries.push({
+        photo: updatedPhoto,
+        row: {
+          rdo_id: targetRdoId,
+          storage_path: storagePath,
+          url: publicUrl,
+          mime_type: mimeType,
+          tamanho_bytes: sizeBytes,
+          legenda: (p.caption && p.caption.trim()) || null,
+          tirada_em: p.takenAt || new Date().toISOString(),
+          latitude: p.metadata?.latitude ?? null,
+          longitude: p.metadata?.longitude ?? null,
+          precisao_m: p.metadata?.accuracy ?? null,
+          endereco: p.metadata?.address ?? null,
+          hash: p.metadata?.hash ?? null,
+          ordem: idx,
+        },
+      });
+    }
+
     // Limpa registros anteriores para evitar duplicatas em caso de atualização/reenvio
-    await Promise.all([
-      supabase.from('rdo_clima').delete().eq('rdo_id', targetRdoId),
-      supabase.from('rdo_efetivo').delete().eq('rdo_id', targetRdoId),
-      supabase.from('rdo_maquinas').delete().eq('rdo_id', targetRdoId),
-      supabase.from('rdo_atividades').delete().eq('rdo_id', targetRdoId),
-      supabase.from('rdo_fatos').delete().eq('rdo_id', targetRdoId),
-      supabase.from('rdo_insumos').delete().eq('rdo_id', targetRdoId),
-      supabase.from('rdo_fotos').delete().eq('rdo_id', targetRdoId),
-    ]);
+    const childDeleteTables = [
+      'rdo_clima',
+      'rdo_efetivo',
+      'rdo_maquinas',
+      'rdo_atividades',
+      'rdo_fatos',
+      'rdo_insumos',
+      'rdo_fotos',
+    ] as const;
+    const childDeleteResults = await Promise.all(
+      childDeleteTables.map((table) => supabase.from(table).delete().eq('rdo_id', targetRdoId)),
+    );
+    for (let i = 0; i < childDeleteTables.length; i++) {
+      const delErr = childDeleteResults[i]?.error;
+      if (delErr) {
+        const failedTable = childDeleteTables[i];
+        console.error(`Erro ao limpar tabela filha ${failedTable} no Supabase:`, delErr);
+        return {
+          success: false,
+          error: `Falha ao atualizar registros de ${failedTable} no banco: ${delErr.message}`,
+        };
+      }
+    }
 
     // 1. Clima por Turno
     if (rdo.weather && rdo.weather.length > 0) {
@@ -795,21 +1001,9 @@ export async function saveRdoToSupabase(
       }
     }
 
-    // 7. Fotos da Obra
-    if (rdo.photos && rdo.photos.length > 0) {
-      const photoRowsWithUrl = rdo.photos.map((p, idx) => ({
-        rdo_id: targetRdoId,
-        storage_path: `${targetRdoId}/${p.id || `foto-${idx + 1}`}-${idx}.jpg`,
-        url: extractRawPhotoCandidate(p) || null,
-        legenda: (p.caption && p.caption.trim()) || null,
-        tirada_em: p.takenAt || new Date().toISOString(),
-        latitude: p.metadata?.latitude ?? null,
-        longitude: p.metadata?.longitude ?? null,
-        precisao_m: p.metadata?.accuracy ?? null,
-        endereco: p.metadata?.address ?? null,
-        hash: p.metadata?.hash ?? null,
-        ordem: idx,
-      }));
+    // 7. Fotos da Obra (metadados apontando para o Storage real)
+    if (uploadedPhotoEntries.length > 0) {
+      const photoRowsWithUrl = uploadedPhotoEntries.map((item) => item.row);
       let { error: photoErr } = await supabase.from('rdo_fotos').insert(photoRowsWithUrl);
       if (photoErr && String(photoErr.message || '').includes('url')) {
         const photoRowsWithoutUrl = photoRowsWithUrl.map(({ url, ...rest }) => rest);
@@ -817,7 +1011,11 @@ export async function saveRdoToSupabase(
         photoErr = retry.error;
       }
       if (photoErr) {
-        console.warn('Aviso ao inserir rdo_fotos no Supabase:', photoErr);
+        console.error('Erro ao inserir rdo_fotos no Supabase:', photoErr);
+        return {
+          success: false,
+          error: `Falha ao registrar metadados das fotos no banco: ${photoErr.message}`,
+        };
       }
     }
 
@@ -832,9 +1030,15 @@ export async function saveRdoToSupabase(
         .eq('id', targetRdoId);
 
       if (statusErr) {
-        console.warn('Aviso ao atualizar status final do RDO no Supabase:', statusErr);
+        console.error('Erro ao atualizar status final do RDO no Supabase:', statusErr);
+        return {
+          success: false,
+          error: `Falha ao finalizar status do RDO: ${statusErr.message}`,
+        };
       }
     }
+
+    const finalPhotos = uploadedPhotoEntries.map((item) => item.photo);
 
     return {
       success: true,
@@ -843,6 +1047,7 @@ export async function saveRdoToSupabase(
         id: targetRdoId,
         number: Number(insertedRdo?.numero) || rdo.number,
         status: rdo.status,
+        photos: finalPhotos,
       },
     };
   } catch (err: any) {

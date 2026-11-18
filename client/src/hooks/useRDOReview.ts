@@ -6,7 +6,7 @@ import { useRDOs } from '@/contexts/RDOContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { calcManHours, calcHeadcount, isOverdue } from '@/utils/rdo';
 import {
-  triggerWebPdfDownload,
+  triggerWebPdfDownloadAsync,
   triggerWebCsvDownload,
 } from '@/utils/rdoPdfTemplate';
 import { getAvailableActions, applySectionFieldEdit } from '@/services/modules/rdoWorkflow';
@@ -230,7 +230,7 @@ export const useRDOReview = () => {
   }, [rdo, user, rectifyReason, rectifyRdo, router]);
 
   const handleExport = useCallback(
-    (type: ExportFormat = selectedExportFormat) => {
+    async (type: ExportFormat = selectedExportFormat) => {
       setExportDialogOpen(false);
       if (type === 'pdf') {
         if (Platform.OS === 'web') {
@@ -238,7 +238,19 @@ export const useRDOReview = () => {
             Alert.alert('Erro ao Baixar PDF', 'Relatório RDO não encontrado para download.');
             return;
           }
-          triggerWebPdfDownload(rdo, work);
+          try {
+            const downloaded = await triggerWebPdfDownloadAsync(rdo, work);
+            if (!downloaded) {
+              Alert.alert(
+                'Erro ao Baixar PDF',
+                'Não foi possível gerar ou iniciar o download do PDF.',
+              );
+              return;
+            }
+          } catch (err: any) {
+            Alert.alert('Erro ao Baixar PDF', err?.message || 'Falha ao gerar o arquivo PDF.');
+            return;
+          }
         } else {
           if (!rdo) {
             Alert.alert('Erro ao Abrir PDF', 'Relatório RDO não encontrado para visualização.');

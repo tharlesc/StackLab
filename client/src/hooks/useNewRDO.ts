@@ -3,6 +3,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRDO } from '@/contexts/RDOContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { calcHeadcount, calcManHours } from '@/utils/rdo';
+import { isMockOrUnsplashUrl } from '@/utils/rdoPhotoUtils';
 import { validateDraftForSubmission } from '@/services/modules/rdoWorkflow';
 import type {
   ActiveWork,
@@ -505,12 +506,18 @@ export const useNewRDO = () => {
     });
   }, []);
 
-  // Simulação / Adição de Foto com Marca d'Água de Segurança (Câmera)
+  // Adição de Foto real com Marca d'Água de Segurança (Câmera)
   const handleCapturePhoto = useCallback(
     (
       caption = 'Registro fotográfico das atividades em campo',
       options?: { uri?: string; takenAt?: string; source?: 'camera' | 'gallery' },
     ) => {
+      const rawUri = typeof options?.uri === 'string' ? options.uri.trim() : '';
+      if (!rawUri || isMockOrUnsplashUrl(rawUri)) {
+        console.warn('handleCapturePhoto ignorado: URI de foto real ausente ou inválida.');
+        return;
+      }
+
       setActiveDraft((prev) => {
         if (!prev) return null;
 
@@ -521,9 +528,7 @@ export const useNewRDO = () => {
         const acc = 3.8;
         const seq = prev.photos.length + 1;
         const photoId = `photo-${Date.now()}-${seq}`;
-        const defaultUri =
-          'https://images.unsplash.com/photo-1541888946425-d0fbb1861563?q=80&w=600&auto=format&fit=crop';
-        const resolvedUri = options?.uri || defaultUri;
+        const resolvedUri = rawUri;
         const resolvedCaption =
           caption?.trim() || 'Registro fotográfico das atividades em campo';
 
@@ -557,47 +562,39 @@ export const useNewRDO = () => {
     [currentUser],
   );
 
-  // Upload de uma ou múltiplas fotos da galeria com Marca d'Água de Segurança
+  // Upload de uma ou múltiplas fotos reais da galeria com Marca d'Água de Segurança
   const handleUploadPhotos = useCallback(
     (
       items?:
         | Array<{ uri?: string; caption?: string; takenAt?: string; fileName?: string }>
         | string,
     ) => {
+      if (!Array.isArray(items) || items.length === 0) {
+        return;
+      }
+
+      const validItems = items.filter((item) => {
+        const uri = typeof item?.uri === 'string' ? item.uri.trim() : '';
+        return Boolean(uri && !isMockOrUnsplashUrl(uri));
+      });
+
+      if (validItems.length === 0) {
+        console.warn('handleUploadPhotos ignorado: nenhuma foto com URI real válida.');
+        return;
+      }
+
       setActiveDraft((prev) => {
         if (!prev) return null;
-
-        if (Array.isArray(items) && items.length === 0) {
-          return prev;
-        }
-
-        const normalizedItems: Array<{
-          uri?: string;
-          caption?: string;
-          takenAt?: string;
-          fileName?: string;
-        }> =
-          typeof items === 'string'
-            ? [{ caption: items }]
-            : Array.isArray(items)
-              ? items
-              : [{ caption: 'Foto importada da galeria' }];
-
-        if (normalizedItems.length === 0) {
-          return prev;
-        }
 
         const nowIso = new Date().toISOString();
         const lat = -2.5307;
         const lng = -44.3068;
         const acc = 3.8;
-        const defaultUri =
-          'https://images.unsplash.com/photo-1541888946425-d0fbb1861563?q=80&w=600&auto=format&fit=crop';
 
-        const uploadedPhotos: PhotoEntry[] = normalizedItems.map((item, idx) => {
+        const uploadedPhotos: PhotoEntry[] = validItems.map((item, idx) => {
           const seq = prev.photos.length + idx + 1;
           const takenAt = item.takenAt || nowIso;
-          const resolvedUri = item.uri || defaultUri;
+          const resolvedUri = item.uri!.trim();
           const resolvedCaption =
             item.caption?.trim() || item.fileName?.trim() || 'Foto importada da galeria';
 

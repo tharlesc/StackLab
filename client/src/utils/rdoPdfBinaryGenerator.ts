@@ -1,7 +1,11 @@
 import type { RDO, Shift, WeatherEntry, Work } from '@/types';
 import { calcHeadcount, calcManHours } from './rdo';
 import { parseFlexibleDate } from './date';
-import { resolvePdfImagePayload } from './rdoPhotoUtils';
+import {
+  resolvePdfImagePayload,
+  prefetchRdoPhotosForPdf,
+  type PdfResolvedImage,
+} from './rdoPhotoUtils';
 
 const WEEKDAYS_PT = [
   'Domingo',
@@ -1441,6 +1445,23 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
   const photoPayloads = displayedPhotos.map((photo, idx) =>
     resolvePdfImagePayload(photo, idx),
   );
+  const xObjectNames: (string | null)[] = [];
+  const validPayloads: PdfResolvedImage[] = [];
+  const xObjectEntries: string[] = [];
+  let nextImageObjNum = 11;
+
+  photoPayloads.forEach((payload) => {
+    if (payload) {
+      const imName = `/Im${validPayloads.length + 1}`;
+      xObjectNames.push(imName);
+      validPayloads.push(payload);
+      xObjectEntries.push(`${imName} ${nextImageObjNum} 0 R`);
+      nextImageObjNum++;
+    } else {
+      xObjectNames.push(null);
+    }
+  });
+
   page2Ops.push(
     drawSectionHeader(
       'REGISTRO FOTOGRÁFICO',
@@ -1473,17 +1494,37 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
       const captionH = 40;
       const imgBottom = cardBottom + captionH;
       const imgH = cardH - captionH;
+      const imName = xObjectNames[idx];
 
       // Card container
       page2Ops.push(drawFilledRoundedRect(cardX, cardBottom, cardW, cardH, 10, COLORS.white, COLORS.border, 1));
 
-      // Imagem real incorporada (XObject /Im1 ou /Im2) com recorte arredondado nos cantos superiores
-      page2Ops.push('q');
-      page2Ops.push(pdfTopRoundedRectPath(cardX, imgBottom, cardW, imgH, 10));
-      page2Ops.push('W n');
-      page2Ops.push(`${cardW} 0 0 ${imgH} ${cardX} ${imgBottom} cm`);
-      page2Ops.push(`/Im${idx + 1} Do`);
-      page2Ops.push('Q');
+      if (imName) {
+        // Imagem real incorporada (XObject /Im1 ou /Im2) com recorte arredondado nos cantos superiores
+        page2Ops.push('q');
+        page2Ops.push(pdfTopRoundedRectPath(cardX, imgBottom, cardW, imgH, 10));
+        page2Ops.push('W n');
+        page2Ops.push(`${cardW} 0 0 ${imgH} ${cardX} ${imgBottom} cm`);
+        page2Ops.push(`${imName} Do`);
+        page2Ops.push('Q');
+      } else {
+        // Estado honesto de indisponibilidade quando os bytes JPEG da foto não estão disponíveis
+        page2Ops.push('q');
+        page2Ops.push(pdfTopRoundedRectPath(cardX, imgBottom, cardW, imgH, 10));
+        page2Ops.push('W n');
+        page2Ops.push(drawFilledRect(cardX, imgBottom, cardW, imgH, COLORS.tableHeaderBg));
+        page2Ops.push(
+          drawText(
+            'Foto indisponivel para incorporacao',
+            cardX + 46,
+            imgBottom + imgH / 2 + 6,
+            8.5,
+            COLORS.slateMuted,
+            'F2',
+          ),
+        );
+        page2Ops.push('Q');
+      }
 
       // Faixa de divisória inferior da imagem
       page2Ops.push(drawLine(cardX, imgBottom, cardX + cardW, imgBottom, COLORS.rowDivider, 0.6));
@@ -1670,7 +1711,6 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
   const page1Stream = page1Ops.join('\n');
   const page2Stream = page2Ops.join('\n');
 
-  const xObjectEntries = photoPayloads.map((_, idx) => `/Im${idx + 1} ${11 + idx} 0 R`);
   const page2ResourceDict = `<< /Font << /F1 8 0 R /F2 9 0 R /F3 10 0 R >> ${
     xObjectEntries.length > 0 ? `/XObject << ${xObjectEntries.join(' ')} >> ` : ''
   }/ProcSet [ /PDF /Text ${xObjectEntries.length > 0 ? '/ImageB /ImageC /ImageI' : ''} ] >>`;
@@ -1700,11 +1740,11 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
     `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>`,
   ];
 
-  photoPayloads.forEach((payload) => {
+  validPayloads.forEach((payload) => {
     objects.push(
       `<< /Type /XObject /Subtype /Image /Width ${payload.width} /Height ${payload.height} /ColorSpace ${payload.colorSpace || '/DeviceRGB'} /BitsPerComponent 8 ${
         payload.filter ? `/Filter ${payload.filter} ` : ''
-      }/Length ${payload.bytes.length} >>\nstream\n${payload.binaryString}\nendstream`,
+      }${payload.decodeParms ? `/DecodeParms ${payload.decodeParms} ` : ''}/Length ${payload.bytes.length} >>\nstream\n${payload.binaryString}\nendstream`,
     );
   });
 
@@ -1730,4 +1770,12 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
     bytes[i] = pdfContent.charCodeAt(i) & 0xff;
   }
   return bytes;
+};
+
+export const generateRdoPdfBytesAsync = async (
+  rdo: RDO,
+  work?: Partial<Work> | null,
+): Promise<Uint8Array> => {
+  const hydratedRdo = await prefetchRdoPhotosForPdf(rdo);
+  return generateRdoPdfBytes(hydratedRdo, work);
 };

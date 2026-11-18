@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Platform,
   Alert,
@@ -18,7 +17,6 @@ import {
   CloudRain,
   CloudLightning,
   Moon,
-  Camera,
 } from 'lucide-react-native';
 import type { RDO, Shift, WeatherEntry, Work } from '@/types';
 import { calcHeadcount, calcManHours } from '@/utils/rdo';
@@ -30,7 +28,7 @@ import {
   triggerWebPdfDownload,
   triggerMobilePdfDownload,
   getRdoPdfFilename,
-  resolvePhotoUri,
+  prefetchRdoPhotosForPdf,
 } from '@/utils';
 import { ResilientPhoto } from './ResilientPhoto';
 
@@ -157,11 +155,12 @@ export const RdoPdfPreviewModal: React.FC<RdoPdfPreviewModalProps> = ({
   });
 
   const handleDownloadPdf = async () => {
+    const hydratedRdo = await prefetchRdoPhotosForPdf(rdo);
     if (Platform.OS === 'web') {
-      triggerWebPdfDownload(rdo, work);
+      triggerWebPdfDownload(hydratedRdo, work);
       return;
     }
-    const ok = await triggerMobilePdfDownload(rdo, work);
+    const ok = await triggerMobilePdfDownload(hydratedRdo, work);
     if (!ok) {
       Alert.alert(
         'Erro ao Baixar PDF',
@@ -666,7 +665,6 @@ export const RdoPdfPreviewModal: React.FC<RdoPdfPreviewModalProps> = ({
                 <View style={styles.photosGrid}>
                   {(rdo.photos || []).map((p, idx) => {
                     const numStr = String(idx + 1).padStart(2, '0');
-                    const imgUri = resolvePhotoUri(p, idx);
                     const takenFormatted = formatReportTimestampBr(p?.takenAt);
                     const caption =
                       typeof p?.caption === 'string' && p.caption.trim() ? p.caption.trim() : '—';

@@ -1,10 +1,15 @@
 import type { RDO, Shift, WeatherEntry, Work } from '@/types';
 import { calcHeadcount, calcManHours } from './rdo';
 import { parseFlexibleDate } from './date';
-import { resolvePhotoUri, DEFAULT_CONSTRUCTION_PHOTOS } from './rdoPhotoUtils';
-import { generateRdoPdfBytes, getRdoPdfFilename, encodePdfWinAnsi } from './rdoPdfBinaryGenerator';
+import { resolvePhotoUri, prefetchRdoPhotosForPdf } from './rdoPhotoUtils';
+import {
+  generateRdoPdfBytes,
+  generateRdoPdfBytesAsync,
+  getRdoPdfFilename,
+  encodePdfWinAnsi,
+} from './rdoPdfBinaryGenerator';
 
-export { generateRdoPdfBytes, getRdoPdfFilename, encodePdfWinAnsi };
+export { generateRdoPdfBytes, generateRdoPdfBytesAsync, getRdoPdfFilename, encodePdfWinAnsi };
 
 const WEEKDAYS_PT = [
   'Domingo',
@@ -254,7 +259,6 @@ export const generateRdoReportHtml = (
 
   const totalOccurrences = (rdo.occurrences || []).length;
   const totalPhotos = (rdo.photos || []).length;
-  const totalComments = (rdo.comments || []).length + (rdo.returnReason ? 1 : 0);
 
   const contractorName = work?.client || rdo.workName || 'StackLab Engenharia';
   const workAddress = work?.address || work?.subtitle || 'Canteiro de Obras StackLab';
@@ -518,8 +522,8 @@ export const generateRdoReportHtml = (
                     <span class="photo-num-badge">${photoNum}</span>
                     ${
                       imgUrl
-                        ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(caption)}" class="photo-img" crossorigin="anonymous" onerror="this.onerror=null;this.src='${DEFAULT_CONSTRUCTION_PHOTOS[idx % DEFAULT_CONSTRUCTION_PHOTOS.length]}';" />`
-                        : `<div class="photo-placeholder">Registro Fotográfico #${photoNum}</div>`
+                        ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(caption)}" class="photo-img" crossorigin="anonymous" onerror="this.onerror=null;this.style.display='none';if(this.nextElementSibling){this.nextElementSibling.style.display='flex';}" /><div class="photo-placeholder" style="display:none;">Foto indisponível (#${photoNum})</div>`
+                        : `<div class="photo-placeholder">Foto indisponível (#${photoNum})</div>`
                     }
                   </div>
                   <div class="photo-meta">
@@ -1667,6 +1671,14 @@ export const triggerWebPdfDownload = (rdo: RDO, work?: Partial<Work> | null): bo
   }
 };
 
+export const triggerWebPdfDownloadAsync = async (
+  rdo: RDO,
+  work?: Partial<Work> | null,
+): Promise<boolean> => {
+  const hydratedRdo = await prefetchRdoPhotosForPdf(rdo);
+  return triggerWebPdfDownload(hydratedRdo, work);
+};
+
 /**
  * Em ambiente Mobile Nativo (Android / iOS), grava o arquivo binário `.pdf`
  * (`%PDF-1.4`) no armazenamento do dispositivo via `expo-file-system` e abre
@@ -1677,7 +1689,7 @@ export const triggerMobilePdfDownload = async (
   work?: Partial<Work> | null,
 ): Promise<boolean> => {
   try {
-    const pdfBytes = generateRdoPdfBytes(rdo, work);
+    const pdfBytes = await generateRdoPdfBytesAsync(rdo, work);
     const filename = getRdoPdfFilename(rdo);
     const { File, Paths, Directory } = require('expo-file-system');
 

@@ -2,6 +2,7 @@ import {
   generateRdoReportHtml,
   generateRdoCsv,
   generateRdoPdfBytes,
+  generateRdoPdfBytesAsync,
   getRdoPdfFilename,
   encodePdfWinAnsi,
   formatRdoNumberPadded,
@@ -11,6 +12,9 @@ import {
 import type { RDO, Work } from '@/types';
 
 declare const Buffer: any;
+
+const SAMPLE_BASE64_JPEG =
+  'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
 
 describe('StackLab RDO Official PDF Report Template', () => {
   const sampleWork: Work = {
@@ -126,8 +130,8 @@ describe('StackLab RDO Official PDF Report Template', () => {
       {
         id: 'p-1',
         caption: 'Alvenaria do 2º pavimento finalizada',
-        uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
-        watermarkedUri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+        uri: SAMPLE_BASE64_JPEG,
+        watermarkedUri: SAMPLE_BASE64_JPEG,
         takenAt: '2026-10-30T19:18:00.000Z',
         author: 'Pedro Operador',
         metadata: {
@@ -277,62 +281,74 @@ describe('StackLab RDO Official PDF Report Template', () => {
     expect(rawPdf).toContain('/Subtype /Image');
     expect(rawPdf).toContain('/Im1');
     expect(rawPdf).toContain('/ImageC');
-    expect(rawPdf).toContain('/ColorSpace /DeviceRGB');
+    expect(rawPdf).toMatch(/\/ColorSpace \/Device(?:RGB|Gray)/);
     expect(rawPdf).toContain('/Im1 Do');
 
     expect(rawPdf.trim().endsWith('%%EOF')).toBe(true);
   });
 
-  it('R2: embeds multiple images including Base64 JPEG data URIs in generated PDF without blank areas', () => {
-    // 1x1 valid sample JPEG base64
-    const sampleBase64Jpeg =
-      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
+  it('R2: embeds multiple real images including Base64 JPEG and prefetched remote Storage JPEG in generated PDF', async () => {
+    const remoteJpegBytes = Buffer.from(
+      SAMPLE_BASE64_JPEG.replace(/^data:image\/jpeg;base64,/, ''),
+      'base64',
+    );
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'image/jpeg' },
+      arrayBuffer: async () => remoteJpegBytes.buffer.slice(remoteJpegBytes.byteOffset, remoteJpegBytes.byteOffset + remoteJpegBytes.byteLength),
+    } as any);
 
-    const multiPhotoRdo: RDO = {
-      ...sampleRdo,
-      id: 'rdo-pdf-multi-img',
-      photos: [
-        {
-          id: 'p-base64',
-          caption: 'Foto da armação com Base64 JPEG',
-          uri: sampleBase64Jpeg,
-          watermarkedUri: sampleBase64Jpeg,
-          takenAt: '2026-10-30T10:00:00.000Z',
-          author: 'Eng. Tharles Silva',
-        },
-        {
-          id: 'p-remote',
-          caption: 'Foto da concretagem',
-          uri: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd',
-          takenAt: '2026-10-30T15:30:00.000Z',
-          author: 'Eng. Tharles Silva',
-        },
-      ],
-    };
+    try {
+      const multiPhotoRdo: RDO = {
+        ...sampleRdo,
+        id: 'rdo-pdf-multi-img',
+        photos: [
+          {
+            id: 'p-base64',
+            caption: 'Foto da armação com Base64 JPEG',
+            uri: SAMPLE_BASE64_JPEG,
+            watermarkedUri: SAMPLE_BASE64_JPEG,
+            takenAt: '2026-10-30T10:00:00.000Z',
+            author: 'Eng. Tharles Silva',
+          },
+          {
+            id: 'p-remote',
+            caption: 'Foto da concretagem',
+            uri: 'https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-pdf-multi-img/concretagem.jpg',
+            takenAt: '2026-10-30T15:30:00.000Z',
+            author: 'Eng. Tharles Silva',
+          },
+        ],
+      };
 
-    const pdfBytes = generateRdoPdfBytes(multiPhotoRdo, sampleWork);
-    expect(pdfBytes).toBeInstanceOf(Uint8Array);
-    expect(pdfBytes.byteLength).toBeGreaterThan(5000);
+      const pdfBytes = await generateRdoPdfBytesAsync(multiPhotoRdo, sampleWork);
+      expect(pdfBytes).toBeInstanceOf(Uint8Array);
+      expect(pdfBytes.byteLength).toBeGreaterThan(2000);
 
-    const rawPdf = Array.from(pdfBytes)
-      .map((b) => String.fromCharCode(b))
-      .join('');
+      const rawPdf = Array.from(pdfBytes)
+        .map((b) => String.fromCharCode(b))
+        .join('');
 
-    // Verification of multiple embedded image XObjects
-    expect(rawPdf).toContain('/Im1');
-    expect(rawPdf).toContain('/Im2');
-    expect(rawPdf).toContain('/Im1 Do');
-    expect(rawPdf).toContain('/Im2 Do');
-    expect(rawPdf).toContain('/ImageC');
-    expect(rawPdf).toContain('/Filter /DCTDecode'); // Base64 JPEG decoded
-    expect(rawPdf).toContain(encodePdfWinAnsi('Foto da armação com Base64 JPEG'));
-    expect(rawPdf).toContain('Foto da concretagem');
-    expect(rawPdf.trim().endsWith('%%EOF')).toBe(true);
+      // Verification of multiple embedded real image XObjects
+      expect(rawPdf).toContain('/Im1');
+      expect(rawPdf).toContain('/Im2');
+      expect(rawPdf).toContain('/Im1 Do');
+      expect(rawPdf).toContain('/Im2 Do');
+      expect(rawPdf).toContain('/ImageC');
+      expect(rawPdf).toContain('/Filter /DCTDecode');
+      expect(rawPdf).toContain(encodePdfWinAnsi('Foto da armação com Base64 JPEG'));
+      expect(rawPdf).toContain('Foto da concretagem');
+      expect(rawPdf.trim().endsWith('%%EOF')).toBe(true);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
   });
 
   describe('Adversarial & Edge Cases: Image URI Resolution & PDF Binary Embedding', () => {
-    it('resolvePhotoUri resolves string inputs, database rows with url or storage_path, and falls back gracefully', () => {
-      const { resolvePhotoUri, DEFAULT_CONSTRUCTION_PHOTOS } = require('@/utils/rdoPhotoUtils');
+    it('resolvePhotoUri resolves string inputs, database rows with url or storage_path, and returns empty string (never Unsplash) when unresolvable', () => {
+      const { resolvePhotoUri } = require('@/utils/rdoPhotoUtils');
 
       // 1. Direct string input & local filesystem schemes
       expect(resolvePhotoUri('https://cdn.stacklab.com/obr1/foto.jpg')).toBe(
@@ -368,20 +384,53 @@ describe('StackLab RDO Official PDF Report Template', () => {
         } as any),
       ).toBe('https://cdn.stacklab.com/supa-url.jpg');
 
-      // 3. Object with "storagePath" or "storage_path"
-      const pathResolved = resolvePhotoUri({
-        id: 'row-2',
-        storage_path: 'obra-alphaville/foto-1.jpg',
-      } as any);
-      expect(typeof pathResolved).toBe('string');
-      expect(pathResolved.length).toBeGreaterThan(0);
+      // 3. Object with "storage_path" resolves via Supabase Storage when configured, or returns '' when unconfigured
+      const mockSupabase = {
+        storage: {
+          from: () => ({
+            getPublicUrl: (path: string) => ({
+              data: { publicUrl: `https://mock.supabase.co/storage/v1/object/public/rdo-fotos/${path}` },
+            }),
+          }),
+        },
+      };
+      expect(
+        resolvePhotoUri(
+          { id: 'row-2', storage_path: 'obra-alphaville/foto-1.jpg' } as any,
+          0,
+          { supabaseClient: mockSupabase, isConfigured: true },
+        ),
+      ).toBe('https://mock.supabase.co/storage/v1/object/public/rdo-fotos/obra-alphaville/foto-1.jpg');
 
-      // 4. Fallback for null / undefined / empty object / literal 'null' / 'undefined'
-      expect(resolvePhotoUri(null, 0)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(resolvePhotoUri(undefined, 1)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[1]);
-      expect(resolvePhotoUri({}, 2)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[2]);
-      expect(resolvePhotoUri('null', 0)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(resolvePhotoUri('undefined', 1)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[1]);
+      // Ephemeral local URL with storage_path MUST resolve to Storage publicUrl (never device-local file://)
+      expect(
+        resolvePhotoUri(
+          {
+            id: 'row-2b',
+            url: 'file:///var/mobile/local.jpg',
+            storage_path: 'obra-alphaville/foto-1.jpg',
+          } as any,
+          0,
+          { supabaseClient: mockSupabase, isConfigured: true },
+        ),
+      ).toBe('https://mock.supabase.co/storage/v1/object/public/rdo-fotos/obra-alphaville/foto-1.jpg');
+
+      expect(
+        resolvePhotoUri({
+          id: 'row-2-unconfigured',
+          storage_path: 'obra-alphaville/foto-1.jpg',
+        } as any),
+      ).toBe('');
+
+      // 4. Unresolvable / null / undefined / empty object / Unsplash URLs return '' (never Unsplash fallback)
+      expect(resolvePhotoUri(null, 0)).toBe('');
+      expect(resolvePhotoUri(undefined, 1)).toBe('');
+      expect(resolvePhotoUri({}, 2)).toBe('');
+      expect(resolvePhotoUri('null', 0)).toBe('');
+      expect(resolvePhotoUri('undefined', 1)).toBe('');
+      expect(
+        resolvePhotoUri('https://images.unsplash.com/photo-1541888946425-d0fbb1861563', 0),
+      ).toBe('');
 
       // 5. Adversarial: Empty/whitespace string in earlier candidate fields does not drop downstream valid URI
       expect(
@@ -409,13 +458,12 @@ describe('StackLab RDO Official PDF Report Template', () => {
       ).toBe('https://cdn.stacklab.com/nested.jpg');
     });
 
-    it('resolvePdfImagePayload safely falls back to DeviceRGB bitmap when Base64 is corrupted or not a valid JPEG', () => {
+    it('resolvePdfImagePayload returns null (never synthetic construction bitmap) when Base64 is corrupted, remote unfetched, or Unsplash', () => {
       const { resolvePdfImagePayload } = require('@/utils/rdoPhotoUtils');
 
       // Valid Base64 JPEG
-      const validBase64Jpeg =
-        'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
-      const validPayload = resolvePdfImagePayload({ id: 'valid', uri: validBase64Jpeg } as any);
+      const validPayload = resolvePdfImagePayload({ id: 'valid', uri: SAMPLE_BASE64_JPEG } as any);
+      expect(validPayload).not.toBeNull();
       expect(validPayload.filter).toBe('/DCTDecode');
       expect(validPayload.width).toBeGreaterThan(0);
       expect(validPayload.height).toBeGreaterThan(0);
@@ -424,26 +472,31 @@ describe('StackLab RDO Official PDF Report Template', () => {
       const emptyWatermarkPayload = resolvePdfImagePayload({
         id: 'empty-watermark',
         watermarkedUri: '',
-        uri: validBase64Jpeg,
+        uri: SAMPLE_BASE64_JPEG,
       } as any);
+      expect(emptyWatermarkPayload).not.toBeNull();
       expect(emptyWatermarkPayload.filter).toBe('/DCTDecode');
       expect(emptyWatermarkPayload.width).toBeGreaterThan(0);
 
-      // Corrupted Base64: valid Base64 string but completely invalid JPEG content
+      // Corrupted Base64: valid Base64 string but completely invalid JPEG content -> returns null
       const corruptedBase64 = 'data:image/jpeg;base64,' + Buffer.from('corrupted_not_a_real_jpeg_stream').toString('base64');
-      const corruptedPayload = resolvePdfImagePayload({ id: 'corrupted', uri: corruptedBase64 } as any);
-      // MUST NOT set /DCTDecode on corrupted bytes, MUST fallback to DeviceRGB bitmap
-      expect(corruptedPayload.filter).toBeUndefined();
-      expect(corruptedPayload.colorSpace).toBe('/DeviceRGB');
-      expect(corruptedPayload.width).toBe(160);
-      expect(corruptedPayload.height).toBe(120);
-      expect(corruptedPayload.bytes.length).toBe(160 * 120 * 3);
+      expect(resolvePdfImagePayload({ id: 'corrupted', uri: corruptedBase64 } as any)).toBeNull();
 
-      // Malformed Base64 string syntax
-      const malformedPayload = resolvePdfImagePayload({ id: 'malformed', uri: 'data:image/jpeg;base64,???bad_base64!!!' } as any);
-      expect(malformedPayload.filter).toBeUndefined();
-      expect(malformedPayload.colorSpace).toBe('/DeviceRGB');
-      expect(malformedPayload.bytes.length).toBe(160 * 120 * 3);
+      // Malformed Base64 string syntax -> returns null
+      expect(
+        resolvePdfImagePayload({ id: 'malformed', uri: 'data:image/jpeg;base64,???bad_base64!!!' } as any),
+      ).toBeNull();
+
+      // Unfetched remote URL or Unsplash -> returns null
+      expect(
+        resolvePdfImagePayload({ id: 'remote', uri: 'https://cdn.stacklab.com/foto.jpg' } as any),
+      ).toBeNull();
+      expect(
+        resolvePdfImagePayload({
+          id: 'unsplash',
+          uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+        } as any),
+      ).toBeNull();
 
       // Grayscale JPEG binary check
       const grayscaleBytes = new Uint8Array([
@@ -486,14 +539,15 @@ describe('StackLab RDO Official PDF Report Template', () => {
       expect(padDims?.colorSpace).toBe('/DeviceRGB');
 
       // Raw Base64 string without data:image/ scheme is parsed and embedded as DCTDecode
-      const rawBase64 = validBase64Jpeg.replace(/^data:image\/jpeg;base64,/, '');
+      const rawBase64 = SAMPLE_BASE64_JPEG.replace(/^data:image\/jpeg;base64,/, '');
       const rawPayload = resolvePdfImagePayload(rawBase64);
+      expect(rawPayload).not.toBeNull();
       expect(rawPayload.filter).toBe('/DCTDecode');
       expect(rawPayload.width).toBeGreaterThan(0);
       expect(rawPayload.height).toBeGreaterThan(0);
     });
 
-    it('generateRdoPdfBytes produces valid PDF when RDO contains corrupted photo Base64 data without crashing or blank areas', () => {
+    it('generateRdoPdfBytes produces valid PDF with honest unavailable indicator when RDO contains corrupted or unfetched photo data without synthetic bitmap', () => {
       const corruptedRdo: RDO = {
         ...sampleRdo,
         id: 'rdo-corrupted-test',
@@ -517,20 +571,16 @@ describe('StackLab RDO Official PDF Report Template', () => {
 
       const pdfBytes = generateRdoPdfBytes(corruptedRdo, sampleWork);
       expect(pdfBytes).toBeInstanceOf(Uint8Array);
-      expect(pdfBytes.byteLength).toBeGreaterThan(5000);
+      expect(pdfBytes.byteLength).toBeGreaterThan(2000);
 
       const rawPdf = Array.from(pdfBytes)
         .map((b) => String.fromCharCode(b))
         .join('');
 
-      // PDF must contain both image XObjects
-      expect(rawPdf).toContain('/Im1');
-      expect(rawPdf).toContain('/Im2');
-      expect(rawPdf).toContain('/Im1 Do');
-      expect(rawPdf).toContain('/Im2 Do');
-      expect(rawPdf).toContain('/ColorSpace /DeviceRGB');
-      // Im1 should NOT have /Filter /DCTDecode since it was not a valid JPEG
+      // Honest unavailable placeholder rendered instead of synthetic bitmap or fake XObjects
+      expect(rawPdf).toContain('Foto indisponivel para incorporacao');
       expect(rawPdf).not.toContain('/Filter /DCTDecode');
+      expect(rawPdf).not.toContain('/Im1');
       expect(rawPdf.trim().endsWith('%%EOF')).toBe(true);
     });
 
@@ -544,6 +594,7 @@ describe('StackLab RDO Official PDF Report Template', () => {
           {
             id: 'p-accent',
             caption: 'Fundação da Ala Oeste',
+            uri: SAMPLE_BASE64_JPEG,
             takenAt: '2026-10-31T09:30:00.000Z',
             author: 'João da Conceição',
             metadata: {
@@ -574,7 +625,7 @@ describe('StackLab RDO Official PDF Report Template', () => {
       // 2. Hash line is present and truncated cleanly
       expect(rawPdf).toContain('Hash: SHA256-');
 
-      // 3. Im1 is present for single photo without error
+      // 3. Im1 is present for single valid JPEG photo
       expect(rawPdf).toContain('/Im1');
       expect(rawPdf).toContain('/Im1 Do');
     });
@@ -606,21 +657,21 @@ describe('StackLab RDO Official PDF Report Template', () => {
           {
             id: 'p1',
             caption: 'Foto 1 - Estrutura',
-            uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+            uri: SAMPLE_BASE64_JPEG,
             takenAt: '2026-10-31T10:00:00.000Z',
             author: 'Eng. Tharles',
           },
           {
             id: 'p2',
             caption: 'Foto 2 - Alvenaria',
-            uri: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd',
+            uri: SAMPLE_BASE64_JPEG,
             takenAt: '2026-10-31T11:00:00.000Z',
             author: 'Eng. Tharles',
           },
           {
             id: 'p3',
             caption: 'Foto 3 - Acabamento',
-            uri: 'https://images.unsplash.com/photo-1590381105924-c72589b9ef3f',
+            uri: SAMPLE_BASE64_JPEG,
             takenAt: '2026-10-31T12:00:00.000Z',
             author: 'Eng. Tharles',
           },
@@ -630,7 +681,7 @@ describe('StackLab RDO Official PDF Report Template', () => {
       // Must execute without throwing ReferenceError: cardBottom is not defined
       const pdfBytes = generateRdoPdfBytes(rdoWith3Photos, sampleWork);
       expect(pdfBytes).toBeInstanceOf(Uint8Array);
-      expect(pdfBytes.byteLength).toBeGreaterThan(5000);
+      expect(pdfBytes.byteLength).toBeGreaterThan(2000);
 
       const rawPdf = Array.from(pdfBytes)
         .map((b) => String.fromCharCode(b))
@@ -642,7 +693,7 @@ describe('StackLab RDO Official PDF Report Template', () => {
       expect(rawPdf.trim().endsWith('%%EOF')).toBe(true);
     });
 
-    it('R2 (Adversarial): generateRdoReportHtml does not crash when photo metadata lacks GPS coordinates', () => {
+    it('R2 (Adversarial): generateRdoReportHtml does not crash when photo metadata lacks GPS coordinates and never injects Unsplash fallback', () => {
       const rdoWithMissingGps: RDO = {
         ...sampleRdo,
         id: 'rdo-no-gps',
@@ -650,7 +701,7 @@ describe('StackLab RDO Official PDF Report Template', () => {
           {
             id: 'p-no-gps',
             caption: 'Foto importada sem GPS',
-            uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+            uri: 'https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-no-gps/photo.jpg',
             takenAt: '2026-10-31T14:00:00.000Z',
             author: 'Eng. Tharles',
             metadata: {
@@ -671,7 +722,10 @@ describe('StackLab RDO Official PDF Report Template', () => {
       // Must not throw TypeError: Cannot read properties of undefined (reading 'toFixed')
       const html = generateRdoReportHtml(rdoWithMissingGps, sampleWork);
       expect(html).toContain('Foto importada sem GPS');
+      expect(html).toContain('https://cdn.stacklab.com/storage/v1/object/public/rdo-fotos/rdo-no-gps/photo.jpg');
       expect(html).toContain('onerror=');
+      expect(html).toContain('Foto indisponível');
+      expect(html).not.toContain('images.unsplash.com');
       expect(html).not.toContain('undefined');
     });
 
@@ -693,11 +747,10 @@ describe('StackLab RDO Official PDF Report Template', () => {
         'https://example.com/nested.jpg',
       );
 
-      // Numeric or non-string uri safely returns fallback
-      const fallbackUrl = resolvePhotoUri(null, 0);
-      expect(resolvePhotoUri({ uri: 12345 } as any)).toBe(fallbackUrl);
-      expect(resolvePhotoUri({ uri: Object.create(null) } as any)).toBe(fallbackUrl);
-      expect(resolvePdfImagePayload({ uri: Object.create(null) } as any)).toBeDefined();
+      // Numeric or non-string uri safely returns empty string (never Unsplash)
+      expect(resolvePhotoUri({ uri: 12345 } as any)).toBe('');
+      expect(resolvePhotoUri({ uri: Object.create(null) } as any)).toBe('');
+      expect(resolvePdfImagePayload({ uri: Object.create(null) } as any)).toBeNull();
 
       // RDO with null or undefined in photos array
       const rdoWithNullPhoto = {
@@ -709,13 +762,8 @@ describe('StackLab RDO Official PDF Report Template', () => {
       expect(() => generateRdoCsv(rdoWithNullPhoto, sampleWork)).not.toThrow();
 
       // resolvePdfImagePayload handles nested object and non-string inputs safely
-      const payload1 = resolvePdfImagePayload({ uri: { uri: 'https://example.com/nested.jpg' } } as any);
-      expect(payload1).toBeDefined();
-      expect(payload1.colorSpace).toBe('/DeviceRGB');
-
-      const payload2 = resolvePdfImagePayload({ uri: 12345 } as any);
-      expect(payload2).toBeDefined();
-      expect(payload2.colorSpace).toBe('/DeviceRGB');
+      expect(resolvePdfImagePayload({ uri: { uri: 'https://example.com/nested.jpg' } } as any)).toBeNull();
+      expect(resolvePdfImagePayload({ uri: 12345 } as any)).toBeNull();
 
       // Adversarial: Prototype-less objects in caption, author, takenAt, metadata
       expect(encodePdfWinAnsi(Object.create(null))).toBe('');
@@ -729,7 +777,7 @@ describe('StackLab RDO Official PDF Report Template', () => {
             caption: Object.create(null) as any,
             author: Object.create(null) as any,
             takenAt: Object.create(null) as any,
-            uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+            uri: SAMPLE_BASE64_JPEG,
             metadata: {
               hash: Object.create(null) as any,
             } as any,
@@ -749,7 +797,7 @@ describe('StackLab RDO Official PDF Report Template', () => {
           photos: Array.from({ length: photoCount }, (_, i) => ({
             id: `p-${i}`,
             caption: `Foto #${i + 1}`,
-            uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+            uri: SAMPLE_BASE64_JPEG,
             takenAt: '2026-10-31T12:00:00.000Z',
             author: 'Eng. Tharles',
           })),
@@ -798,25 +846,15 @@ describe('StackLab RDO Official PDF Report Template', () => {
       });
     });
 
-    it('R1 & R2 (Adversarial): getConstructionPhotoFallback and resolvePhotoUri handle NaN, null, and non-finite indices safely without returning undefined', () => {
-      const {
-        resolvePhotoUri,
-        getConstructionPhotoFallback,
-        DEFAULT_CONSTRUCTION_PHOTOS,
-      } = require('@/utils/rdoPhotoUtils');
+    it('R1 & R2 (Adversarial): resolvePhotoUri handles NaN, null, and Unsplash URLs safely without returning fictitious photos', () => {
+      const { resolvePhotoUri, isMockOrUnsplashUrl } = require('@/utils/rdoPhotoUtils');
 
-      // NaN index must not return undefined
-      const fallbackForNaN = resolvePhotoUri(null, NaN);
-      expect(typeof fallbackForNaN).toBe('string');
-      expect(fallbackForNaN).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(fallbackForNaN).toBeTruthy();
-
-      expect(getConstructionPhotoFallback(NaN)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(getConstructionPhotoFallback(-Infinity as any)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(getConstructionPhotoFallback(Infinity as any)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(getConstructionPhotoFallback(null as any)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(getConstructionPhotoFallback(undefined)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[0]);
-      expect(getConstructionPhotoFallback(-5)).toBe(DEFAULT_CONSTRUCTION_PHOTOS[1]);
+      expect(resolvePhotoUri(null, NaN)).toBe('');
+      expect(resolvePhotoUri(undefined, -Infinity)).toBe('');
+      expect(resolvePhotoUri({}, Infinity)).toBe('');
+      expect(resolvePhotoUri('https://images.unsplash.com/photo-1541888946425-d0fbb1861563', 0)).toBe('');
+      expect(isMockOrUnsplashUrl('https://images.unsplash.com/photo-1541888946425-d0fbb1861563')).toBe(true);
+      expect(isMockOrUnsplashUrl('https://cdn.stacklab.com/real.jpg')).toBe(false);
     });
 
     it('R1 & R2 (Adversarial): extractRawPhotoCandidate extracts valid URIs from wrapped photo/image/file objects', () => {
@@ -876,20 +914,16 @@ describe('StackLab RDO Official PDF Report Template', () => {
       expect(resolvePhotoUri(rawGif)).toBe(`data:image/gif;base64,${rawGif}`);
     });
 
-    it('R2 (Adversarial): generateDeviceRgbConstructionBitmap handles NaN, non-finite and zero width/height gracefully', () => {
-      const { generateDeviceRgbConstructionBitmap } = require('@/utils/rdoPhotoUtils');
+    it('R2 (Adversarial): readPhotoBinaryForUpload rejects Unsplash URLs, empty URIs, and oversized payloads', async () => {
+      const { readPhotoBinaryForUpload, MAX_RDO_PHOTO_BYTES } = require('@/utils/rdoPhotoUtils');
 
-      const nanBuffer = generateDeviceRgbConstructionBitmap(NaN, NaN, NaN);
-      expect(nanBuffer).toBeInstanceOf(Uint8Array);
-      expect(nanBuffer.length).toBe(160 * 120 * 3); // safely defaulted to 160x120
+      await expect(readPhotoBinaryForUpload('')).rejects.toThrow(/vazia/i);
+      await expect(
+        readPhotoBinaryForUpload('https://images.unsplash.com/photo-1541888946425-d0fbb1861563'),
+      ).rejects.toThrow(/Unsplash/i);
 
-      const zeroBuffer = generateDeviceRgbConstructionBitmap(0, 0, 0);
-      expect(zeroBuffer).toBeInstanceOf(Uint8Array);
-      expect(zeroBuffer.length).toBe(160 * 120 * 3);
-
-      const negativeBuffer = generateDeviceRgbConstructionBitmap(-1, -50, -50);
-      expect(negativeBuffer).toBeInstanceOf(Uint8Array);
-      expect(negativeBuffer.length).toBe(160 * 120 * 3);
+      const oversized = 'data:image/jpeg;base64,' + Buffer.alloc(MAX_RDO_PHOTO_BYTES + 32, 0xff).toString('base64');
+      await expect(readPhotoBinaryForUpload(oversized)).rejects.toThrow(/10 MB/i);
     });
 
     it('R2 (Adversarial): triggerWebPdfDownload creates valid blob and triggers browser download link when DOM is present', () => {

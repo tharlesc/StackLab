@@ -270,7 +270,9 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
     );
 
     await act(async () => {
-      hookValue!.handleCapturePhoto('Concretagem de laje do bloco A');
+      hookValue!.handleCapturePhoto('Concretagem de laje do bloco A', {
+        uri: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test-camera-1',
+      });
       hookValue!.handleCapturePhoto('Armação de pilares do bloco B', {
         uri: 'blob:camera-photo-2',
         takenAt: '2026-04-20T14:30:00.000Z',
@@ -280,6 +282,7 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
     expect(hookValue!.activeDraft?.photos).toHaveLength(2);
     const photo = hookValue!.activeDraft?.photos[0]!;
     expect(photo.caption).toBe('Concretagem de laje do bloco A');
+    expect(photo.uri).toBe('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test-camera-1');
     expect(photo.source).toBe('camera');
     expect(photo.metadata).toBeDefined();
     expect(photo.metadata?.source).toBe('camera');
@@ -291,6 +294,32 @@ describe('useNewRDO Hook — Worker RDO Filling Multi-Step Form', () => {
     expect(secondPhoto.source).toBe('camera');
     expect(secondPhoto.uri).toBe('blob:camera-photo-2');
     expect(secondPhoto.metadata?.originalTakenAt).toBe('2026-04-20T14:30:00.000Z');
+  });
+
+  it('R2: rejects photo capture/upload without real URI or with fictitious Unsplash URLs', async () => {
+    await act(async () => {
+      hookValue!.handleSelectWork(MOCK_ACTIVE_WORKS[0]!);
+    });
+    await act(async () => {
+      await hookValue!.handleConfirmStart();
+    });
+
+    await act(async () => {
+      hookValue!.handleCapturePhoto('Sem URI');
+      hookValue!.handleCapturePhoto('Unsplash bloqueada', {
+        uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+      });
+      hookValue!.handleUploadPhotos([
+        { caption: 'Galeria sem URI' },
+        {
+          caption: 'Galeria Unsplash bloqueada',
+          uri: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd',
+        },
+      ]);
+      hookValue!.handleUploadPhotos('Legenda isolada sem URI');
+    });
+
+    expect(hookValue!.activeDraft?.photos).toHaveLength(0);
   });
 
   it('uploads multiple photos from gallery and updates photo captions', async () => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, useWindowDimensions, LayoutChangeEvent, ActivityIndicator, Text, Image, Platform, Alert } from 'react-native';
+import { View, useWindowDimensions, LayoutChangeEvent, ActivityIndicator, Text, Platform, Alert } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { useRouter } from 'expo-router';
 import {
@@ -109,7 +109,7 @@ import { DynamicDropdown } from '@/components/common/DynamicDropdown';
 import { QuantityStepper } from '@/components/common/QuantityStepper';
 import { TimeIntervalAccordion } from '@/components/common/TimeIntervalAccordion';
 import { strings } from '@/constants/strings';
-import { resolvePhotoUri } from '@/utils/rdoPhotoUtils';
+import { isMockOrUnsplashUrl } from '@/utils/rdoPhotoUtils';
 import { ResilientPhoto } from '@/components/rdo';
 import type { Shift, OccurrenceType, ActivityStatus } from '@/types';
 
@@ -309,7 +309,6 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
     existingDraftData,
     headcount,
     manHours,
-    handleSelectWork,
     handleCloseStartDialog,
     handleConfirmStart,
     handleContinueExistingDraft,
@@ -420,6 +419,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const sequentialCameraInputRef = useRef<any>(null);
   const nextSequentialCameraInputRef = useRef<any>(null);
   const galleryInputRef = useRef<any>(null);
+  const triggerCameraCaptureRef = useRef<((sequential?: boolean) => Promise<void>) | null>(null);
 
   const handleCameraInputChange = useCallback(
     async (e: any, sequential = false) => {
@@ -434,14 +434,27 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
 
       const defaultCaption = photoCaptionDraft.trim() || 'Registro fotográfico do canteiro';
       const capturedAt = new Date().toISOString();
+      let capturedCount = 0;
 
       for (const file of files) {
         const uri = await readFileAsDataUrl(file);
+        if (!uri) {
+          continue;
+        }
         handleCapturePhoto(defaultCaption, {
           uri,
           takenAt: capturedAt,
           source: 'camera',
         });
+        capturedCount++;
+      }
+
+      if (capturedCount === 0) {
+        Alert?.alert?.(
+          'Erro ao ler imagem',
+          'Não foi possível ler o arquivo selecionado da câmera. Tente novamente com outra foto.',
+        );
+        return;
       }
 
       setPhotoCaptionDraft('');
@@ -456,12 +469,12 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const triggerCameraCapture = useCallback(
     async (sequential = false) => {
       const defaultCaption = photoCaptionDraft.trim() || 'Registro fotográfico do canteiro';
-      if (sequential) {
-        setIsSequentialCameraMode(true);
-        setShowSequentialBanner(true);
-      }
 
       if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        if (sequential) {
+          setIsSequentialCameraMode(true);
+          setShowSequentialBanner(true);
+        }
         const targetInput =
           (sequential && sequentialCameraInputRef.current) || cameraInputRef.current;
         if (targetInput && typeof targetInput.click === 'function') {
@@ -491,37 +504,72 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               quality: 0.8,
             });
 
-            if (!result?.canceled && Array.isArray(result?.assets) && result.assets.length > 0) {
+            const isCanceled = Boolean(result?.canceled ?? result?.cancelled);
+            const rawAssets = !isCanceled
+              ? Array.isArray(result?.assets)
+                ? result.assets
+                : result?.uri
+                  ? [{ uri: result.uri }]
+                  : []
+              : [];
+
+            if (rawAssets.length > 0) {
               const capturedAt = new Date().toISOString();
-              for (const asset of result.assets) {
-                handleCapturePhoto(defaultCaption, {
-                  uri: asset.uri,
-                  takenAt: capturedAt,
-                  source: 'camera',
-                });
+              let addedCount = 0;
+              for (const asset of rawAssets) {
+                if (
+                  typeof asset?.uri === 'string' &&
+                  asset.uri.trim() &&
+                  !isMockOrUnsplashUrl(asset.uri)
+                ) {
+                  handleCapturePhoto(defaultCaption, {
+                    uri: asset.uri,
+                    takenAt: capturedAt,
+                    source: 'camera',
+                  });
+                  addedCount++;
+                }
               }
-              setPhotoCaptionDraft('');
-              setShowSequentialBanner(true);
-              if (sequential || isSequentialCameraMode) {
-                Alert?.alert?.('Foto registrada!', 'Deseja tirar a próxima foto agora?', [
-                  { text: 'Concluir', style: 'cancel' },
-                  { text: 'Tirar Próxima Foto', onPress: () => triggerCameraCapture(true) },
-                ]);
+              if (addedCount > 0) {
+                setPhotoCaptionDraft('');
+                setShowSequentialBanner(true);
+                if (sequential) {
+                  setIsSequentialCameraMode(true);
+                }
+                if (sequential || isSequentialCameraMode) {
+                  Alert?.alert?.('Foto registrada!', 'Deseja tirar a próxima foto agora?', [
+                    { text: 'Concluir', style: 'cancel' },
+                    {
+                      text: 'Tirar Próxima Foto',
+                      onPress: () => triggerCameraCaptureRef.current?.(true),
+                    },
+                  ]);
+                }
               }
             }
             return;
-          } catch {
-            // Fall through to fallback in non-native test environments
+          } catch (err) {
+            console.warn('Erro ao abrir câmera nativa:', err);
+            Alert?.alert?.(
+              'Erro na câmera',
+              'Não foi possível capturar a foto pela câmera. Verifique as permissões e tente novamente.',
+            );
+            return;
           }
         }
       }
 
-      handleCapturePhoto(defaultCaption);
-      setPhotoCaptionDraft('');
-      setShowSequentialBanner(true);
+      Alert?.alert?.(
+        'Câmera indisponível',
+        'O módulo de câmera nativa não está disponível neste dispositivo. Utilize a opção de galeria ou selecione um arquivo de imagem válido.',
+      );
     },
     [handleCapturePhoto, isSequentialCameraMode, photoCaptionDraft],
   );
+
+  useEffect(() => {
+    triggerCameraCaptureRef.current = triggerCameraCapture;
+  }, [triggerCameraCapture]);
 
   const handleGalleryInputChange = useCallback(
     async (e: any) => {
@@ -546,20 +594,31 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
         return new Date().toISOString();
       };
 
-      const items = await Promise.all(
-        files.map(async (f: File) => {
-          const uri = await readFileAsDataUrl(f);
-          return {
-            uri,
-            takenAt: safeIsoDate(f.lastModified),
-            caption:
-              photoCaptionDraft.trim() ||
-              (f.name ? f.name.replace(/\.[^/.]+$/, '') : '') ||
-              'Foto importada da galeria',
-            fileName: f.name || undefined,
-          };
-        }),
-      );
+      const items = (
+        await Promise.all(
+          files.map(async (f: File) => {
+            const uri = await readFileAsDataUrl(f);
+            if (!uri) return null;
+            return {
+              uri,
+              takenAt: safeIsoDate(f.lastModified),
+              caption:
+                photoCaptionDraft.trim() ||
+                (f.name ? f.name.replace(/\.[^/.]+$/, '') : '') ||
+                'Foto importada da galeria',
+              fileName: f.name || undefined,
+            };
+          }),
+        )
+      ).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      if (items.length === 0) {
+        Alert?.alert?.(
+          'Erro ao ler imagem',
+          'Não foi possível carregar os arquivos selecionados da galeria.',
+        );
+        return;
+      }
 
       handleUploadPhotos(items);
       setPhotoCaptionDraft('');
@@ -569,7 +628,7 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
 
   const triggerGalleryUpload = useCallback(async () => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      let input = galleryInputRef.current;
+      const input = galleryInputRef.current;
       if (!input && typeof document.createElement === 'function') {
         const dynamicInput = document.createElement('input');
         dynamicInput.type = 'file';
@@ -627,10 +686,17 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
               ? [{ uri: result.uri, fileName: result.fileName }]
               : [];
 
-          if (rawAssets.length > 0) {
+          const validAssets = rawAssets.filter(
+            (a: any) =>
+              typeof a?.uri === 'string' &&
+              a.uri.trim().length > 0 &&
+              !isMockOrUnsplashUrl(a.uri),
+          );
+
+          if (validAssets.length > 0) {
             const nowIso = new Date().toISOString();
             handleUploadPhotos(
-              rawAssets.map((a: any) => ({
+              validAssets.map((a: any) => ({
                 uri: a.uri,
                 fileName: a.fileName || undefined,
                 caption:
@@ -646,15 +712,19 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
           return;
         } catch (err) {
           console.warn('Erro ao abrir galeria nativa:', err);
+          Alert?.alert?.(
+            'Erro na galeria',
+            'Não foi possível abrir a galeria de fotos neste dispositivo.',
+          );
           return;
         }
       }
     }
 
-    handleUploadPhotos([
-      { caption: photoCaptionDraft.trim() || 'Foto importada da galeria' },
-    ]);
-    setPhotoCaptionDraft('');
+    Alert?.alert?.(
+      'Galeria indisponível',
+      'O seletor de galeria nativa não está disponível neste dispositivo.',
+    );
   }, [handleGalleryInputChange, handleUploadPhotos, photoCaptionDraft]);
 
   // --------------------------------------------------------------------------

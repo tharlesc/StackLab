@@ -115,6 +115,8 @@ export interface PhotoEntry {
   url?: string;
   storage_path?: string;
   storagePath?: string;
+  mime_type?: string;
+  tamanho_bytes?: number;
   takenAt: string;
   author: string;
   source?: 'camera' | 'gallery';
