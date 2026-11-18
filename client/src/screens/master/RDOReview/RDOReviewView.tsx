@@ -15,7 +15,7 @@ import {
 } from 'lucide-react-native';
 
 import { useRDOReview } from '@/hooks';
-import { RdoPdfPreviewModal } from '@/components/rdo/RdoPdfPreviewModal';
+import { RdoPdfPreviewModal, ResilientPhoto } from '@/components/rdo';
 import {
   SectionCard,
   SectionHeader,
@@ -68,7 +68,7 @@ import { Dialog } from '@/components/common/Dialog';
 import { Input } from '@/components/common/Input';
 import { EmptyState } from '@/components/common/EmptyState';
 import { getWeatherIcon } from '@/components/ui/WeatherIcon';
-import { formatDate, formatDateTime } from '@/utils';
+import { formatDate, formatDateTime, resolvePhotoUri } from '@/utils';
 import { strings } from '@/constants/strings';
 
 const EXPORT_OPTIONS: {
@@ -644,31 +644,39 @@ export const RDOReviewView = () => {
             <ItemSubtitle>Nenhuma foto anexada ao relatório.</ItemSubtitle>
           ) : (
             (rdo.photos || []).map((p, idx) => {
-              const photoUri = p.watermarkedUri || p.uri;
+              const caption =
+                typeof p?.caption === 'string' && p.caption.trim()
+                  ? p.caption.trim()
+                  : 'Registro fotográfico da obra';
+              const author =
+                typeof p?.author === 'string' && p.author.trim()
+                  ? p.author.trim()
+                  : (rdo.authorName || 'Operador');
+              const workTitle =
+                typeof rdo?.workName === 'string' && rdo.workName.trim()
+                  ? rdo.workName.trim()
+                  : typeof work?.name === 'string' && work.name.trim()
+                    ? work.name.trim()
+                    : 'Obra Cadastrada';
               return (
-                <PhotoThumbnail key={p.id || idx}>
-                  {photoUri ? (
-                    <Image
-                      source={{ uri: photoUri }}
-                      style={{
-                        width: '100%',
-                        height: 180,
-                        borderRadius: 8,
-                        marginBottom: 8,
-                      }}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Camera
-                      size={theme.icon.size.md}
-                      color={theme.colors.tintText}
-                      strokeWidth={theme.icon.strokeWidth}
-                    />
-                  )}
-                  <PhotoCaption>{p.caption || 'Registro fotográfico da obra'}</PhotoCaption>
+                <PhotoThumbnail key={p?.id || idx}>
+                  <ResilientPhoto
+                    photo={p}
+                    index={idx}
+                    testID={`rdo-photo-${p?.id || idx}`}
+                    accessibilityLabel={caption}
+                    style={{
+                      width: '100%',
+                      height: 180,
+                      borderRadius: 8,
+                      marginBottom: 8,
+                    }}
+                    resizeMode="cover"
+                  />
+                  <PhotoCaption>{caption}</PhotoCaption>
                   <WatermarkText>
-                    [Marca d&apos;Água]: {formatDateTime(p.takenAt)} • Autor: {p.author || rdo.authorName || 'Operador'} • Obra:{' '}
-                    {rdo.workName || work?.name || 'Obra Cadastrada'}
+                    [Marca d&apos;Água]: {formatDateTime(p?.takenAt)} • Autor: {author} • Obra:{' '}
+                    {workTitle}
                   </WatermarkText>
                 </PhotoThumbnail>
               );

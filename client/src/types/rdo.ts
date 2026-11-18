@@ -92,17 +92,19 @@ export interface OccurrenceEntry {
 }
 
 export interface PhotoMetadata {
-  latitude: number;
-  longitude: number;
-  accuracy: number;
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
   address?: string;
   capturedAt: string;
+  originalTakenAt?: string;
+  source?: 'camera' | 'gallery';
   authorId: string;
   authorName: string;
   workId: string;
   workName: string;
   rdoNumber: number;
-  hash: string;
+  hash?: string;
 }
 
 export interface PhotoEntry {
@@ -110,8 +112,12 @@ export interface PhotoEntry {
   caption: string;
   uri?: string;
   watermarkedUri?: string;
+  url?: string;
+  storage_path?: string;
+  storagePath?: string;
   takenAt: string;
   author: string;
+  source?: 'camera' | 'gallery';
   metadata?: PhotoMetadata;
 }
 

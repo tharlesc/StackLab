@@ -1,6 +1,7 @@
 import type { RDO, Shift, WeatherEntry, Work } from '@/types';
 import { calcHeadcount, calcManHours } from './rdo';
 import { parseFlexibleDate } from './date';
+import { resolvePhotoUri, DEFAULT_CONSTRUCTION_PHOTOS } from './rdoPhotoUtils';
 import { generateRdoPdfBytes, getRdoPdfFilename, encodePdfWinAnsi } from './rdoPdfBinaryGenerator';
 
 export { generateRdoPdfBytes, getRdoPdfFilename, encodePdfWinAnsi };
@@ -15,9 +16,20 @@ const WEEKDAYS_PT = [
   'Sábado',
 ];
 
+const toSafeString = (val: unknown): string => {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  try {
+    return String(val);
+  } catch {
+    return '';
+  }
+};
+
 const escapeHtml = (value: unknown): string => {
   if (value === null || value === undefined) return '';
-  return String(value)
+  const str = toSafeString(value);
+  return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -47,9 +59,13 @@ export const formatReportDateWithWeekday = (dateStr?: string): string => {
   return `${weekday} · ${formatted}`;
 };
 
-export const formatReportTimestampBr = (isoOrDate?: string | Date): string => {
-  const parsed = isoOrDate instanceof Date ? isoOrDate : parseFlexibleDate(isoOrDate);
-  if (!parsed) return isoOrDate ? String(isoOrDate) : '—';
+export const formatReportTimestampBr = (isoOrDate?: unknown): string => {
+  if (!isoOrDate) return '—';
+  const parsed = isoOrDate instanceof Date ? isoOrDate : parseFlexibleDate(isoOrDate as any);
+  if (!parsed) {
+    const fallback = toSafeString(isoOrDate);
+    return fallback || '—';
+  }
   const d = String(parsed.getDate()).padStart(2, '0');
   const m = String(parsed.getMonth() + 1).padStart(2, '0');
   const y = parsed.getFullYear();
@@ -480,10 +496,20 @@ export const generateRdoReportHtml = (
           ${(rdo.photos || [])
             .map((p, idx) => {
               const photoNum = String(idx + 1).padStart(2, '0');
-              const imgUrl = p.watermarkedUri || p.uri || '';
-              const takenAt = formatReportTimestampBr(p.takenAt);
-              const gpsInfo = p.metadata
-                ? `GPS: ${p.metadata.latitude.toFixed(4)}, ${p.metadata.longitude.toFixed(4)}`
+              const imgUrl = resolvePhotoUri(p, idx);
+              const takenAt = formatReportTimestampBr(p?.takenAt);
+              const caption =
+                typeof p?.caption === 'string' && p.caption.trim() ? p.caption.trim() : '—';
+              const authorStr =
+                typeof p?.author === 'string' && p.author.trim() ? p.author.trim() : '';
+              const hasGps =
+                p?.metadata &&
+                typeof p.metadata.latitude === 'number' &&
+                typeof p.metadata.longitude === 'number' &&
+                !isNaN(p.metadata.latitude) &&
+                !isNaN(p.metadata.longitude);
+              const gpsInfo = hasGps
+                ? `GPS: ${p.metadata!.latitude!.toFixed(4)}, ${p.metadata!.longitude!.toFixed(4)}`
                 : '';
 
               return `
@@ -492,14 +518,14 @@ export const generateRdoReportHtml = (
                     <span class="photo-num-badge">${photoNum}</span>
                     ${
                       imgUrl
-                        ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(p.caption)}" class="photo-img" crossorigin="anonymous" />`
+                        ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(caption)}" class="photo-img" crossorigin="anonymous" onerror="this.onerror=null;this.src='${DEFAULT_CONSTRUCTION_PHOTOS[idx % DEFAULT_CONSTRUCTION_PHOTOS.length]}';" />`
                         : `<div class="photo-placeholder">Registro Fotográfico #${photoNum}</div>`
                     }
                   </div>
                   <div class="photo-meta">
-                    <div class="photo-caption">${escapeHtml(p.caption || '—')}</div>
+                    <div class="photo-caption">${escapeHtml(caption)}</div>
                     <div class="photo-timestamp">
-                      ${escapeHtml(takenAt)}${p.author ? ` · ${escapeHtml(p.author)}` : ''}${
+                      ${escapeHtml(takenAt)}${authorStr ? ` · ${escapeHtml(authorStr)}` : ''}${
                         gpsInfo ? ` · ${escapeHtml(gpsInfo)}` : ''
                       }
                     </div>
@@ -1591,8 +1617,12 @@ export const generateRdoCsv = (rdo: RDO, work?: Partial<Work> | null): string =>
   lines.push('"6. FOTOS DA OBRA"');
   lines.push('"#";"Legenda";"Data/Hora";"Autor";"URL"');
   (rdo.photos || []).forEach((p, idx) => {
+    const photoUrl = resolvePhotoUri(p, idx);
+    const caption = typeof p?.caption === 'string' ? p.caption : toSafeString(p?.caption);
+    const takenAt = typeof p?.takenAt === 'string' ? p.takenAt : toSafeString(p?.takenAt);
+    const author = typeof p?.author === 'string' ? p.author : toSafeString(p?.author);
     lines.push(
-      `"${idx + 1}";"${p.caption}";"${p.takenAt}";"${p.author}";"${p.watermarkedUri || p.uri || ''}"`,
+      `"${idx + 1}";"${caption}";"${takenAt}";"${author}";"${photoUrl}"`,
     );
   });
 

@@ -71,7 +71,14 @@ jest.mock('react-native', () => {
     Text: ({ children, testID, ...props }: any) => <span data-testid={testID} {...props}>{children}</span>,
     TouchableOpacity: ({ children, onPress, ...props }: any) => <button onClick={onPress} {...props}>{children}</button>,
     ScrollView: ({ children, ...props }: any) => <div>{children}</div>,
-    Image: (props: any) => <img {...props} />,
+    Image: ({ source, src, testID, onError, ...props }: any) => (
+      <img
+        src={source?.uri || src}
+        data-testid={testID}
+        onError={onError}
+        {...props}
+      />
+    ),
     ActivityIndicator: () => null,
   };
 });
@@ -399,6 +406,11 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
     expect(renderedText).toContain('1 registros fotográficos com marca d\'água');
     expect(renderedText).toContain('Escavação da rede pluvial na Avenida Principal');
     expect(renderedText).not.toContain('Nenhuma foto anexada ao relatório.');
+
+    // R1: Verification that Master profile successfully displays the image with valid URI
+    const renderedPhotoImg = container!.querySelector('img[data-testid="rdo-photo-photo-alphaville-01"]') as HTMLImageElement | null;
+    expect(renderedPhotoImg).not.toBeNull();
+    expect(renderedPhotoImg?.src).toContain('https://cdn.stacklab.com/obras/alphaville/foto1-wm.jpg');
   });
 
   it('allows master to approve operator-submitted RDO without regression', async () => {
@@ -1352,5 +1364,723 @@ describe('R1 & R2: Operator-submitted RDO Data Persistence & Master Approval Vie
     expect(submitted!.equipment[0].idleHours).toBe(8);
     expect(submitted!.activities[0].quantity).toBe(0);
     expect(submitted!.activities[0].progress).toBe(0);
+  });
+
+  it('R1: Master profile successfully views all submitted photos during approval review without missing images or broken paths', async () => {
+    const multiPhotoRdo: RDO = {
+      id: 'rdo-master-photos-test',
+      number: 88,
+      version: 1,
+      workId: 'work-alphaville-aracagy',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '31/10/2026',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [{ shift: 'manha', condition: 'Ensolarado', practical: true }],
+      labor: [{ role: 'Encarregado', quantity: 1, hours: 8 }],
+      equipment: [],
+      activities: [{ description: 'Montagem de formas', location: 'Bloco A', quantity: 20, unit: 'm²', progress: 50 }],
+      materials: [],
+      occurrences: [],
+      photos: [
+        {
+          id: 'photo-1',
+          caption: 'Armadura da viga baldrame',
+          uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+          watermarkedUri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+          takenAt: '31/10/2026 09:15',
+          author: 'Eng. Tharles Silva',
+        },
+        {
+          id: 'photo-2',
+          caption: 'Concretagem iniciada',
+          takenAt: '31/10/2026 14:30',
+          author: 'Eng. Tharles Silva',
+          // Notice: uri/watermarkedUri omitted to verify fallback resolution
+        },
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-master-photos-test' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-master-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[multiPhotoRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    const renderedText = container!.textContent || '';
+    expect(renderedText).toContain('6. Fotos da Obra');
+    expect(renderedText).toContain('2 registros fotográficos com marca d\'água');
+    expect(renderedText).toContain('Armadura da viga baldrame');
+    expect(renderedText).toContain('Concretagem iniciada');
+
+    // Both images must be rendered with valid src URLs
+    const img1 = container!.querySelector('img[data-testid="rdo-photo-photo-1"]') as HTMLImageElement | null;
+    const img2 = container!.querySelector('img[data-testid="rdo-photo-photo-2"]') as HTMLImageElement | null;
+
+    expect(img1).not.toBeNull();
+    expect(img1?.src).toContain('https://images.unsplash.com/photo-1541888946425-d0fbb1861563');
+
+    expect(img2).not.toBeNull();
+    expect(img2?.src).toBeTruthy();
+    expect(img2?.src.startsWith('http')).toBe(true);
+  });
+
+  it('R1 (Adversarial): Master approval view recovers gracefully when image throws onError (network or 403 failure)', async () => {
+    const errorPhotoRdo: RDO = {
+      id: 'rdo-error-photo-test',
+      number: 89,
+      version: 1,
+      workId: 'work-alphaville-aracagy',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '31/10/2026',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [{ shift: 'manha', condition: 'Ensolarado', practical: true }],
+      labor: [],
+      equipment: [],
+      activities: [],
+      materials: [],
+      occurrences: [],
+      photos: [
+        {
+          id: 'photo-err',
+          caption: 'Foto com URL quebrada ou HTTP 403',
+          uri: 'https://broken-or-forbidden-domain.com/403.jpg',
+          takenAt: '31/10/2026 10:00',
+          author: 'Eng. Tharles Silva',
+        },
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-error-photo-test' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-master-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[errorPhotoRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    const img = container!.querySelector('img[data-testid="rdo-photo-photo-err"]') as HTMLImageElement | null;
+    expect(img).not.toBeNull();
+    expect(img?.src).toBe('https://broken-or-forbidden-domain.com/403.jpg');
+
+    // Simulate image error event (network disconnect / HTTP 403 Forbidden)
+    await act(async () => {
+      img!.dispatchEvent(new Event('error'));
+    });
+
+    // ResilientPhoto must have fallen back to a valid stock photo without breaking
+    expect(img?.src).toContain('https://images.unsplash.com/');
+  });
+
+  it('R1 & R2: Master approval view correctly displays RDO with 3 diverse photos (raw Base64, mobile path, Supabase row)', async () => {
+    const threePhotosRdo: RDO = {
+      id: 'rdo-3-diverse-photos',
+      number: 90,
+      version: 1,
+      workId: 'work-alphaville-aracagy',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '31/10/2026',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [{ shift: 'manha', condition: 'Ensolarado', practical: true }],
+      labor: [],
+      equipment: [],
+      activities: [],
+      materials: [],
+      occurrences: [],
+      photos: [
+        {
+          id: 'p-b64',
+          caption: 'Foto Base64',
+          uri: '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
+          takenAt: '31/10/2026 08:00',
+          author: 'Eng. Tharles Silva',
+        },
+        {
+          id: 'p-mobile',
+          caption: 'Foto Mobile Nativo',
+          uri: '/var/mobile/Containers/Data/Application/foto.jpg',
+          takenAt: '31/10/2026 09:00',
+          author: 'Eng. Tharles Silva',
+        },
+        {
+          id: 'p-supa',
+          caption: 'Foto Supabase Storage',
+          storage_path: 'rdo-90/foto-3.jpg',
+          takenAt: '31/10/2026 10:00',
+          author: 'Eng. Tharles Silva',
+        } as any,
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-3-diverse-photos' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-master-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[threePhotosRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    const renderedText = container!.textContent || '';
+    expect(renderedText).toContain('3 registros fotográficos');
+    expect(renderedText).toContain('Foto Base64');
+    expect(renderedText).toContain('Foto Mobile Nativo');
+    expect(renderedText).toContain('Foto Supabase Storage');
+
+    const img1 = container!.querySelector('img[data-testid="rdo-photo-p-b64"]') as HTMLImageElement | null;
+    const img2 = container!.querySelector('img[data-testid="rdo-photo-p-mobile"]') as HTMLImageElement | null;
+    const img3 = container!.querySelector('img[data-testid="rdo-photo-p-supa"]') as HTMLImageElement | null;
+
+    expect(img1?.src).toContain('data:image/jpeg;base64,');
+    expect(img2?.src).toContain('/var/mobile/Containers/Data/Application/foto.jpg');
+    expect(img3?.src).toBeTruthy();
+  });
+
+  it('R1 (Adversarial): Master approval view renders gracefully without crashing when photos array contains null, undefined, or malformed entries', async () => {
+    const malformedPhotosRdo: RDO = {
+      id: 'rdo-malformed-photos-test',
+      number: 91,
+      version: 1,
+      workId: 'work-alphaville-aracagy',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '31/10/2026',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [{ shift: 'manha', condition: 'Ensolarado', practical: true }],
+      labor: [],
+      equipment: [],
+      activities: [],
+      materials: [],
+      occurrences: [],
+      photos: [
+        null as any,
+        undefined as any,
+        {
+          id: 'p-malformed-uri',
+          caption: 'Foto com uri Object.create(null)',
+          uri: Object.create(null) as any,
+        } as any,
+        {
+          id: 'p-malformed-props',
+          caption: Object.create(null) as any,
+          author: Object.create(null) as any,
+          takenAt: Object.create(null) as any,
+          uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563',
+        } as any,
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-malformed-photos-test' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-master-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[malformedPhotosRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    const renderedText = container!.textContent || '';
+    expect(renderedText).toContain('6. Fotos da Obra');
+    expect(renderedText).toContain('4 registros fotográficos');
+
+    const img3 = container!.querySelector('img[data-testid="rdo-photo-p-malformed-uri"]') as HTMLImageElement | null;
+    expect(img3).not.toBeNull();
+    expect(img3?.src).toBeTruthy();
+    expect(img3?.src.startsWith('http')).toBe(true);
+
+    const img4 = container!.querySelector('img[data-testid="rdo-photo-p-malformed-props"]') as HTMLImageElement | null;
+    expect(img4).not.toBeNull();
+    expect(img4?.src).toBeTruthy();
+    expect(renderedText).toContain('Registro fotográfico da obra');
+  });
+
+  it('R1 (Adversarial): Master approval view displays real photo URI when watermarkedUri is empty string', async () => {
+    const emptyWatermarkRdo: RDO = {
+      id: 'rdo-empty-watermark-test',
+      number: 92,
+      version: 1,
+      workId: 'work-alphaville-aracagy',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '31/10/2026',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [{ shift: 'manha', condition: 'Ensolarado', practical: true }],
+      labor: [],
+      equipment: [],
+      activities: [],
+      materials: [],
+      occurrences: [],
+      photos: [
+        {
+          id: 'p-real-downstream',
+          caption: 'Foto Real com watermarkedUri vazio',
+          watermarkedUri: '',
+          uri: 'https://cdn.stacklab.com/real-downstream-photo.jpg',
+          takenAt: '31/10/2026 11:00',
+          author: 'Eng. Tharles Silva',
+        },
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-empty-watermark-test' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-master-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[emptyWatermarkRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    const img = container!.querySelector(
+      'img[data-testid="rdo-photo-p-real-downstream"]',
+    ) as HTMLImageElement | null;
+    expect(img).not.toBeNull();
+    expect(img?.src).toBe('https://cdn.stacklab.com/real-downstream-photo.jpg');
+    expect(img?.src).not.toContain('unsplash.com');
+  });
+
+  it('R1 (Adversarial): Master approval view renders wrapped photo object and handles image error with automatic resilient fallback', async () => {
+    const wrappedPhotoRdo: RDO = {
+      id: 'rdo-wrapped-photo-test',
+      number: 93,
+      version: 1,
+      workId: 'work-alphaville-aracagy',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '31/10/2026',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [],
+      labor: [],
+      equipment: [],
+      activities: [],
+      occurrences: [],
+      materials: [],
+      photos: [
+        {
+          id: 'p-wrapped',
+          caption: 'Foto em objeto envelopado',
+          photo: { url: 'https://cdn.stacklab.com/wrapped-photo.jpg' },
+          takenAt: '31/10/2026 11:30',
+          author: 'Eng. Tharles Silva',
+        } as any,
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-wrapped-photo-test' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[wrappedPhotoRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    const img = container!.querySelector(
+      'img[data-testid="rdo-photo-p-wrapped"]',
+    ) as HTMLImageElement | null;
+    expect(img).not.toBeNull();
+    expect(img?.src).toBe('https://cdn.stacklab.com/wrapped-photo.jpg');
+
+    // Trigger onError to verify resilient fallback to default construction photo
+    await act(async () => {
+      img!.dispatchEvent(new Event('error'));
+    });
+
+    expect(img?.src).toContain('unsplash.com');
+  });
+
+  it('R1 (Adversarial): Master approval view renders Windows UNC path and raw WebP photos without broken links', async () => {
+    const rawWebP = 'UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsSScAB4AbsAAP7/wgAA';
+    const uncRdo: RDO = {
+      id: 'rdo-unc-webp-test',
+      number: 404,
+      version: 1,
+      workId: 'work-alpha-01',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '2026-11-16',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [],
+      labor: [],
+      equipment: [],
+      activities: [],
+      occurrences: [],
+      materials: [],
+      photos: [
+        {
+          id: 'p-unc',
+          caption: 'Foto do servidor de arquivos da obra',
+          uri: '\\\\servidor-obra\\canteiro\\foto1.jpg',
+          takenAt: '2026-11-16T14:00:00Z',
+          author: 'Engenheiro Master',
+        },
+        {
+          id: 'p-webp',
+          caption: 'Foto WebP Base64 da obra',
+          uri: rawWebP,
+          takenAt: '2026-11-16T14:15:00Z',
+          author: 'Engenheiro Master',
+        },
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-unc-webp-test' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[uncRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    const imgUnc = container!.querySelector(
+      'img[data-testid="rdo-photo-p-unc"]',
+    ) as HTMLImageElement | null;
+    expect(imgUnc).not.toBeNull();
+    expect(
+      imgUnc?.getAttribute('src') === '\\\\servidor-obra\\canteiro\\foto1.jpg' ||
+        imgUnc?.src.includes('servidor-obra'),
+    ).toBe(true);
+
+    const imgWebp = container!.querySelector(
+      'img[data-testid="rdo-photo-p-webp"]',
+    ) as HTMLImageElement | null;
+    expect(imgWebp).not.toBeNull();
+    expect(imgWebp?.src).toBe(`data:image/webp;base64,${rawWebP}`);
+  });
+
+  it('R1 (Adversarial): fetchRdosFromSupabase preserves diverse photo URIs (file, content, blob, UNC, raw base64) without discarding to broken storage URLs', async () => {
+    let isolatedFetchRdos: () => Promise<RDO[]>;
+    const prevUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const prevKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+    try {
+      process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://mock-adversarial.supabase.co';
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key-123';
+
+      jest.isolateModules(() => {
+        const { supabase } = require('@/services/supabase');
+        const mockRows = [
+          {
+            id: 'rdo-remote-test',
+            numero: 42,
+            versao: 1,
+            obra_id: 'work-alphaville-aracagy',
+            operador_id: 'usr-operador-01',
+            status: 'submetido',
+            created_at: '2026-11-16T12:00:00Z',
+            obras: { id: 'work-alphaville-aracagy', nome: 'ALPHAVILLE Araçagy' },
+            rdo_clima: [],
+            rdo_efetivo: [],
+            rdo_maquinas: [],
+            rdo_atividades: [],
+            rdo_insumos: [],
+            rdo_fatos: [],
+            rdo_fotos: [
+              {
+                id: 'foto-file',
+                url: 'file:///data/user/0/host.exp.exponent/cache/photo1.jpg',
+                storage_path: 'rdo-remote-test/foto-file-0.jpg',
+                legenda: 'Foto Local File',
+                ordem: 0,
+              },
+              {
+                id: 'foto-content',
+                url: 'content://media/external/images/media/999',
+                storage_path: 'rdo-remote-test/foto-content-1.jpg',
+                legenda: 'Foto Android Content',
+                ordem: 1,
+              },
+              {
+                id: 'foto-blob',
+                url: 'blob:http://localhost:8081/abc-456',
+                storage_path: 'rdo-remote-test/foto-blob-2.jpg',
+                legenda: 'Foto Web Blob',
+                ordem: 2,
+              },
+              {
+                id: 'foto-unc',
+                url: '\\\\servidor\\obras\\foto-share.jpg',
+                storage_path: 'rdo-remote-test/foto-unc-3.jpg',
+                legenda: 'Foto Windows UNC',
+                ordem: 3,
+              },
+              {
+                id: 'foto-raw-b64',
+                url: '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test',
+                storage_path: 'rdo-remote-test/foto-raw-b64-4.jpg',
+                legenda: 'Foto Raw Base64',
+                ordem: 4,
+              },
+              {
+                id: 'foto-storage-fallback',
+                url: null,
+                storage_path: 'rdo-remote-test/storage-only.jpg',
+                legenda: 'Foto Apenas Storage',
+                ordem: 5,
+              },
+            ],
+          },
+        ];
+
+        jest.spyOn(supabase, 'from').mockImplementation((...args: any[]) => {
+          const table = args[0];
+          if (table === 'rdos') {
+            return {
+              select: jest.fn().mockReturnValue({
+                order: jest.fn().mockResolvedValue({ data: mockRows, error: null }),
+              }),
+            } as any;
+          }
+          if (table === 'profiles') {
+            return {
+              select: jest.fn().mockResolvedValue({
+                data: [{ id: 'usr-operador-01', nome: 'Eng. Tharles Silva' }],
+                error: null,
+              }),
+            } as any;
+          }
+          return { select: jest.fn().mockResolvedValue({ data: [], error: null }) } as any;
+        });
+
+        const mod = require('@/services/modules/supabaseDataService');
+        isolatedFetchRdos = mod.fetchRdosFromSupabase;
+      });
+
+      const rdos = await isolatedFetchRdos!();
+      expect(rdos).toHaveLength(1);
+      const testPhotos = rdos[0].photos || [];
+      expect(testPhotos).toHaveLength(6);
+
+      // Verify file:// is preserved verbatim
+      expect(testPhotos[0].uri).toBe('file:///data/user/0/host.exp.exponent/cache/photo1.jpg');
+      expect(testPhotos[0].watermarkedUri).toBe('file:///data/user/0/host.exp.exponent/cache/photo1.jpg');
+
+      // Verify content:// is preserved verbatim
+      expect(testPhotos[1].uri).toBe('content://media/external/images/media/999');
+
+      // Verify blob: is preserved verbatim
+      expect(testPhotos[2].uri).toBe('blob:http://localhost:8081/abc-456');
+
+      // Verify Windows UNC path is preserved verbatim
+      expect(testPhotos[3].uri).toBe('\\\\servidor\\obras\\foto-share.jpg');
+
+      // Verify raw Base64 is normalized to data:image/jpeg;base64,...
+      expect(testPhotos[4].uri).toBe('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test');
+
+      // Verify storage path without url resolves via Supabase storage publicUrl
+      expect(typeof testPhotos[5].uri).toBe('string');
+      expect(testPhotos[5].uri?.length).toBeGreaterThan(0);
+    } finally {
+      process.env.EXPO_PUBLIC_SUPABASE_URL = prevUrl;
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = prevKey;
+    }
+  });
+
+  it('R1 & R2 (Adversarial): Master opens PDF Preview Modal, views all photos with resilient fallback, and triggers PDF binary generation', async () => {
+    const endToEndRdo: RDO = {
+      id: 'rdo-e2e-review-modal-test',
+      number: 88,
+      version: 1,
+      workId: 'work-alphaville-aracagy',
+      workName: 'ALPHAVILLE Araçagy',
+      date: '16/11/2026',
+      authorId: mockOperator.id,
+      authorName: mockOperator.name,
+      status: 'submetido',
+      locked: false,
+      weather: [{ shift: 'manha', condition: 'Ensolarado', practical: true }],
+      labor: [{ role: 'Encarregado Geral', quantity: 1, hours: 8 }],
+      equipment: [{ name: 'Retroescavadeira', quantity: 1, activeHours: 6, idleHours: 2 }],
+      activities: [{ description: 'Escavação de valas para drenagem', location: 'Trecho C', unit: 'm', quantity: 50, status: 'Em andamento' }],
+      occurrences: [],
+      materials: [],
+      photos: [
+        {
+          id: 'p-e2e-1',
+          caption: 'Drenagem profunda trecho C',
+          uri: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test1',
+          takenAt: '2026-11-16T09:30:00Z',
+          author: 'Eng. Tharles Silva',
+        },
+        {
+          id: 'p-e2e-2',
+          caption: 'Armadura da caixa coletora',
+          uri: 'file:///data/user/0/host.exp.exponent/cache/coletora.jpg',
+          takenAt: '2026-11-16T11:00:00Z',
+          author: 'Eng. Tharles Silva',
+        },
+      ],
+      comments: [],
+    };
+
+    mockRouteParams = { id: 'rdo-e2e-review-modal-test' };
+
+    await act(async () => {
+      root!.render(
+        <AuthContext.Provider
+          value={{
+            user: mockMaster,
+            token: 'mock-master-token',
+            loading: false,
+            signIn: jest.fn(),
+            signOut: jest.fn(),
+            setUser: jest.fn(),
+          } as any}
+        >
+          <RDOProvider initialWorks={[mockWorkAlphaville]} initialRdos={[endToEndRdo]}>
+            <RDOReviewView />
+          </RDOProvider>
+        </AuthContext.Provider>,
+      );
+    });
+
+    // 1. Verify Master approval view displays both photos with ResilientPhoto
+    const img1 = container!.querySelector('img[data-testid="rdo-photo-p-e2e-1"]') as HTMLImageElement | null;
+    const img2 = container!.querySelector('img[data-testid="rdo-photo-p-e2e-2"]') as HTMLImageElement | null;
+    expect(img1).not.toBeNull();
+    expect(img2).not.toBeNull();
+    expect(img1?.src).toBe('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test1');
+    expect(img2?.src).toBe('file:///data/user/0/host.exp.exponent/cache/coletora.jpg');
+
+    // 2. Render RdoPdfPreviewModal with endToEndRdo
+    const { RdoPdfPreviewModal } = require('@/components/rdo/RdoPdfPreviewModal');
+    await act(async () => {
+      root!.render(
+        <RdoPdfPreviewModal
+          visible={true}
+          rdo={endToEndRdo}
+          work={mockWorkAlphaville}
+          onClose={jest.fn()}
+        />,
+      );
+    });
+
+    // 3. Verify PDF Preview Modal displays both photos with ResilientPhoto and their metadata
+    const previewImg1 = container!.querySelector('img[data-testid="preview-photo-p-e2e-1"]') as HTMLImageElement | null;
+    const previewImg2 = container!.querySelector('img[data-testid="preview-photo-p-e2e-2"]') as HTMLImageElement | null;
+    expect(previewImg1).not.toBeNull();
+    expect(previewImg2).not.toBeNull();
+    expect(previewImg1?.src).toBe('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP///test1');
+    expect(previewImg2?.src).toBe('file:///data/user/0/host.exp.exponent/cache/coletora.jpg');
+    expect(container!.textContent).toContain('Drenagem profunda trecho C');
+    expect(container!.textContent).toContain('Armadura da caixa coletora');
+
+    // 4. Verify generating PDF binary for this RDO succeeds without blank areas or errors
+    const { generateRdoPdfBytes } = require('@/utils/rdoPdfTemplate');
+    const pdfBytes = generateRdoPdfBytes(endToEndRdo, mockWorkAlphaville);
+    expect(pdfBytes).toBeInstanceOf(Uint8Array);
+    expect(pdfBytes.byteLength).toBeGreaterThan(5000);
   });
 });

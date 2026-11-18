@@ -380,6 +380,58 @@ export const ToggleControlWrapper = styled.View`
 // Fotos e Marca d'Água de Segurança
 // ============================================================================
 
+export const PhotoActionsContainer = styled.View`
+  gap: ${({ theme }) => theme.spacing.sm}px;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+export const SequentialCaptureBanner = styled.View`
+  background-color: ${({ theme }) =>
+    theme.name === 'dark' ? 'rgba(16, 185, 129, 0.14)' : theme.colors.status.success.bg};
+  border-radius: ${({ theme }) => theme.borderRadius.md}px;
+  border-width: 1px;
+  border-color: ${({ theme }) =>
+    theme.name === 'dark' ? 'rgba(16, 185, 129, 0.4)' : theme.colors.status.success.border};
+  padding: ${({ theme }) => theme.spacing.md}px;
+  margin-top: ${({ theme }) => theme.spacing.xs}px;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+  gap: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+export const SequentialBannerTitle = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 13px;
+  line-height: 18px;
+  color: ${({ theme }) => theme.colors.status.success.text};
+`;
+
+export const SequentialBannerActions = styled.View`
+  flex-direction: row;
+  gap: ${({ theme }) => theme.spacing.sm}px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+export const PhotoOriginBadge = styled.View<{ $source?: 'camera' | 'gallery' }>`
+  position: absolute;
+  top: ${({ theme }) => theme.spacing.xs}px;
+  right: ${({ theme }) => theme.spacing.xs}px;
+  background-color: ${({ $source }) =>
+    $source === 'gallery' ? 'rgba(15, 23, 42, 0.85)' : 'rgba(11, 34, 64, 0.9)'};
+  padding: 4px 8px;
+  border-radius: ${({ theme }) => theme.borderRadius.sm}px;
+  border-width: 1px;
+  border-color: ${({ $source, theme }) =>
+    $source === 'gallery' ? 'rgba(148, 163, 184, 0.5)' : theme.colors.secondary};
+  z-index: 2;
+`;
+
+export const PhotoOriginBadgeText = styled.Text`
+  font-family: ${({ theme }) => theme.fonts.bold};
+  font-size: 10px;
+  color: #F8FAFC;
+`;
+
 export const PhotoCard = styled.View`
   background-color: ${({ theme }) => theme.colors.surfaceVariant};
   border-radius: ${({ theme }) => theme.borderRadius.md}px;
@@ -600,5 +652,9 @@ export const ReviewBadgeText = styled.Text<{ $variant?: 'primary' | 'secondary' 
   font-size: 10px;
   font-family: ${({ theme }) => theme.fonts.bold};
   color: ${({ theme, $variant }) =>
-    $variant === 'neutral' ? theme.colors.text.primary : theme.colors.text.inverse};
+    $variant === 'secondary'
+      ? theme.colors.onSecondary || theme.colors.text.primary
+      : $variant === 'neutral'
+        ? theme.colors.text.primary
+        : theme.colors.text.inverse};
 `;

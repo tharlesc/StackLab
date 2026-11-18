@@ -4,4 +4,5 @@ export * from './rdo';
 export * from './contrast';
 export * from './pagination';
 export * from './crea';
+export * from './rdoPhotoUtils';
 export * from './rdoPdfTemplate';

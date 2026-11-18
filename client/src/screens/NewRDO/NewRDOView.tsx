@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, useWindowDimensions, LayoutChangeEvent, ActivityIndicator, Text } from 'react-native';
+import { View, useWindowDimensions, LayoutChangeEvent, ActivityIndicator, Text, Image, Platform, Alert } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { useRouter } from 'expo-router';
 import {
@@ -62,6 +62,12 @@ import {
   ToggleRow,
   ToggleLabel,
   ToggleControlWrapper,
+  PhotoActionsContainer,
+  SequentialCaptureBanner,
+  SequentialBannerTitle,
+  SequentialBannerActions,
+  PhotoOriginBadge,
+  PhotoOriginBadgeText,
   PhotoCard,
   PhotoPreviewBox,
   WatermarkBanner,
@@ -103,6 +109,8 @@ import { DynamicDropdown } from '@/components/common/DynamicDropdown';
 import { QuantityStepper } from '@/components/common/QuantityStepper';
 import { TimeIntervalAccordion } from '@/components/common/TimeIntervalAccordion';
 import { strings } from '@/constants/strings';
+import { resolvePhotoUri } from '@/utils/rdoPhotoUtils';
+import { ResilientPhoto } from '@/components/rdo';
 import type { Shift, OccurrenceType, ActivityStatus } from '@/types';
 
 interface NewRDOViewProps {
@@ -173,6 +181,115 @@ const calculateHoursFromInterval = (start: string, end: string): number | null =
   return Math.round((diffMin / 60) * 10) / 10;
 };
 
+const WEB_FILE_INPUT_OVERLAY_STYLE: Record<string, any> = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  width: '100%',
+  height: '100%',
+  opacity: 0,
+  cursor: 'pointer',
+  zIndex: 20,
+  fontSize: '200px',
+  display: 'block',
+  overflow: 'hidden',
+};
+
+const readFileAsDataUrl = (file: any): Promise<string | undefined> => {
+  return new Promise((resolve) => {
+    if (typeof file === 'string' && file.length > 0) {
+      resolve(file);
+      return;
+    }
+
+    const fallbackUrl = (): string | undefined => {
+      try {
+        if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+          return URL.createObjectURL(file);
+        }
+      } catch {
+        // Ignore if file is a mock object and not a real Blob
+      }
+      if (typeof file?.uri === 'string' && file.uri.length > 0) {
+        return file.uri;
+      }
+      return undefined;
+    };
+
+    if (
+      typeof FileReader !== 'undefined' &&
+      file &&
+      ((typeof Blob !== 'undefined' && file instanceof Blob) || typeof file.slice === 'function')
+    ) {
+      try {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string' && reader.result.length > 0) {
+            resolve(reader.result);
+          } else {
+            resolve(fallbackUrl());
+          }
+        };
+        reader.onerror = () => {
+          resolve(fallbackUrl());
+        };
+        reader.readAsDataURL(file);
+        return;
+      } catch {
+        resolve(fallbackUrl());
+        return;
+      }
+    }
+
+    resolve(fallbackUrl());
+  });
+};
+
+const getNativeImagePicker = (): any => {
+  if ((globalThis as any).__EXPO_IMAGE_PICKER_MOCK__) {
+    return (globalThis as any).__EXPO_IMAGE_PICKER_MOCK__;
+  }
+  if ((globalThis as any).ExpoImagePicker) {
+    return (globalThis as any).ExpoImagePicker;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('expo-image-picker');
+    const picker =
+      mod && (typeof mod.launchImageLibraryAsync === 'function' || typeof mod.launchCameraAsync === 'function')
+        ? mod
+        : mod?.default ?? mod;
+    if (
+      picker &&
+      (typeof picker.launchCameraAsync === 'function' ||
+        typeof picker.launchImageLibraryAsync === 'function')
+    ) {
+      return picker;
+    }
+  } catch {
+    // Fallback to ExponentImagePicker native module from expo-modules-core if available
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { requireOptionalNativeModule } = require('expo-modules-core');
+    if (typeof requireOptionalNativeModule === 'function') {
+      const nativePicker = requireOptionalNativeModule('ExponentImagePicker');
+      if (
+        nativePicker &&
+        (typeof nativePicker.launchCameraAsync === 'function' ||
+          typeof nativePicker.launchImageLibraryAsync === 'function')
+      ) {
+        return nativePicker;
+      }
+    }
+  } catch {
+    // Native module unavailable
+  }
+  return null;
+};
+
 export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const theme = useTheme();
   const router = useRouter();
@@ -216,6 +333,8 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
     addOccurrenceEntry,
     removeOccurrenceEntry,
     handleCapturePhoto,
+    handleUploadPhotos,
+    updatePhotoCaption,
     removePhotoEntry,
     handleSubmit,
     handleFinishSuccess,
@@ -237,12 +356,16 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const scrollToActiveStep = useCallback(
     (stepIndex: number) => {
       const layout = stepLayouts.current[stepIndex];
-      if (layout && stepScrollRef.current) {
-        const targetX = Math.max(0, layout.x - (screenWidth - layout.width) / 2);
-        stepScrollRef.current.scrollTo({ x: targetX, animated: true });
-      } else if (stepScrollRef.current) {
-        const approxX = Math.max(0, stepIndex * 115 - screenWidth / 2 + 50);
-        stepScrollRef.current.scrollTo({ x: approxX, animated: true });
+      const targetX = layout
+        ? Math.max(0, layout.x - (screenWidth - layout.width) / 2)
+        : Math.max(0, stepIndex * 115 - screenWidth / 2 + 50);
+
+      if (stepScrollRef.current) {
+        if (typeof stepScrollRef.current.scrollTo === 'function') {
+          stepScrollRef.current.scrollTo({ x: targetX, animated: true });
+        } else if (typeof stepScrollRef.current.scrollLeft === 'number') {
+          stepScrollRef.current.scrollLeft = targetX;
+        }
       }
     },
     [screenWidth],
@@ -288,6 +411,251 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
   const [occHoraInicio, setOccHoraInicio] = useState('');
   const [occHoraFim, setOccHoraFim] = useState('');
   const [occDesc, setOccDesc] = useState('');
+
+  // Fotos na Obra (Câmera & Galeria)
+  const [photoCaptionDraft, setPhotoCaptionDraft] = useState('');
+  const [isSequentialCameraMode, setIsSequentialCameraMode] = useState(false);
+  const [showSequentialBanner, setShowSequentialBanner] = useState(false);
+  const cameraInputRef = useRef<any>(null);
+  const sequentialCameraInputRef = useRef<any>(null);
+  const nextSequentialCameraInputRef = useRef<any>(null);
+  const galleryInputRef = useRef<any>(null);
+
+  const handleCameraInputChange = useCallback(
+    async (e: any, sequential = false) => {
+      const fileList: FileList | File[] | undefined = e?.target?.files;
+      const files = fileList ? Array.from(fileList as ArrayLike<File>) : [];
+      if (e?.target) {
+        e.target.value = '';
+      }
+      if (files.length === 0) {
+        return;
+      }
+
+      const defaultCaption = photoCaptionDraft.trim() || 'Registro fotográfico do canteiro';
+      const capturedAt = new Date().toISOString();
+
+      for (const file of files) {
+        const uri = await readFileAsDataUrl(file);
+        handleCapturePhoto(defaultCaption, {
+          uri,
+          takenAt: capturedAt,
+          source: 'camera',
+        });
+      }
+
+      setPhotoCaptionDraft('');
+      setShowSequentialBanner(true);
+      if (sequential) {
+        setIsSequentialCameraMode(true);
+      }
+    },
+    [handleCapturePhoto, photoCaptionDraft],
+  );
+
+  const triggerCameraCapture = useCallback(
+    async (sequential = false) => {
+      const defaultCaption = photoCaptionDraft.trim() || 'Registro fotográfico do canteiro';
+      if (sequential) {
+        setIsSequentialCameraMode(true);
+        setShowSequentialBanner(true);
+      }
+
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const targetInput =
+          (sequential && sequentialCameraInputRef.current) || cameraInputRef.current;
+        if (targetInput && typeof targetInput.click === 'function') {
+          targetInput.value = '';
+          targetInput.click();
+        }
+        return;
+      }
+
+      if (Platform.OS !== 'web') {
+        const picker = getNativeImagePicker();
+        if (picker && typeof picker.launchCameraAsync === 'function') {
+          try {
+            if (typeof picker.requestCameraPermissionsAsync === 'function') {
+              const perm = await picker.requestCameraPermissionsAsync();
+              if (perm && perm.granted === false && perm.status !== 'granted') {
+                Alert?.alert?.(
+                  'Permissão necessária',
+                  'Permita o acesso à câmera nas configurações do celular para tirar fotos da obra.',
+                );
+                return;
+              }
+            }
+
+            const result = await picker.launchCameraAsync({
+              mediaTypes: ['images'],
+              quality: 0.8,
+            });
+
+            if (!result?.canceled && Array.isArray(result?.assets) && result.assets.length > 0) {
+              const capturedAt = new Date().toISOString();
+              for (const asset of result.assets) {
+                handleCapturePhoto(defaultCaption, {
+                  uri: asset.uri,
+                  takenAt: capturedAt,
+                  source: 'camera',
+                });
+              }
+              setPhotoCaptionDraft('');
+              setShowSequentialBanner(true);
+              if (sequential || isSequentialCameraMode) {
+                Alert?.alert?.('Foto registrada!', 'Deseja tirar a próxima foto agora?', [
+                  { text: 'Concluir', style: 'cancel' },
+                  { text: 'Tirar Próxima Foto', onPress: () => triggerCameraCapture(true) },
+                ]);
+              }
+            }
+            return;
+          } catch {
+            // Fall through to fallback in non-native test environments
+          }
+        }
+      }
+
+      handleCapturePhoto(defaultCaption);
+      setPhotoCaptionDraft('');
+      setShowSequentialBanner(true);
+    },
+    [handleCapturePhoto, isSequentialCameraMode, photoCaptionDraft],
+  );
+
+  const handleGalleryInputChange = useCallback(
+    async (e: any) => {
+      const fileList: FileList | File[] | undefined = e?.target?.files;
+      const files = fileList ? Array.from(fileList as ArrayLike<File>) : [];
+      if (e?.target) {
+        e.target.value = '';
+      }
+      if (files.length === 0) {
+        return;
+      }
+
+      const safeIsoDate = (timestamp: any): string => {
+        if (typeof timestamp === 'number' && Number.isFinite(timestamp) && timestamp > 0) {
+          try {
+            const d = new Date(timestamp);
+            if (!isNaN(d.getTime())) return d.toISOString();
+          } catch {
+            // fallback below
+          }
+        }
+        return new Date().toISOString();
+      };
+
+      const items = await Promise.all(
+        files.map(async (f: File) => {
+          const uri = await readFileAsDataUrl(f);
+          return {
+            uri,
+            takenAt: safeIsoDate(f.lastModified),
+            caption:
+              photoCaptionDraft.trim() ||
+              (f.name ? f.name.replace(/\.[^/.]+$/, '') : '') ||
+              'Foto importada da galeria',
+            fileName: f.name || undefined,
+          };
+        }),
+      );
+
+      handleUploadPhotos(items);
+      setPhotoCaptionDraft('');
+    },
+    [handleUploadPhotos, photoCaptionDraft],
+  );
+
+  const triggerGalleryUpload = useCallback(async () => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      let input = galleryInputRef.current;
+      if (!input && typeof document.createElement === 'function') {
+        const dynamicInput = document.createElement('input');
+        dynamicInput.type = 'file';
+        dynamicInput.accept = 'image/*';
+        dynamicInput.multiple = true;
+        dynamicInput.style.display = 'none';
+        dynamicInput.onchange = (e) => {
+          handleGalleryInputChange(e);
+          dynamicInput.remove();
+        };
+        dynamicInput.oncancel = () => {
+          dynamicInput.remove();
+        };
+        document.body.appendChild(dynamicInput);
+        dynamicInput.click();
+        return;
+      }
+      if (input && typeof input.click === 'function') {
+        input.value = '';
+        input.click();
+      }
+      return;
+    }
+
+    if (Platform.OS !== 'web') {
+      const picker = getNativeImagePicker();
+      if (picker && typeof picker.launchImageLibraryAsync === 'function') {
+        try {
+          if (typeof picker.requestMediaLibraryPermissionsAsync === 'function') {
+            const perm = await picker.requestMediaLibraryPermissionsAsync(false);
+            if (perm && perm.granted === false && perm.status !== 'granted') {
+              Alert?.alert?.(
+                'Permissão necessária',
+                'Permita o acesso à galeria de fotos nas configurações do celular para enviar imagens da obra.',
+              );
+              return;
+            }
+          }
+
+          const options: any = {
+            mediaTypes: picker.MediaTypeOptions?.Images ?? ['images'],
+            allowsMultipleSelection: true,
+            quality: 0.8,
+          };
+          const result = await picker.launchImageLibraryAsync(options);
+
+          const isCanceled = Boolean(result?.canceled ?? result?.cancelled);
+          if (isCanceled) {
+            return;
+          }
+
+          const rawAssets = Array.isArray(result?.assets)
+            ? result.assets
+            : result?.uri
+              ? [{ uri: result.uri, fileName: result.fileName }]
+              : [];
+
+          if (rawAssets.length > 0) {
+            const nowIso = new Date().toISOString();
+            handleUploadPhotos(
+              rawAssets.map((a: any) => ({
+                uri: a.uri,
+                fileName: a.fileName || undefined,
+                caption:
+                  photoCaptionDraft.trim() ||
+                  (typeof a.fileName === 'string' ? a.fileName.replace(/\.[^/.]+$/, '') : '') ||
+                  'Foto importada da galeria',
+                takenAt: nowIso,
+              })),
+            );
+            setPhotoCaptionDraft('');
+            return;
+          }
+          return;
+        } catch (err) {
+          console.warn('Erro ao abrir galeria nativa:', err);
+          return;
+        }
+      }
+    }
+
+    handleUploadPhotos([
+      { caption: photoCaptionDraft.trim() || 'Foto importada da galeria' },
+    ]);
+    setPhotoCaptionDraft('');
+  }, [handleGalleryInputChange, handleUploadPhotos, photoCaptionDraft]);
 
   // --------------------------------------------------------------------------
   // RENDER: Carregamento do Rascunho (evita piscar a tela antiga de seleção)
@@ -1268,17 +1636,153 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
             <StepHeader>
               <StepTitle>6. Fotos na Obra</StepTitle>
               <StepSubtitle>
-                Captura com gravação automática de marca d&apos;água de segurança (GPS, Obra e Data).
+                Tire fotos na hora (câmera) ou envie fotos já tiradas da galeria com gravação automática de marca d&apos;água de segurança (GPS, Obra e Data).
               </StepSubtitle>
             </StepHeader>
 
-            <AddItemButtonWrapper>
-              <Button
-                title="Tirar Foto na Obra (com Marca d'Água)"
-                variant="primary"
-                onPress={() => handleCapturePhoto('Registro fotográfico do canteiro')}
+            <FormGroup>
+              <Input
+                accessibilityLabel="Legenda prévia para próxima foto ou lote"
+                label="Legenda inicial (opcional)"
+                placeholder="Ex: Concretagem do 2º pavimento"
+                value={photoCaptionDraft}
+                onChangeText={setPhotoCaptionDraft}
               />
-            </AddItemButtonWrapper>
+            </FormGroup>
+
+            <PhotoActionsContainer>
+              <View style={{ position: 'relative' }}>
+                <Button
+                  title="📷 Tirar Foto Agora (Câmera)"
+                  variant="primary"
+                  onPress={() => triggerCameraCapture(false)}
+                />
+                {Platform.OS === 'web' &&
+                  typeof document !== 'undefined' &&
+                  React.createElement('input', {
+                    ref: cameraInputRef,
+                    type: 'file',
+                    accept: 'image/*',
+                    capture: 'environment',
+                    'aria-label': 'Tirar Foto Agora (Câmera)',
+                    'data-testid': 'camera-file-input',
+                    onClick: (e: any) => {
+                      if (e?.currentTarget) {
+                        e.currentTarget.value = '';
+                      }
+                    },
+                    onChange: (e: any) => handleCameraInputChange(e, false),
+                    style: WEB_FILE_INPUT_OVERLAY_STYLE,
+                  })}
+              </View>
+
+              <View style={{ position: 'relative' }}>
+                <Button
+                  title="Tirar várias fotos em sequência"
+                  variant={isSequentialCameraMode ? 'secondary' : 'outline'}
+                  size="small"
+                  onPress={() => {
+                    setIsSequentialCameraMode(true);
+                    setShowSequentialBanner(true);
+                    triggerCameraCapture(true);
+                  }}
+                />
+                {Platform.OS === 'web' &&
+                  typeof document !== 'undefined' &&
+                  React.createElement('input', {
+                    ref: sequentialCameraInputRef,
+                    type: 'file',
+                    accept: 'image/*',
+                    capture: 'environment',
+                    multiple: true,
+                    'aria-label': 'Tirar várias fotos em sequência',
+                    'data-testid': 'sequential-camera-file-input',
+                    onClick: (e: any) => {
+                      setIsSequentialCameraMode(true);
+                      setShowSequentialBanner(true);
+                      if (e?.currentTarget) {
+                        e.currentTarget.value = '';
+                      }
+                    },
+                    onChange: (e: any) => {
+                      setIsSequentialCameraMode(true);
+                      setShowSequentialBanner(true);
+                      handleCameraInputChange(e, true);
+                    },
+                    style: WEB_FILE_INPUT_OVERLAY_STYLE,
+                  })}
+              </View>
+
+              <View style={{ position: 'relative', width: '100%' }}>
+                <Button
+                  title="🖼️ Enviar Fotos da Galeria (Upload)"
+                  variant="outline"
+                  fullWidth
+                  onPress={triggerGalleryUpload}
+                />
+                {Platform.OS === 'web' &&
+                  typeof document !== 'undefined' &&
+                  React.createElement('input', {
+                    ref: galleryInputRef,
+                    type: 'file',
+                    accept: 'image/*',
+                    multiple: true,
+                    'aria-label': 'Enviar Fotos da Galeria (Upload)',
+                    'data-testid': 'gallery-file-input',
+                    onClick: (e: any) => {
+                      if (e?.currentTarget) {
+                        e.currentTarget.value = '';
+                      }
+                    },
+                    onChange: handleGalleryInputChange,
+                    style: WEB_FILE_INPUT_OVERLAY_STYLE,
+                  })}
+              </View>
+            </PhotoActionsContainer>
+
+            {(showSequentialBanner || isSequentialCameraMode) && (
+              <SequentialCaptureBanner>
+                <SequentialBannerTitle>
+                  Foto registrada com sucesso! Deseja tirar mais fotos?
+                </SequentialBannerTitle>
+                <SequentialBannerActions>
+                  <View style={{ position: 'relative' }}>
+                    <Button
+                      title="➕ Tirar Próxima Foto"
+                      variant="primary"
+                      size="small"
+                      onPress={() => triggerCameraCapture(true)}
+                    />
+                    {Platform.OS === 'web' &&
+                      typeof document !== 'undefined' &&
+                      React.createElement('input', {
+                        ref: nextSequentialCameraInputRef,
+                        type: 'file',
+                        accept: 'image/*',
+                        capture: 'environment',
+                        'aria-label': 'Tirar Próxima Foto',
+                        'data-testid': 'next-camera-file-input',
+                        onClick: (e: any) => {
+                          if (e?.currentTarget) {
+                            e.currentTarget.value = '';
+                          }
+                        },
+                        onChange: (e: any) => handleCameraInputChange(e, true),
+                        style: WEB_FILE_INPUT_OVERLAY_STYLE,
+                      })}
+                  </View>
+                  <Button
+                    title="Concluir sequência"
+                    variant="outline"
+                    size="small"
+                    onPress={() => {
+                      setShowSequentialBanner(false);
+                      setIsSequentialCameraMode(false);
+                    }}
+                  />
+                </SequentialBannerActions>
+              </SequentialCaptureBanner>
+            )}
 
             <SectionDivider />
 
@@ -1292,22 +1796,58 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                 <PhotoCard key={p.id || idx}>
                   <PhotoPreviewBox>
                     <Camera size={48} color="#94A3B8" />
+                    <ResilientPhoto
+                      photo={p}
+                      index={idx}
+                      testID={`draft-photo-${p.id || idx}`}
+                      accessibilityLabel={p.caption || `Foto #${idx + 1}`}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        width: '100%',
+                        height: '100%',
+                      }}
+                      resizeMode="cover"
+                    />
+
+                    <PhotoOriginBadge $source={p.source}>
+                      <PhotoOriginBadgeText>
+                        {p.source === 'gallery' ? '🖼️ Importada da Galeria' : '📷 Câmera na Obra'}
+                      </PhotoOriginBadgeText>
+                    </PhotoOriginBadge>
+
                     {/* Marca d'água de segurança estampada */}
                     <WatermarkBanner>
-                      <WatermarkTitle>🔒 StackLab Security Watermark</WatermarkTitle>
+                      <WatermarkTitle>
+                        {p.source === 'gallery'
+                          ? '🖼️ IMPORTADA DA GALERIA • StackLab Security Watermark'
+                          : '📷 CAPTURADA NA OBRA (CÂMERA) • StackLab Security Watermark'}
+                      </WatermarkTitle>
                       <WatermarkDataText>
-                        Obra: {activeDraft.workName} • {p.takenAt.slice(0, 10)} {p.takenAt.slice(11, 16)}
+                        Obra: {activeDraft.workName} • {typeof p.takenAt === 'string' && p.takenAt.length >= 16 ? `${p.takenAt.slice(0, 10)} ${p.takenAt.slice(11, 16)}` : (p.takenAt || '')}
                         {'\n'}GPS: {p.metadata?.latitude ?? -2.5307}, {p.metadata?.longitude ?? -44.3068} (±{p.metadata?.accuracy ?? 3.8}m) • Autor: {p.author}
                       </WatermarkDataText>
                     </WatermarkBanner>
                   </PhotoPreviewBox>
 
-                  <FormRow>
-                    <FormCol flex={3}>
-                      <AddedItemSubtitle>Legenda: {p.caption}</AddedItemSubtitle>
+                  <FormRow style={{ alignItems: 'flex-end', marginBottom: 0 }}>
+                    <FormCol flex={4}>
+                      <Input
+                        accessibilityLabel={`Legenda da foto ${idx + 1}`}
+                        label="Legenda da foto (opcional)"
+                        placeholder="Ex: Concretagem do 2º pavimento"
+                        value={p.caption}
+                        onChangeText={(txt) => updatePhotoCaption?.(idx, txt)}
+                      />
                     </FormCol>
-                    <FormCol flex={1} style={{ alignItems: 'flex-end' }}>
-                      <RemoveButton onPress={() => removePhotoEntry(idx)}>
+                    <FormCol flex={0} style={{ alignItems: 'flex-end', paddingBottom: 2 }}>
+                      <RemoveButton
+                        accessibilityLabel={`Remover foto ${idx + 1}`}
+                        onPress={() => removePhotoEntry(idx)}
+                      >
                         <Trash2 size={18} color={theme.colors.status.error.base} />
                       </RemoveButton>
                     </FormCol>
@@ -1526,8 +2066,10 @@ export const NewRDOView = ({ onWizardActiveChange }: NewRDOViewProps = {}) => {
                   <ReviewItemBox key={p.id || idx}>
                     <ReviewItemHeader>
                       <ReviewItemTitle>{p.caption || `Foto #${idx + 1}`}</ReviewItemTitle>
-                      <ReviewBadge $variant="neutral">
-                        <ReviewBadgeText $variant="neutral">Registrada</ReviewBadgeText>
+                      <ReviewBadge $variant={p.source === 'gallery' ? 'secondary' : 'primary'}>
+                        <ReviewBadgeText $variant={p.source === 'gallery' ? 'secondary' : 'primary'}>
+                          {p.source === 'gallery' ? 'Importada da Galeria' : 'Capturada na Obra'}
+                        </ReviewBadgeText>
                       </ReviewBadge>
                     </ReviewItemHeader>
                     <ReviewItemSubtitle>

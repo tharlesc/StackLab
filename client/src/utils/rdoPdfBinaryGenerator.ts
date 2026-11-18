@@ -1,6 +1,7 @@
 import type { RDO, Shift, WeatherEntry, Work } from '@/types';
 import { calcHeadcount, calcManHours } from './rdo';
 import { parseFlexibleDate } from './date';
+import { resolvePdfImagePayload } from './rdoPhotoUtils';
 
 const WEEKDAYS_PT = [
   'Domingo',
@@ -32,9 +33,23 @@ const formatReportDateWithWeekday = (dateStr?: string): string => {
   return `${weekday} · ${formatted}`;
 };
 
-const formatReportTimestampBr = (isoOrDate?: string | Date): string => {
-  const parsed = isoOrDate instanceof Date ? isoOrDate : parseFlexibleDate(isoOrDate);
-  if (!parsed) return isoOrDate ? String(isoOrDate) : '—';
+const toSafeString = (val: unknown): string => {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  try {
+    return String(val);
+  } catch {
+    return '';
+  }
+};
+
+const formatReportTimestampBr = (isoOrDate?: unknown): string => {
+  if (!isoOrDate) return '—';
+  const parsed = isoOrDate instanceof Date ? isoOrDate : parseFlexibleDate(isoOrDate as any);
+  if (!parsed) {
+    const fallback = toSafeString(isoOrDate);
+    return fallback || '—';
+  }
   const d = String(parsed.getDate()).padStart(2, '0');
   const m = String(parsed.getMonth() + 1).padStart(2, '0');
   const y = parsed.getFullYear();
@@ -102,7 +117,7 @@ const rgStroke = ([r, g, b]: RgbColor): string => `${fmtNum(r)} ${fmtNum(g)} ${f
  */
 export const encodePdfWinAnsi = (input: unknown): string => {
   if (input === null || input === undefined) return '';
-  const str = String(input);
+  const str = toSafeString(input);
   let out = '';
 
   const unicodeToWinAnsi: Record<number, number> = {
@@ -168,17 +183,18 @@ export const encodePdfWinAnsi = (input: unknown): string => {
  * Estimativa precisa de largura em pontos para Helvetica / Helvetica-Bold
  */
 const estimateTextWidth = (
-  text: string,
+  text: unknown,
   fontSize: number,
   font: 'F1' | 'F2' | 'F3' = 'F1',
   charSpacing = 0,
 ): number => {
-  if (!text) return 0;
+  const str = toSafeString(text);
+  if (!str) return 0;
   let totalUnits = 0;
   const isBold = font === 'F2';
 
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
     if ('ilI.,:;!| '.includes(ch)) {
       totalUnits += isBold ? 290 : 278;
     } else if ('fjt()[]/-'.includes(ch)) {
@@ -193,17 +209,17 @@ const estimateTextWidth = (
   }
 
   const baseWidth = (totalUnits / 1000) * fontSize;
-  const spacingWidth = text.length > 1 ? (text.length - 1) * charSpacing : 0;
+  const spacingWidth = str.length > 1 ? (str.length - 1) * charSpacing : 0;
   return baseWidth + spacingWidth;
 };
 
 const truncateToWidth = (
-  text: string,
+  text: unknown,
   maxWidth: number,
   fontSize: number,
   font: 'F1' | 'F2' | 'F3' = 'F1',
 ): string => {
-  const clean = (text ?? '').toString().trim();
+  const clean = toSafeString(text).trim();
   if (!clean) return '—';
   if (estimateTextWidth(clean, fontSize, font) <= maxWidth) return clean;
   let sliced = clean;
@@ -214,13 +230,13 @@ const truncateToWidth = (
 };
 
 const wrapTextLines = (
-  text: string,
+  text: unknown,
   maxWidth: number,
   fontSize: number,
   font: 'F1' | 'F2' | 'F3' = 'F1',
   maxLines = 3,
 ): string[] => {
-  const clean = (text ?? '').toString().trim();
+  const clean = toSafeString(text).trim();
   if (!clean) return ['—'];
   const words = clean.split(/\s+/);
   const lines: string[] = [];
@@ -323,6 +339,10 @@ const drawFilledRoundedRect = (
     return `${rgFill(fill)}\n${rgStroke(stroke)}\n${fmtNum(lineWidth)} w\n${path}\nB*`;
   }
   return `${rgFill(fill)}\n${path}\nf*`;
+};
+
+const drawFilledRect = (x: number, y: number, w: number, h: number, fill: RgbColor): string => {
+  return `${rgFill(fill)}\n${fmtNum(x)} ${fmtNum(y)} ${fmtNum(w)} ${fmtNum(h)} re\nf*`;
 };
 
 const drawStrokedRoundedRect = (
@@ -1417,6 +1437,10 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
 
   // 2. Seção 6: Registro Fotográfico (Fotos da Obra)
   const photosList = rdo.photos || [];
+  const displayedPhotos = photosList.slice(0, 2);
+  const photoPayloads = displayedPhotos.map((photo, idx) =>
+    resolvePdfImagePayload(photo, idx),
+  );
   page2Ops.push(
     drawSectionHeader(
       'REGISTRO FOTOGRÁFICO',
@@ -1440,11 +1464,11 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
       ),
     );
   } else {
-    const displayedPhotos = photosList.slice(0, 2);
+    const cardBottom = 436;
     displayedPhotos.forEach((photo, idx) => {
+      const p = photo || {};
       const cardX = idx === 0 ? 40 : 303.5;
       const cardW = 251.5;
-      const cardBottom = 436;
       const cardH = 236;
       const captionH = 40;
       const imgBottom = cardBottom + captionH;
@@ -1452,48 +1476,17 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
 
       // Card container
       page2Ops.push(drawFilledRoundedRect(cardX, cardBottom, cardW, cardH, 10, COLORS.white, COLORS.border, 1));
-      // Área superior da imagem
-      page2Ops.push(
-        `${rgFill(COLORS.surfaceVariant)}\n${pdfTopRoundedRectPath(
-          cardX,
-          imgBottom,
-          cardW,
-          imgH,
-          10,
-        )}\nf*`,
-      );
 
-      // Ilustração vetorial de câmera / registro de obra no centro do quadro
-      const centerX = cardX + cardW / 2;
-      const centerY = imgBottom + imgH / 2 + 8;
-      page2Ops.push(drawFilledCircle(centerX, centerY, 24, COLORS.white));
-      page2Ops.push(
-        drawFilledRoundedRect(centerX - 11, centerY - 7, 22, 14, 3, COLORS.navy),
-      );
-      page2Ops.push(drawFilledCircle(centerX, centerY, 4.2, COLORS.orange));
-      page2Ops.push(
-        drawText(
-          'REGISTRO FOTOGRÁFICO OFICIAL',
-          centerX - 58,
-          centerY - 36,
-          7,
-          COLORS.slate,
-          'F2',
-          0.5,
-        ),
-      );
-      if (photo.metadata?.hash) {
-        page2Ops.push(
-          drawText(
-            `Hash: ${photo.metadata.hash}`,
-            centerX - 36,
-            centerY - 47,
-            6.8,
-            COLORS.slateMuted,
-            'F1',
-          ),
-        );
-      }
+      // Imagem real incorporada (XObject /Im1 ou /Im2) com recorte arredondado nos cantos superiores
+      page2Ops.push('q');
+      page2Ops.push(pdfTopRoundedRectPath(cardX, imgBottom, cardW, imgH, 10));
+      page2Ops.push('W n');
+      page2Ops.push(`${cardW} 0 0 ${imgH} ${cardX} ${imgBottom} cm`);
+      page2Ops.push(`/Im${idx + 1} Do`);
+      page2Ops.push('Q');
+
+      // Faixa de divisória inferior da imagem
+      page2Ops.push(drawLine(cardX, imgBottom, cardX + cardW, imgBottom, COLORS.rowDivider, 0.6));
 
       // Badge numérico "01", "02" no canto superior esquerdo da foto
       const badgeNum = String(idx + 1).padStart(2, '0');
@@ -1504,11 +1497,31 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
         drawText(badgeNum, cardX + 16.5, cardBottom + cardH - 19, 7.2, COLORS.white, 'F2', 0.4),
       );
 
+      const photoAuthor =
+        typeof p.author === 'string' && p.author.trim()
+          ? p.author.trim()
+          : (authorName || 'Operador');
+      const photoCaption =
+        typeof p.caption === 'string' && p.caption.trim()
+          ? p.caption.trim()
+          : 'Foto da obra';
+      const photoAuthorSuffix =
+        typeof p.author === 'string' && p.author.trim()
+          ? ` · ${p.author.trim()}`
+          : '';
+
+      // Faixa de Marca d'Água de Segurança na base da foto
+      page2Ops.push(drawFilledRect(cardX, imgBottom, cardW, 16, COLORS.navy));
+      page2Ops.push(drawFilledRect(cardX, imgBottom + 15, cardW, 1.2, COLORS.orange));
+      const watermarkMeta = `[Marca d'Água]: ${formatReportTimestampBr(p.takenAt)} * Autor: ${truncateToWidth(photoAuthor, 65, 6, 'F1')} * Obra: ${truncateToWidth(workTitle, 70, 6, 'F1')}`;
+      page2Ops.push(
+        drawText(watermarkMeta, cardX + 8, imgBottom + 4.5, 6, COLORS.white, 'F1', 0),
+      );
+
       // Rodapé de legenda da foto
-      page2Ops.push(drawLine(cardX, imgBottom, cardX + cardW, imgBottom, COLORS.rowDivider, 0.6));
       page2Ops.push(
         drawText(
-          truncateToWidth(photo.caption || 'Foto da obra', cardW - 20, 8.5, 'F2'),
+          truncateToWidth(photoCaption, cardW - 20, 8.5, 'F2'),
           cardX + 10,
           cardBottom + 23,
           8.5,
@@ -1516,12 +1529,16 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
           'F2',
         ),
       );
-      const photoMetaLine = `${formatReportTimestampBr(photo.takenAt)}${
-        photo.author ? ` · ${photo.author}` : ''
-      }`;
+      const photoMetaLine = `${formatReportTimestampBr(p.takenAt)}${photoAuthorSuffix}`;
+      const hashStr =
+        typeof p.metadata?.hash === 'string' && p.metadata.hash.trim()
+          ? p.metadata.hash.trim()
+          : '';
+      const hasHash = Boolean(hashStr);
+      const metaMaxWidth = hasHash ? cardW - 130 : cardW - 20;
       page2Ops.push(
         drawText(
-          truncateToWidth(photoMetaLine, cardW - 20, 7.5, 'F1'),
+          truncateToWidth(photoMetaLine, metaMaxWidth, 7.5, 'F1'),
           cardX + 10,
           cardBottom + 10,
           7.5,
@@ -1529,7 +1546,34 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
           'F1',
         ),
       );
+
+      if (hasHash) {
+        page2Ops.push(
+          drawText(
+            `Hash: ${truncateToWidth(hashStr, 105, 6.5, 'F1')}`,
+            cardX + 135,
+            cardBottom + 10,
+            6.5,
+            COLORS.slateMuted,
+            'F1',
+          ),
+        );
+      }
     });
+
+    if (photosList.length > 2) {
+      page2Ops.push(
+        drawText(
+          `+ ${photosList.length - 2} registro(s) fotografico(s) adicional(is) arquivado(s) no acervo da obra`,
+          40,
+          cardBottom - 14,
+          7.5,
+          COLORS.slateMuted,
+          'F3',
+          0,
+        ),
+      );
+    }
   }
 
   // 3. Seção de Assinaturas e Conferência (Idêntico ao modelo de referência)
@@ -1626,6 +1670,11 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
   const page1Stream = page1Ops.join('\n');
   const page2Stream = page2Ops.join('\n');
 
+  const xObjectEntries = photoPayloads.map((_, idx) => `/Im${idx + 1} ${11 + idx} 0 R`);
+  const page2ResourceDict = `<< /Font << /F1 8 0 R /F2 9 0 R /F3 10 0 R >> ${
+    xObjectEntries.length > 0 ? `/XObject << ${xObjectEntries.join(' ')} >> ` : ''
+  }/ProcSet [ /PDF /Text ${xObjectEntries.length > 0 ? '/ImageB /ImageC /ImageI' : ''} ] >>`;
+
   const objects: string[] = [
     // 1 0 obj: Info / Producer
     `<< /Producer (StackLab RDO Engine) /Title (${encodePdfWinAnsi(
@@ -1640,7 +1689,7 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
     // 5 0 obj: Page 1 Contents
     `<< /Length ${page1Stream.length} >>\nstream\n${page1Stream}\nendstream`,
     // 6 0 obj: Page 2
-    `<< /Type /Page /Parent 2 0 R /MediaBox [ 0 0 595 842 ] /Contents 7 0 R /Resources << /Font << /F1 8 0 R /F2 9 0 R /F3 10 0 R >> /ProcSet [ /PDF /Text ] >> >>`,
+    `<< /Type /Page /Parent 2 0 R /MediaBox [ 0 0 595 842 ] /Contents 7 0 R /Resources ${page2ResourceDict} >>`,
     // 7 0 obj: Page 2 Contents
     `<< /Length ${page2Stream.length} >>\nstream\n${page2Stream}\nendstream`,
     // 8 0 obj: Font F1 (Helvetica Regular)
@@ -1650,6 +1699,14 @@ export const generateRdoPdfBytes = (rdo: RDO, work?: Partial<Work> | null): Uint
     // 10 0 obj: Font F3 (Helvetica Oblique)
     `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>`,
   ];
+
+  photoPayloads.forEach((payload) => {
+    objects.push(
+      `<< /Type /XObject /Subtype /Image /Width ${payload.width} /Height ${payload.height} /ColorSpace ${payload.colorSpace || '/DeviceRGB'} /BitsPerComponent 8 ${
+        payload.filter ? `/Filter ${payload.filter} ` : ''
+      }/Length ${payload.bytes.length} >>\nstream\n${payload.binaryString}\nendstream`,
+    );
+  });
 
   let pdfContent = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
   const offsets: number[] = [0];

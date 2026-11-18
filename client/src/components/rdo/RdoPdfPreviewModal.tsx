@@ -30,7 +30,9 @@ import {
   triggerWebPdfDownload,
   triggerMobilePdfDownload,
   getRdoPdfFilename,
-} from '@/utils/rdoPdfTemplate';
+  resolvePhotoUri,
+} from '@/utils';
+import { ResilientPhoto } from './ResilientPhoto';
 
 export interface RdoPdfPreviewModalProps {
   visible: boolean;
@@ -664,32 +666,32 @@ export const RdoPdfPreviewModal: React.FC<RdoPdfPreviewModalProps> = ({
                 <View style={styles.photosGrid}>
                   {(rdo.photos || []).map((p, idx) => {
                     const numStr = String(idx + 1).padStart(2, '0');
-                    const imgUri = p.watermarkedUri || p.uri;
-                    const takenFormatted = formatReportTimestampBr(p.takenAt);
+                    const imgUri = resolvePhotoUri(p, idx);
+                    const takenFormatted = formatReportTimestampBr(p?.takenAt);
+                    const caption =
+                      typeof p?.caption === 'string' && p.caption.trim() ? p.caption.trim() : '—';
+                    const authorStr =
+                      typeof p?.author === 'string' && p.author.trim() ? p.author.trim() : '';
                     return (
-                      <View key={p.id || idx} style={styles.photoCard}>
+                      <View key={p?.id || idx} style={styles.photoCard}>
                         <View style={styles.photoImageFrame}>
                           <View style={styles.photoNumberPill}>
                             <Text style={styles.photoNumberPillText}>{numStr}</Text>
                           </View>
-                          {imgUri ? (
-                            <Image
-                              source={{ uri: imgUri }}
-                              style={styles.photoImg}
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View style={styles.photoFallbackCenter}>
-                              <Camera size={32} color="#5B6B80" />
-                              <Text style={styles.photoFallbackText}>Foto #{numStr}</Text>
-                            </View>
-                          )}
+                          <ResilientPhoto
+                            photo={p}
+                            index={idx}
+                            testID={`preview-photo-${p?.id || idx}`}
+                            accessibilityLabel={caption !== '—' ? caption : `Foto #${numStr}`}
+                            style={styles.photoImg}
+                            resizeMode="cover"
+                          />
                         </View>
                         <View style={styles.photoMetaBox}>
-                          <Text style={styles.photoCaptionText}>{p.caption || '—'}</Text>
+                          <Text style={styles.photoCaptionText}>{caption}</Text>
                           <Text style={styles.photoTimestampText}>
                             {takenFormatted}
-                            {p.author ? ` · ${p.author}` : ''}
+                            {authorStr ? ` · ${authorStr}` : ''}
                           </Text>
                         </View>
                       </View>

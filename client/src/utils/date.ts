@@ -61,7 +61,16 @@ export const parseFlexibleDate = (input?: string | Date | null): Date | null => 
   if (!input) return null;
   if (input instanceof Date) return isNaN(input.getTime()) ? null : input;
 
-  const str = String(input).trim();
+  let str = '';
+  if (typeof input === 'string') {
+    str = input.trim();
+  } else {
+    try {
+      str = String(input).trim();
+    } catch {
+      return null;
+    }
+  }
   if (!str) return null;
 
   // Formato brasileiro: DD/MM/YYYY ou DD/MM/YYYY HH:mm...

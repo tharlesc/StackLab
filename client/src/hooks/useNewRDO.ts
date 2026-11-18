@@ -505,47 +505,144 @@ export const useNewRDO = () => {
     });
   }, []);
 
-  // Simulação / Adição de Foto com Marca d'Água de Segurança
+  // Simulação / Adição de Foto com Marca d'Água de Segurança (Câmera)
   const handleCapturePhoto = useCallback(
-    (caption = 'Registro fotográfico das atividades em campo') => {
-      if (!activeDraft) return;
+    (
+      caption = 'Registro fotográfico das atividades em campo',
+      options?: { uri?: string; takenAt?: string; source?: 'camera' | 'gallery' },
+    ) => {
+      setActiveDraft((prev) => {
+        if (!prev) return null;
 
-      const takenAt = new Date().toISOString();
-      const lat = -2.5307;
-      const lng = -44.3068;
-      const acc = 3.8;
-      const photoId = `photo-${Date.now()}`;
+        const takenAt = options?.takenAt || new Date().toISOString();
+        const source = options?.source ?? 'camera';
+        const lat = -2.5307;
+        const lng = -44.3068;
+        const acc = 3.8;
+        const seq = prev.photos.length + 1;
+        const photoId = `photo-${Date.now()}-${seq}`;
+        const defaultUri =
+          'https://images.unsplash.com/photo-1541888946425-d0fbb1861563?q=80&w=600&auto=format&fit=crop';
+        const resolvedUri = options?.uri || defaultUri;
+        const resolvedCaption =
+          caption?.trim() || 'Registro fotográfico das atividades em campo';
 
-      const watermarkText = `[STACKLAB SECURITY] Obra: ${activeDraft.workName} | Data: ${takenAt.slice(
-        0,
-        10,
-      )} | GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (±${acc}m) | Operário: ${currentUser.name}`;
+        const newPhoto: PhotoEntry = {
+          id: photoId,
+          caption: resolvedCaption,
+          takenAt,
+          author: currentUser.name,
+          source,
+          watermarkedUri: resolvedUri,
+          uri: resolvedUri,
+          metadata: {
+            latitude: lat,
+            longitude: lng,
+            accuracy: acc,
+            capturedAt: takenAt,
+            originalTakenAt: options?.takenAt || takenAt,
+            source,
+            authorId: currentUser.id,
+            authorName: currentUser.name,
+            workId: prev.workId,
+            workName: prev.workName,
+            rdoNumber: prev.number,
+            hash: `SHA256-${(Date.now() + seq).toString(16)}`,
+          },
+        };
 
-      const newPhoto: PhotoEntry = {
-        id: photoId,
-        caption,
-        takenAt,
-        author: currentUser.name,
-        watermarkedUri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563?q=80&w=600&auto=format&fit=crop',
-        uri: 'https://images.unsplash.com/photo-1541888946425-d0fbb1861563?q=80&w=600&auto=format&fit=crop',
-        metadata: {
-          latitude: lat,
-          longitude: lng,
-          accuracy: acc,
-          capturedAt: takenAt,
-          authorId: currentUser.id,
-          authorName: currentUser.name,
-          workId: activeDraft.workId,
-          workName: activeDraft.workName,
-          rdoNumber: activeDraft.number,
-          hash: `SHA256-${Date.now().toString(16)}`,
-        },
-      };
-
-      setActiveDraft((prev) => (prev ? { ...prev, photos: [...prev.photos, newPhoto] } : null));
+        return { ...prev, photos: [...prev.photos, newPhoto] };
+      });
     },
-    [activeDraft, currentUser],
+    [currentUser],
   );
+
+  // Upload de uma ou múltiplas fotos da galeria com Marca d'Água de Segurança
+  const handleUploadPhotos = useCallback(
+    (
+      items?:
+        | Array<{ uri?: string; caption?: string; takenAt?: string; fileName?: string }>
+        | string,
+    ) => {
+      setActiveDraft((prev) => {
+        if (!prev) return null;
+
+        if (Array.isArray(items) && items.length === 0) {
+          return prev;
+        }
+
+        const normalizedItems: Array<{
+          uri?: string;
+          caption?: string;
+          takenAt?: string;
+          fileName?: string;
+        }> =
+          typeof items === 'string'
+            ? [{ caption: items }]
+            : Array.isArray(items)
+              ? items
+              : [{ caption: 'Foto importada da galeria' }];
+
+        if (normalizedItems.length === 0) {
+          return prev;
+        }
+
+        const nowIso = new Date().toISOString();
+        const lat = -2.5307;
+        const lng = -44.3068;
+        const acc = 3.8;
+        const defaultUri =
+          'https://images.unsplash.com/photo-1541888946425-d0fbb1861563?q=80&w=600&auto=format&fit=crop';
+
+        const uploadedPhotos: PhotoEntry[] = normalizedItems.map((item, idx) => {
+          const seq = prev.photos.length + idx + 1;
+          const takenAt = item.takenAt || nowIso;
+          const resolvedUri = item.uri || defaultUri;
+          const resolvedCaption =
+            item.caption?.trim() || item.fileName?.trim() || 'Foto importada da galeria';
+
+          return {
+            id: `photo-${Date.now()}-${seq}`,
+            caption: resolvedCaption,
+            takenAt,
+            author: currentUser.name,
+            source: 'gallery',
+            watermarkedUri: resolvedUri,
+            uri: resolvedUri,
+            metadata: {
+              latitude: lat,
+              longitude: lng,
+              accuracy: acc,
+              capturedAt: nowIso,
+              originalTakenAt: item.takenAt || takenAt,
+              source: 'gallery',
+              authorId: currentUser.id,
+              authorName: currentUser.name,
+              workId: prev.workId,
+              workName: prev.workName,
+              rdoNumber: prev.number,
+              hash: `SHA256-${(Date.now() + seq).toString(16)}`,
+            },
+          };
+        });
+
+        return { ...prev, photos: [...prev.photos, ...uploadedPhotos] };
+      });
+    },
+    [currentUser],
+  );
+
+  const updatePhotoCaption = useCallback((index: number, caption: string) => {
+    setActiveDraft((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        photos: prev.photos.map((photo, idx) =>
+          idx === index ? { ...photo, caption } : photo,
+        ),
+      };
+    });
+  }, []);
 
   const removePhotoEntry = useCallback((index: number) => {
     setActiveDraft((prev) => {
@@ -652,6 +749,8 @@ export const useNewRDO = () => {
     addOccurrenceEntry,
     removeOccurrenceEntry,
     handleCapturePhoto,
+    handleUploadPhotos,
+    updatePhotoCaption,
     removePhotoEntry,
     handleSubmit,
     handleFinishSuccess,

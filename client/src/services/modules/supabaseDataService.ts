@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../supabase';
+import { resolvePhotoUri, extractRawPhotoCandidate } from '@/utils/rdoPhotoUtils';
 import type {
   ActiveWork,
   Work,
@@ -221,14 +222,8 @@ export async function fetchRdosFromSupabase(): Promise<RDO[]> {
 
     const photos: PhotoEntry[] = (row.rdo_fotos || [])
       .sort((a: any, b: any) => (a.ordem ?? 0) - (b.ordem ?? 0))
-      .map((p: any) => {
-      const rawPath = p.url || p.storage_path || '';
-      const resolvedUrl =
-        rawPath && /^https?:\/\//i.test(rawPath)
-          ? rawPath
-          : rawPath
-            ? supabase.storage.from('rdo-fotos').getPublicUrl(rawPath).data?.publicUrl || rawPath
-            : undefined;
+      .map((p: any, idx: number) => {
+      const resolvedUrl = resolvePhotoUri(p, idx);
       const photoAuthor = (p.autor_id && profileMap.get(p.autor_id)) || authorName;
       const capturedTime = p.tirada_em || p.capturada_em || row.created_at;
 
@@ -802,9 +797,10 @@ export async function saveRdoToSupabase(
 
     // 7. Fotos da Obra
     if (rdo.photos && rdo.photos.length > 0) {
-      const photoRows = rdo.photos.map((p, idx) => ({
+      const photoRowsWithUrl = rdo.photos.map((p, idx) => ({
         rdo_id: targetRdoId,
         storage_path: `${targetRdoId}/${p.id || `foto-${idx + 1}`}-${idx}.jpg`,
+        url: extractRawPhotoCandidate(p) || null,
         legenda: (p.caption && p.caption.trim()) || null,
         tirada_em: p.takenAt || new Date().toISOString(),
         latitude: p.metadata?.latitude ?? null,
@@ -814,7 +810,12 @@ export async function saveRdoToSupabase(
         hash: p.metadata?.hash ?? null,
         ordem: idx,
       }));
-      const { error: photoErr } = await supabase.from('rdo_fotos').insert(photoRows);
+      let { error: photoErr } = await supabase.from('rdo_fotos').insert(photoRowsWithUrl);
+      if (photoErr && String(photoErr.message || '').includes('url')) {
+        const photoRowsWithoutUrl = photoRowsWithUrl.map(({ url, ...rest }) => rest);
+        const retry = await supabase.from('rdo_fotos').insert(photoRowsWithoutUrl);
+        photoErr = retry.error;
+      }
       if (photoErr) {
         console.warn('Aviso ao inserir rdo_fotos no Supabase:', photoErr);
       }
